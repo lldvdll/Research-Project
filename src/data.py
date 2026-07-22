@@ -16,11 +16,12 @@ def class_indices(dataset):
     return {c: (dataset.targets == c).nonzero(as_tuple=True)[0] for c in range(10)}
 
 
-def make_eval_set(test, per_class=100, device="cpu"):
-    """Fixed held-out eval set: `per_class` TEST images per class, stacked once."""
+def make_eval_set(test, classes=None, per_class=100, device="cpu"):
+    """Fixed held-out eval set: `per_class` TEST images for each class in `classes` (default all 10)."""
+    classes = list(range(10)) if classes is None else list(classes)
     idx = class_indices(test)
     xs, ys = [], []
-    for c in range(10):
+    for c in classes:
         sel = idx[c][:per_class]
         xs.append(torch.stack([test[i][0] for i in sel]))
         ys.append(torch.full((len(sel),), c))

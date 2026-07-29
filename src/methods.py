@@ -1,8 +1,12 @@
 """Methods: each builder sets up a model and returns (train_step, predict) closures.
-   Add a method = add a make_* function. One model, one function; named per model so more can be added."""
+   Add a method = add a make_* function. One model, one function.
+
+   `predict(x, raw=False)` -> class indices, or the raw pre-argmax outputs when raw=True.
+   The `raw` kwarg is optional, so older experiment scripts calling predict(x) still work."""
 import torch
 import torch.nn as nn
-from .eqprop import eqprop_init, eqprop_update, eqprop_predict
+from .eqprop import eqprop_init, eqprop_update, eqprop_settle
+from .predictive_coding import pc_init, pc_update, pc_predict
 
 
 def make_mlp(in_dim=196, hidden=64, out_dim=10):
@@ -17,16 +21,17 @@ def make_backprop(in_dim=196, hidden=64, lr=0.1, seed=0, device="cpu"):
     def train_step(x, y):
         opt.zero_grad(); lf(model(x), y).backward(); opt.step()
 
-    def predict(x):
+    def predict(x, raw=False):
         with torch.no_grad():
-            return model(x).argmax(1)
+            out = model(x)
+        return out if raw else out.argmax(1)
 
     return train_step, predict
 
 
 def make_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.1, per_class=20, seed=0, device="cpu"):
     """Experience-replay control: stores `per_class` examples the first time each class is seen,
-       mixes a replay sample into every batch."""
+       mixes an equal-sized replay sample into every batch."""
     torch.manual_seed(seed)
     model = make_mlp(in_dim, hidden).to(device)
     opt, lf = torch.optim.SGD(model.parameters(), lr=lr), nn.CrossEntropyLoss()
@@ -45,9 +50,10 @@ def make_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.1, per_class=
             x, y = torch.cat([x, rx[s]]), torch.cat([y, ry[s]])
         opt.zero_grad(); lf(model(x), y).backward(); opt.step()
 
-    def predict(x):
+    def predict(x, raw=False):
         with torch.no_grad():
-            return model(x).argmax(1)
+            out = model(x)
+        return out if raw else out.argmax(1)
 
     return train_step, predict
 
@@ -61,8 +67,23 @@ def make_eqprop(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_steps=500,
         eqprop_update(x, y, W1, W2, opt, beta=beta, dt=dt, max_steps=max_steps,
                       settle_patience=settle_patience, device=device)
 
-    def predict(x):
-        return eqprop_predict(x, W1, W2, dt=dt, max_steps=max_steps, settle_patience=settle_patience, device=device)
+    def predict(x, raw=False):
+        _, out = eqprop_settle(x, W1, W2, dt=dt, max_steps=max_steps,
+                               settle_patience=settle_patience, device=device)
+        return out if raw else out.argmax(1)
+
+    return train_step, predict
+
+
+def make_pc(in_dim=196, hidden=64, lr=0.05, dt=0.1, steps=50, seed=0, device="cpu"):
+    """Predictive coding: settle the hidden activities toward the target, then update weights locally."""
+    W1, W2 = pc_init(in_dim=in_dim, hidden=hidden, seed=seed, device=device)
+
+    def train_step(x, y):
+        pc_update(x, y, W1, W2, lr=lr, dt=dt, steps=steps, device=device)
+
+    def predict(x, raw=False):
+        return pc_predict(x, W1, W2, raw=raw)
 
     return train_step, predict
 
@@ -77,8 +98,10 @@ def make_eqprop_gated(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_step
         eqprop_update_gated(x, y, W1, W2, opt, beta=beta, dt=dt, max_steps=max_steps,
                             settle_patience=settle_patience, gate_frac=gate_frac, device=device)
 
-    def predict(x):
-        return eqprop_predict(x, W1, W2, dt=dt, max_steps=max_steps, settle_patience=settle_patience, device=device)
+    def predict(x, raw=False):
+        _, out = eqprop_settle(x, W1, W2, dt=dt, max_steps=max_steps,
+                               settle_patience=settle_patience, device=device)
+        return out if raw else out.argmax(1)
 
     return train_step, predict
 
@@ -105,16 +128,18 @@ def make_eqprop_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.03, be
         eqprop_update(xf, y, W1, W2, opt, beta=beta, dt=dt, max_steps=max_steps,
                       settle_patience=settle_patience, device=device)
 
-    def predict(x):
-        return eqprop_predict(x, W1, W2, dt=dt, max_steps=max_steps, settle_patience=settle_patience, device=device)
+    def predict(x, raw=False):
+        _, out = eqprop_settle(x, W1, W2, dt=dt, max_steps=max_steps,
+                               settle_patience=settle_patience, device=device)
+        return out if raw else out.argmax(1)
 
     return train_step, predict
 
 
 def make_eqprop_synthetic(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_steps=500,
                           settle_patience=30, n_synth=20, gen_steps=200, seed=0, device="cpu"):
-    """EqProp with GENERATIVE replay: when a new class starts, regenerate synthetic examples of the
-       already-learned classes from the model itself, and mix them in. (The 'EBM as its own replay' loop.)"""
+    """EqProp with GENERATIVE replay: at each new class, regenerate synthetic examples of the
+       already-learned classes from the model itself and mix them in."""
     from .eqprop import eqprop_generate
     W1, W2 = eqprop_init(in_dim=in_dim, hidden=hidden, seed=seed, device=device)
     opt = torch.optim.SGD([W1, W2], lr=lr)
@@ -123,11 +148,11 @@ def make_eqprop_synthetic(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_
     def train_step(x, y):
         for c in y.unique().tolist():
             if c not in seen:
-                if seen:                                   # regenerate replay for classes learned so far
+                if seen:
                     synth_x.clear(); synth_y.clear()
-                    for pc in seen:
-                        synth_x.append(eqprop_generate(W1, W2, pc, n_synth, gen_steps=gen_steps, device=device))
-                        synth_y.append(torch.full((n_synth,), pc, device=device))
+                    for pc_ in seen:
+                        synth_x.append(eqprop_generate(W1, W2, pc_, n_synth, gen_steps=gen_steps, device=device))
+                        synth_y.append(torch.full((n_synth,), pc_, device=device))
                 seen.append(c)
         xf = x.reshape(x.size(0), -1)
         if synth_x:
@@ -137,7 +162,9 @@ def make_eqprop_synthetic(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_
         eqprop_update(xf, y, W1, W2, opt, beta=beta, dt=dt, max_steps=max_steps,
                       settle_patience=settle_patience, device=device)
 
-    def predict(x):
-        return eqprop_predict(x, W1, W2, dt=dt, max_steps=max_steps, settle_patience=settle_patience, device=device)
+    def predict(x, raw=False):
+        _, out = eqprop_settle(x, W1, W2, dt=dt, max_steps=max_steps,
+                               settle_patience=settle_patience, device=device)
+        return out if raw else out.argmax(1)
 
     return train_step, predict

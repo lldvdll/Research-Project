@@ -1,8 +1,11 @@
 """Methods: each builder sets up a model and returns (train_step, predict) closures.
-   Add a method = add a make_* function. One model, one function.
+   Add a method = add a make_* function, then register it in METHOD_DEFAULTS / build_method.
 
-   `predict(x, raw=False)` -> class indices, or the raw pre-argmax outputs when raw=True.
-   The `raw` kwarg is optional, so older experiment scripts calling predict(x) still work."""
+   predict(x, raw=False) -> class indices, or raw pre-argmax outputs when raw=True.
+   handle=<dict>         -> optional; if given, handle["params"] is set to the model's parameter
+                            tensors. Needed for weight-space analysis (path length, update
+                            direction). Purely additive: omit it and nothing changes.
+"""
 import torch
 import torch.nn as nn
 from .eqprop import eqprop_init, eqprop_update, eqprop_settle
@@ -13,10 +16,12 @@ def make_mlp(in_dim=196, hidden=64, out_dim=10):
     return nn.Sequential(nn.Flatten(), nn.Linear(in_dim, hidden), nn.ReLU(), nn.Linear(hidden, out_dim))
 
 
-def make_backprop(in_dim=196, hidden=64, lr=0.1, seed=0, device="cpu"):
+def make_backprop(in_dim=196, hidden=64, lr=0.1, seed=0, device="cpu", handle=None):
     torch.manual_seed(seed)
     model = make_mlp(in_dim, hidden).to(device)
     opt, lf = torch.optim.SGD(model.parameters(), lr=lr), nn.CrossEntropyLoss()
+    if handle is not None:
+        handle["params"] = list(model.parameters())
 
     def train_step(x, y):
         opt.zero_grad(); lf(model(x), y).backward(); opt.step()
@@ -29,13 +34,16 @@ def make_backprop(in_dim=196, hidden=64, lr=0.1, seed=0, device="cpu"):
     return train_step, predict
 
 
-def make_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.1, per_class=20, seed=0, device="cpu"):
+def make_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.1, per_class=20,
+                seed=0, device="cpu", handle=None):
     """Experience-replay control: stores `per_class` examples the first time each class is seen,
        mixes an equal-sized replay sample into every batch."""
     torch.manual_seed(seed)
     model = make_mlp(in_dim, hidden).to(device)
     opt, lf = torch.optim.SGD(model.parameters(), lr=lr), nn.CrossEntropyLoss()
     mem_x, mem_y, seen = [], [], set()
+    if handle is not None:
+        handle["params"] = list(model.parameters())
 
     def train_step(x, y):
         for c in y.unique().tolist():
@@ -59,9 +67,11 @@ def make_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.1, per_class=
 
 
 def make_eqprop(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_steps=500,
-                settle_patience=30, seed=0, device="cpu"):
+                settle_patience=30, seed=0, device="cpu", handle=None):
     W1, W2 = eqprop_init(in_dim=in_dim, hidden=hidden, seed=seed, device=device)
     opt = torch.optim.SGD([W1, W2], lr=lr)
+    if handle is not None:
+        handle["params"] = [W1, W2]
 
     def train_step(x, y):
         eqprop_update(x, y, W1, W2, opt, beta=beta, dt=dt, max_steps=max_steps,
@@ -75,9 +85,11 @@ def make_eqprop(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_steps=500,
     return train_step, predict
 
 
-def make_pc(in_dim=196, hidden=64, lr=0.05, dt=0.1, steps=50, seed=0, device="cpu"):
+def make_pc(in_dim=196, hidden=64, lr=0.05, dt=0.1, steps=50, seed=0, device="cpu", handle=None):
     """Predictive coding: settle the hidden activities toward the target, then update weights locally."""
     W1, W2 = pc_init(in_dim=in_dim, hidden=hidden, seed=seed, device=device)
+    if handle is not None:
+        handle["params"] = [W1, W2]
 
     def train_step(x, y):
         pc_update(x, y, W1, W2, lr=lr, dt=dt, steps=steps, device=device)
@@ -89,10 +101,12 @@ def make_pc(in_dim=196, hidden=64, lr=0.05, dt=0.1, steps=50, seed=0, device="cp
 
 
 def make_eqprop_gated(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_steps=500,
-                      settle_patience=30, gate_frac=0.3, seed=0, device="cpu"):
+                      settle_patience=30, gate_frac=0.3, seed=0, device="cpu", handle=None):
     from .eqprop import eqprop_update_gated
     W1, W2 = eqprop_init(in_dim=in_dim, hidden=hidden, seed=seed, device=device)
     opt = torch.optim.SGD([W1, W2], lr=lr)
+    if handle is not None:
+        handle["params"] = [W1, W2]
 
     def train_step(x, y):
         eqprop_update_gated(x, y, W1, W2, opt, beta=beta, dt=dt, max_steps=max_steps,
@@ -107,11 +121,14 @@ def make_eqprop_gated(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_step
 
 
 def make_eqprop_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3,
-                       max_steps=500, settle_patience=30, per_class=20, seed=0, device="cpu"):
+                       max_steps=500, settle_patience=30, per_class=20, seed=0, device="cpu",
+                       handle=None):
     """EqProp with a stored real-example replay buffer mixed into each batch."""
     W1, W2 = eqprop_init(in_dim=in_dim, hidden=hidden, seed=seed, device=device)
     opt = torch.optim.SGD([W1, W2], lr=lr)
     mem_x, mem_y, seen = [], [], set()
+    if handle is not None:
+        handle["params"] = [W1, W2]
 
     def train_step(x, y):
         for c in y.unique().tolist():
@@ -137,13 +154,16 @@ def make_eqprop_replay(train_data, class_idx, in_dim=196, hidden=64, lr=0.03, be
 
 
 def make_eqprop_synthetic(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_steps=500,
-                          settle_patience=30, n_synth=20, gen_steps=200, seed=0, device="cpu"):
+                          settle_patience=30, n_synth=20, gen_steps=200, seed=0, device="cpu",
+                          handle=None):
     """EqProp with GENERATIVE replay: at each new class, regenerate synthetic examples of the
        already-learned classes from the model itself and mix them in."""
     from .eqprop import eqprop_generate
     W1, W2 = eqprop_init(in_dim=in_dim, hidden=hidden, seed=seed, device=device)
     opt = torch.optim.SGD([W1, W2], lr=lr)
     seen, synth_x, synth_y = [], [], []
+    if handle is not None:
+        handle["params"] = [W1, W2]
 
     def train_step(x, y):
         for c in y.unique().tolist():
@@ -168,3 +188,46 @@ def make_eqprop_synthetic(in_dim=196, hidden=64, lr=0.03, beta=0.3, dt=0.3, max_
         return out if raw else out.argmax(1)
 
     return train_step, predict
+
+
+# --------------------------------------------------------------------------------------
+# Single dispatch point, so an experiment can set `hidden` (and any hyperparameter) for
+# EVERY method uniformly instead of repeating a per-method build function in each script.
+# --------------------------------------------------------------------------------------
+METHOD_DEFAULTS = {
+    "backprop":  dict(lr=0.05),
+    "replay":    dict(lr=0.05, per_class=20),
+    "eqprop":    dict(lr=0.005, beta=0.3, dt=0.3, max_steps=500, settle_patience=30),
+    "pc":        dict(lr=0.05, dt=0.1, steps=50),
+    "eqprop_gated":     dict(lr=0.005, beta=0.3, dt=0.3, max_steps=500, settle_patience=30, gate_frac=0.3),
+    "eqprop_replay":    dict(lr=0.005, beta=0.3, dt=0.3, max_steps=500, settle_patience=30, per_class=20),
+    "eqprop_synthetic": dict(lr=0.005, beta=0.3, dt=0.3, max_steps=500, settle_patience=30,
+                             n_synth=20, gen_steps=200),
+}
+
+_NEEDS_DATA = {"replay", "eqprop_replay"}       # builders that need the training set + class index
+
+_BUILDERS = {
+    "backprop": make_backprop, "replay": make_replay, "eqprop": make_eqprop, "pc": make_pc,
+    "eqprop_gated": make_eqprop_gated, "eqprop_replay": make_eqprop_replay,
+    "eqprop_synthetic": make_eqprop_synthetic,
+}
+
+
+def build_method(name, in_dim=196, hidden=64, seed=0, device="cpu",
+                 train_data=None, class_idx=None, handle=None, **overrides):
+    """(train_step, predict) for `name`, with `hidden` applied uniformly.
+
+    Defaults come from METHOD_DEFAULTS; **overrides replaces any of them, so an experiment can
+    do build_method("eqprop", hidden=64, lr=0.05, beta=1.0). Unknown keys raise TypeError, which
+    is what you want -- a typo'd hyperparameter should fail loudly, not be silently ignored.
+    """
+    if name not in _BUILDERS:
+        raise ValueError(f"unknown method {name!r}; known: {sorted(_BUILDERS)}")
+    kw = dict(METHOD_DEFAULTS[name]); kw.update(overrides)
+    kw.update(in_dim=in_dim, hidden=hidden, seed=seed, device=device, handle=handle)
+    if name in _NEEDS_DATA:
+        if train_data is None or class_idx is None:
+            raise ValueError(f"{name} needs train_data and class_idx")
+        return _BUILDERS[name](train_data, class_idx, **kw)
+    return _BUILDERS[name](**kw)

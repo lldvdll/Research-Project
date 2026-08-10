@@ -9,6 +9,7 @@ plot_heatmap         : mean +/- std grid over two swept variables.
 """
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 TASK_COLORS = ["tab:blue", "tab:orange", "tab:green", "tab:red"]
 
@@ -21,15 +22,29 @@ def _grid(n, ncols):
 
 
 def plot_learning_curves(steps, curves, methods, out_path, title="",
-                         switches=None, ncols=2, task_labels=None, xlabel="training step"):
-    """steps: 1D array of eval steps.  curves[m]: array [runs, evals, n_tasks]. NaN-safe."""
+                         switches=None, blocks=None, ncols=2, task_labels=None,
+                         task_colors=None, xlabel="training step", legend_kw=None):
+    """steps: 1D array of eval steps.  curves[m]: array [runs, evals, n_tasks]. NaN-safe.
+
+    blocks : list of (start_step, end_step, task_index). Shades the background with each block's
+             task colour, so WHICH TASK IS BEING TRAINED reads straight off the plot instead of
+             having to be counted off switch lines. This is the right option for an alternating
+             schedule, where there are too many switches to follow.
+    task_colors : override the per-task colours, e.g. ["tab:orange", "tab:blue"].
+    legend_kw   : passed to ax.legend(). Default placement is "best", which lands on top of the
+                  curves when they fill the panel; pass
+                  dict(loc="upper left", bbox_to_anchor=(1.02, 1)) to put it outside.
+    """
     fig, axes = _grid(len(methods), ncols)
     n_tasks = np.asarray(next(iter(curves.values()))).shape[-1]
     labels = task_labels or [f"task {i + 1}" for i in range(n_tasks)]
+    colours = task_colors or TASK_COLORS
     for ax, m in zip(axes, methods):
         A = np.asarray(curves[m], dtype=float) * 100.0                 # [runs, evals, tasks]
+        for (lo, hi, ti) in (blocks or []):
+            ax.axvspan(lo, hi, color=colours[ti % len(colours)], alpha=0.10, lw=0, zorder=0)
         for t in range(n_tasks):
-            c = TASK_COLORS[t % len(TASK_COLORS)]
+            c = colours[t % len(colours)]
             for r in range(A.shape[0]):
                 ax.plot(steps, A[r, :, t], color=c, lw=0.7, alpha=0.22)
             ax.plot(steps, np.nanmean(A[:, :, t], axis=0), color=c, lw=2.6, label=labels[t])
@@ -37,7 +52,13 @@ def plot_learning_curves(steps, curves, methods, out_path, title="",
             ax.axvline(s, color="k", lw=0.8, ls="--")
         ax.set_title(m)
         ax.set_ylim(-2, 103)
-    axes[0].legend(fontsize=8)
+    handles, names = axes[0].get_legend_handles_labels()
+    if blocks:
+        seen = sorted({ti for _, _, ti in blocks})
+        handles += [Patch(facecolor=colours[t % len(colours)], alpha=0.10)
+                    for t in seen]
+        names += [f"training {labels[t]}" for t in seen]
+    axes[0].legend(handles, names, **{"fontsize": 8, **(legend_kw or {})})
     for ax in axes[len(axes) - ncols:]:
         ax.set_xlabel(xlabel)
     for i in range(0, len(axes), ncols):

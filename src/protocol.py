@@ -31,6 +31,7 @@ WHAT IS NOT HERE
     different should call run_classil directly rather than growing an option here.
 """
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import NamedTuple
 import numpy as np
 import torch
@@ -42,6 +43,11 @@ from .runner import run_classil
 
 __all__ = ["Protocol", "PROTOCOL", "Data", "load", "build", "run", "replace",
            "figure_path", "array_path"]
+
+# The one dataset directory, at the repo root. Resolved from this file rather than from the
+# working directory: scripts are run from inside experiments/, and a relative "./data" would
+# silently re-download MNIST into experiments/data.
+DATA_ROOT = str(Path(__file__).resolve().parents[1] / "data")
 
 
 @dataclass(frozen=True)
@@ -138,10 +144,14 @@ class Protocol:
 
     def describe(self):
         """One line for the figure title / slide, stating the setting actually run."""
-        return (f"{self.scenario} {self.n_tasks}x{self.classes_per_task} | "
+        data = "fashion-mnist" if self.fashion else "mnist"
+        stop = (f"stop at {self.stop_threshold:.0%}" if self.stop_threshold is not None
+                else f"{self.max_iters_per_task} updates per block")
+        return (f"{data} {self.img_size}x{self.img_size} | "
+                f"{self.scenario} {self.n_tasks}x{self.classes_per_task} | "
                 f"{self.in_dim}-{self.hidden}x{self.n_layers}-{self.out_dim} {self.act} | "
                 f"{self.loss}/{self.target}{' masked' if self.mask else ''} | "
-                f"batch {self.batch}, stop {self.stop_threshold:.0%}")
+                f"batch {self.batch}, {stop}")
 
 
 #: The protocol. Import this, never construct Protocol() in a script.
@@ -162,7 +172,7 @@ def load(proto):
 
     Stopping and reporting use different images on purpose: stopping on the set you report
     biases the published number upwards."""
-    train, test = load_mnist(size=proto.img_size, fashion=proto.fashion)
+    train, test = load_mnist(size=proto.img_size, root=DATA_ROOT, fashion=proto.fashion)
     stop_eval, report_eval = make_eval_split(
         test, classes=list(range(proto.n_classes)),
         per_class=proto.eval_per_class, device=proto.device)
@@ -181,7 +191,8 @@ def build(proto, method, seed, handle=None, **overrides):
                         handle=handle, **lr, **overrides)
 
 
-def run(proto, method, seed, data=None, readouts=None, handle=None, wrap=None, **overrides):
+def run(proto, method, seed, data=None, readouts=None, handle=None, wrap=None, tasks=None,
+        **overrides):
     """One Class-IL / Domain-IL run of one rule at one seed, under this protocol.
 
     data     : from load(). Pass it in so the dataset is read once, not once per run.
@@ -189,16 +200,22 @@ def run(proto, method, seed, data=None, readouts=None, handle=None, wrap=None, *
                curve is computed under every readout, so one run gives argmax and NCM together.
     wrap     : fn(train_step) -> train_step, for probes that must sit around each update
                (src.probes.alignment_probe, src.probes.weight_path_probe).
+    tasks    : override the class split. Defaults to proto.tasks(seed), which is what the
+               protocol means. Pass a list to train a schedule the protocol does not describe --
+               repeating the two task blocks, [T1, T2, T1, T2, ...], gives an alternating run.
+               A block may repeat; the returned curves then have one column per BLOCK, so
+               columns for the same class set are duplicates of each other.
+               Using this is a stated deviation. Say so in the script docstring.
 
     Returns run_classil's dict plus:
-        tasks      the class split drawn for this seed
+        tasks      the class split actually trained
         label_map  the class -> unit map actually used
         handle     the method handle (params, features, freeze, diag)
-        snapshots  weights at init and at the end of each task, per the protocol's saving rule
+        snapshots  weights at init and at the end of each block, per the protocol's saving rule
     """
     data = load(proto) if data is None else data
     handle = {} if handle is None else handle
-    tasks = proto.tasks(seed)
+    tasks = proto.tasks(seed) if tasks is None else tasks
     lmap = proto.label_map(tasks)
 
     train_step, predict = build(proto, method, seed, handle=handle, **overrides)

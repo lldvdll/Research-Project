@@ -89,8 +89,14 @@ UNIFIED_ARCH = Arch(act="tanh", bias=True, init="scaled_normal")
 UNIFIED_OBJ = Objective(loss="mse", target="onehot", mask=False)
 
 # Song & Bogacz Fig 4a-h: sigmoid, Xavier normal, 32 units per hidden layer, batch 32.
-# "four layers and 32 hidden neurons in each hidden layer" is ambiguous; read here as
-# in -> 32 -> 32 -> out (two hidden layers). Flagged in exp 30's docstring.
+#
+# STALE, AND KEPT ONLY SO THE ARCHIVED SCRIPTS STILL MEAN WHAT THEY MEANT. "four layers and 32
+# hidden neurons in each hidden layer" is ambiguous. This encodes experiment 30's reading,
+# in -> 32 -> 32 -> out. Experiment 34 later read it as 784-32-32-32-5 -- three hidden layers
+# and FIVE SHARED OUTPUTS, which is what makes Fig 4d Domain-IL rather than Class-IL.
+# The value was not corrected because changing it would silently change what
+# experiments/archive/bogacz_reproduction/ did. Do not use it for new work; the reproduction is
+# archived and did not succeed. See experiments/archive/README.md.
 BOGACZ_ARCH = Arch(in_dim=784, hidden=(32, 32), out_dim=10,
                    act="sigmoid", bias=True, init="xavier_normal")
 BOGACZ_OBJ = Objective(loss="mse", target="onehot", mask=False)
@@ -258,18 +264,21 @@ def batch_scale(obj, n):
 
 
 def loss_value(out, target, obj, active_vec=None):
+    """The loss actually being minimised. Honours obj.reduction, so the number reported agrees
+       with the gradient applied -- batch_scale divides by n only under reduction='mean'."""
+    reduce = (lambda v: v.mean()) if obj.reduction == "mean" else (lambda v: v.sum())
     if obj.loss == "mse":
         d = (target - out) ** 2
         if obj.mask and active_vec is not None:
             d = d * active_vec.unsqueeze(0)
-        return 0.5 * d.sum(1).mean()
+        return 0.5 * reduce(d.sum(1))
     if obj.loss == "ce":
         o = out if active_vec is None else out.masked_fill(active_vec.unsqueeze(0) == 0, float("-inf"))
-        return -(target * torch.log_softmax(o, dim=1)).nan_to_num(0.0).sum(1).mean()
+        return -reduce((target * torch.log_softmax(o, dim=1)).nan_to_num(0.0).sum(1))
     d = (obj.hinge_margin - target * out).clamp_min(0.0)
     if obj.mask and active_vec is not None:
         d = d * active_vec.unsqueeze(0)
-    return d.sum(1).mean()
+    return reduce(d.sum(1))
 
 
 __all__ = ["Arch", "Objective", "Params", "ACTS", "UNIFIED_ARCH", "UNIFIED_OBJ",

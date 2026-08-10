@@ -181,7 +181,9 @@ def run_alternating(train_step, predict, tasks, train_data, class_idx, eval_sets
                     device="cpu", data_seed=None, n_classes=10, eval_per_update=False,
                     loss_active=None,
                     divergence_check=20, divergence_floor=0.78):
-    """Song & Bogacz Fig 4d schedule, matching experiments/nature_forgetting/*.yaml.
+    """Song & Bogacz Fig 4d schedule. Belongs to the ARCHIVED reproduction -- see
+    experiments/archive/bogacz_reproduction/. Not used by the current plan, which runs
+    run_classil for both scenarios.
 
     ONE ITERATION = one epoch over that task's training subset. With partial_num=600 and
     batch=500 that is TWO weight updates per iteration (500 + 100, drop_last=False), so the

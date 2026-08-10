@@ -144,14 +144,14 @@ outputs**, which is what makes it Domain-IL. The comment still cites exp 30, whi
 supersedes. Not on the critical path — the reproduction is closed — but it is a wrong constant
 sitting in a shared module.
 
-## B5 — backtracking energy assumes MSE `TRACED`
+## B5 — backtracking energy assumes MSE `FIXED`
 
 `predictive_coding.py:74` computes the energy for the step-size backtracking rule as
 `0.5 * (e_next**2).sum() + Σ hidden errors`. `e_next` is `output_error(...)`, which equals the
 residual **only for MSE**. Under `ce` or `hinge` the backtracking decision uses a quantity that is
 not the energy. Backtracking defaults off (`x_lr_discount=1.0`), so this is latent.
 
-## B6 — `loss_value` ignores `obj.reduction` `TRACED`
+## B6 — `loss_value` ignores `obj.reduction` `FIXED`
 
 `model.py:260–272` always averages over the batch, while `batch_scale` honours
 `reduction="sum"`. Reported loss and applied gradient therefore disagree under sum reduction.
@@ -175,12 +175,26 @@ default change cannot alter what they mean; 15 was pinned too, though it is dead
 reason. Audited mechanically by walking each call site's parentheses — the only unpinned
 constructions left are in 04 and 06, which fail at import anyway.
 
-**D2 — the protocol object does not exist yet.** The plan requires one protocol defined once and
-imported by every script. `UNIFIED_ARCH`/`UNIFIED_OBJ` are close but cover only arch and objective —
-not split, scenario, thresholds, seeds, or saving. This is the main piece of new code.
+**D2 — the protocol object.** `RESOLVED — src/protocol.py.` A frozen `Protocol` dataclass holding
+every setting that must be identical across rules, varied with `dataclasses.replace` so a script
+changes one line and a deviation cannot leak into the next script. `load()` / `build()` / `run()`
+fill protocol values into the existing functions. Two protocol requirements are handled centrally
+because every script would otherwise reimplement them: the two disjoint eval sets, and weight
+snapshots at init and each task end.
 
-**D3 — no metrics module for the grid.** `metrics.py` exists but the plan's seven-metric grid,
-including target alignment and [R31] inefficiency, is not implemented in one place.
+`hidden` has **no default** and `proto.arch` raises with instructions if it is unset — inheriting a
+width from an old experiment is the failure this project is recovering from, so the code refuses to
+guess.
+
+Deliberately not a harness: `run()` is one function, and a script needing something else calls
+`run_classil` directly rather than growing an option.
+
+**D3 — the metric grid.** `RESOLVED.` `metrics.summarise()` returns the scalar grid in one call;
+`metrics.inefficiency()` implements [R31] per synapse, so the distribution comes with it;
+`metrics.sem()` matches the protocol's reporting. The two per-update measurements went to
+`probes.py` rather than `metrics.py`, which is pure numpy by contract: `alignment_probe` ([R1]
+Fig 3b, definition taken from `knowledge_base.md` §11.4, not invented) and `weight_path_probe`.
+Both wrap `train_step`, so `runner.py` needed no change.
 
 **D4 — `UNIFIED_ARCH` has `bias=True`, `LEGACY_SPEC` PC/EqProp have `bias=False`.** Prior
 experiments 20–21 ran biases off and 22 onward ran them on. The protocol says on; worth confirming
@@ -228,11 +242,21 @@ question fresh.
 
 ---
 
-## Remaining order of work
+## Status
 
-1. ~~**B1, B2, B3**~~ — done, verified.
-2. ~~**B2b** (replay buffer)~~ — done, verified.
-3. ~~**D1** (protocol as default)~~ — done, legacy scripts pinned.
-4. **D2 + D3** — build the protocol object and the metrics grid. This is the substantive work and
-   the thing that makes the code runnable without reading five modules.
-5. **B4, B5, B6** — correctness tidying, no urgency, none on the critical path.
+All findings closed.
+
+| | |
+|---|---|
+| B1 freezing · B2 Domain-IL `active` · B3 swallowed `TypeError` | fixed, verified |
+| B2b replay buffer → per-label reservoir | fixed, verified |
+| B4 `BOGACZ_ARCH` | documented, value kept on purpose |
+| B5 PC backtracking · B6 `loss_value` reduction | fixed |
+| D1 protocol as default | done, 12 legacy scripts pinned |
+| D2 protocol object · D3 metric grid | done, `src/protocol.py` + `metrics`/`probes` |
+| D4 bias on/off | settled by the protocol: biases on |
+
+**What is not settled, and is not a code problem.** `Protocol.stop_threshold = 0.9` is a
+placeholder, and `Protocol.lr` is empty so each rule falls back to `METHOD_DEFAULTS` — values
+inherited from the legacy era. The protocol requires a per-rule grid search matched on
+steps-to-threshold. **Script 43 does that, and no comparative claim should be believed before it.**

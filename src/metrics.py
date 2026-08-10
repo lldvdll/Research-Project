@@ -1,7 +1,13 @@
-"""Scalar metrics and run-alignment helpers computed from per-task accuracy curves.
+"""Metric definitions. Defined ONCE here and imported -- never redefined inside a script.
 
 All functions are pure numpy/python: no torch, no plotting. Safe to unit-test.
 `curves` convention everywhere: array [evals, n_tasks] for one run.
+
+    summarise()     the whole scalar grid for one run, in one call -- start here
+    inefficiency()  [R31] path length / net displacement, per synapse
+    sem()           mean and standard error over seeds, as the protocol reports
+
+The rest are the pieces summarise() is built from, usable on their own.
 """
 import numpy as np
 
@@ -111,6 +117,75 @@ def area_retained(steps, series, after=0, peak=None):
     if pk <= 0:
         return float("nan")
     return float(np.mean([series[i] for i in idx]) / pk)
+
+
+def inefficiency(path, net):
+    """[R31] Li & van Rossum: how far a synapse actually travelled / how far it needed to.
+
+        path = sum_t |w(t) - w(t-1)|     accumulated by probes.weight_path_probe
+        net  = |w(T) - w(0)|             from the first and last weight snapshots
+
+    1.0 is a perfectly direct path. Higher is more wandering, and by their argument more
+    metabolically expensive -- a rule that arrives at the same place having spent less is a
+    better hypothesis about a brain under evolutionary pressure.
+
+    Both arguments are per-synapse arrays of the same shape, so this returns the per-synapse
+    DISTRIBUTION. Take .mean() for the scalar; the distribution is the more informative object.
+    Synapses that barely moved have a near-zero denominator and are returned as NaN rather than
+    infinity, since their ratio says nothing about the path taken."""
+    path = np.asarray(path, dtype=float)
+    net = np.abs(np.asarray(net, dtype=float))
+    tiny = net <= (np.nanmax(net) * 1e-6 if np.nanmax(net) > 0 else 0.0)
+    out = np.divide(path, net, out=np.full_like(path, np.nan), where=~tiny)
+    return out
+
+
+def summarise(steps, t1, t2, switch, threshold=None):
+    """The scalar metric grid for one run, in one call. §2.1 of the presentation plan.
+
+    steps     eval steps        t1, t2  per-task accuracy curves      switch  step of the task change
+
+    No single headline number: each entry answers a different question, and where they disagree
+    is analysis material rather than a problem. Returns a flat dict so runs stack into a table.
+
+        peak_t1              how well task 1 was learned -- the ceiling retention is measured against
+        final_t1 / final_t2  the endpoint. final_t1 may be 0.0 for every rule in Class-IL; that is
+                             a finding, not a broken metric, and it is why the others exist
+        forgetting           peak_t1 - final_t1, the standard CL quantity
+        crossover_height     accuracy where the curves cross -- were both tasks held at once
+        t1_at_threshold      task-1 accuracy when task 2 first reaches `threshold`: retention at a
+                             MATCHED standard, so a rule is not rewarded for simply learning less
+        area_retained        mean task-1 accuracy over task 2, as a fraction of its peak
+        half_life            updates for task 1 to fall to half its peak; None if it never does
+    """
+    t1, t2 = np.asarray(t1, dtype=float), np.asarray(t2, dtype=float)
+    after = [i for i, s in enumerate(steps) if s > switch]
+    peak = float(np.nanmax(t1[:after[0]])) if after else float(np.nanmax(t1))
+    x_step, x_height = crossover(steps, t1, t2, after=switch)
+    return dict(
+        peak_t1=peak,
+        final_t1=float(t1[-1]),
+        final_t2=float(t2[-1]),
+        forgetting=peak - float(t1[-1]),
+        crossover_step=x_step,
+        crossover_height=x_height,
+        t1_at_threshold=(float("nan") if threshold is None
+                         else value_when(steps, t2, threshold, t1, after=switch)),
+        area_retained=area_retained(steps, t1, after=switch, peak=peak),
+        half_life=half_life(steps, t1, after=switch, peak=peak),
+    )
+
+
+def sem(values):
+    """Mean and standard error of the mean, over seeds. The protocol reports SEM and says so --
+       not the standard deviation, which describes spread rather than uncertainty in the mean."""
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return float("nan"), float("nan")
+    if v.size == 1:
+        return float(v[0]), 0.0
+    return float(v.mean()), float(v.std(ddof=1) / np.sqrt(v.size))
 
 
 def bootstrap_ci(values, ci=68, n_boot=10000, seed=0):

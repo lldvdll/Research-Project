@@ -156,3 +156,71 @@ def output_unit_stats(predict, x):
     with torch.no_grad():
         out = predict(x, raw=True)
     return dict(mean=out.mean(0).tolist(), std=out.std(0).tolist())
+
+
+# ------------------------------------------------------------------ update probes
+# Both wrap train_step rather than hooking the runner, so a measurement is opt-in per run and
+# the training loop stays the same for every rule. Pass them as run(..., wrap=...).
+
+def alignment_probe(train_step, predict, arch, obj, device="cpu"):
+    """Wrap train_step to record TARGET ALIGNMENT for each update. [R1] Fig 3b.
+
+        d_target  = target - out_before
+        d_learn   = out_after - out_before      <- the SECOND forward pass sees no target
+        alignment = cos(d_target, d_learn)
+
+    In words: the update moved the output somewhere. Alignment asks how much of that movement
+    was toward where the target actually was. 1.0 = straight at it, 0.0 = sideways, negative =
+    away. This is [R1]'s own measure of whether a rule configures itself prospectively, so it
+    tests their mechanism claim on our networks rather than restating it.
+
+    Returns (wrapped_train_step, log). `log` is a list, one mean-over-batch value per update,
+    which fills as the run proceeds.
+
+    COST: two extra forward passes per update. Cheap for backprop and PC; for EqProp `predict`
+    runs a full settling, so expect the run to take noticeably longer. Use it on the script
+    that asks this question, not on every run.
+    """
+    from .model import make_target
+
+    log = []
+
+    def wrapped(x, y, active=None):
+        with torch.no_grad():
+            out_before = predict(x, raw=True).detach().clone()
+        train_step(x, y, active=active)
+        with torch.no_grad():
+            out_after = predict(x, raw=True).detach()
+        tgt = make_target(y, arch, obj, device=device)
+        d_target = tgt - out_before
+        d_learn = out_after - out_before
+        log.append(torch.nn.functional.cosine_similarity(d_target, d_learn, dim=-1).mean().item())
+
+    return wrapped, log
+
+
+def weight_path_probe(train_step, params):
+    """Wrap train_step to accumulate the L1 PATH LENGTH of every weight. [R31] Li & van Rossum.
+
+    Their metabolic cost is M = sum_i sum_t |w_i(t) - w_i(t-1)| -- how far each synapse actually
+    travelled, counting every reversal. Compare it against |w_i(T) - w_i(0)|, how far it needed
+    to travel, and the ratio is INEFFICIENCY: 1.0 is a straight line, higher is more wandering.
+    See metrics.inefficiency, which takes what this returns.
+
+    Returns (wrapped_train_step, path) where `path` is a dict {name: tensor} of accumulated
+    |dw|, same shape as the weights, filling as the run proceeds. Per-synapse, so the
+    DISTRIBUTION is available and not just the mean -- that distribution is the object of
+    interest in scripts 47-49.
+
+    COST: one clone and one subtraction per weight per update. Negligible.
+    """
+    path = {k: torch.zeros_like(v) for k, v in params.named().items() if v is not None}
+
+    def wrapped(x, y, active=None):
+        before = {k: v.detach().clone() for k, v in params.named().items() if v is not None}
+        train_step(x, y, active=active)
+        for k, v in params.named().items():
+            if v is not None:
+                path[k] += (v.detach() - before[k]).abs()
+
+    return wrapped, path

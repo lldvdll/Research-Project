@@ -67,6 +67,14 @@ def pc_settle(x0, p, arch, obj, target, active_vec=None, dt=0.1, steps=50, trace
         e_next = output_error(mu_out, target, obj, active_vec)
         W_next = p.Ws[L - 1]
         if backtracking:                       # skip the energy sum when it is not needed
+            # e_next is -dL/dout, which equals the residual (target - out) ONLY under squared
+            # error, so 0.5*e^2 is the output energy only there. Under ce or hinge this would
+            # backtrack on a quantity that is not the energy, and silently.
+            if obj.loss != "mse":
+                raise ValueError(
+                    f"step-size backtracking assumes squared error, got loss={obj.loss!r}. "
+                    "Set x_lr_discount=1.0 to disable it, or use loss='mse'."
+                )
             # kept as a 0-dim TENSOR. float() here forces a device-to-host sync on every
             # settling step -- 64 per weight update, ~61,000 per run -- each stalling the GPU
             # for arithmetic that costs almost nothing. This is the difference between Colab

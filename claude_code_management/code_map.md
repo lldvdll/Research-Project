@@ -28,15 +28,17 @@ downstream is the rule under test. That is the whole design.
 ```mermaid
 flowchart TD
     S["experiment script<br/>experiments/4N_question.py"]
+    S -->|"replace(PROTOCOL, one_thing=...)"| PR
 
-    S --> D[src.data]
-    S --> M[src.model]
-    S --> B["src.methods<br/>build_method(name, arch, obj)"]
-    S --> R["src.runner<br/>run_classil(...)"]
+    PR["<b>src.protocol</b><br/>PROTOCOL · load() · run()"]
 
-    D -->|"load_mnist, class_indices<br/>make_eval_split"| R
-    M -->|"Arch + Objective"| B
+    PR --> D["src.data<br/>load_mnist, make_eval_split"]
+    PR --> M["src.model<br/>Arch + Objective"]
+    PR --> B["src.methods<br/>build_method(name, arch, obj)"]
+    PR --> R["src.runner<br/>run_classil(...)"]
 
+    M --> B
+    D --> R
     B --> T["(train_step, predict)"]
     T --> R
 
@@ -48,18 +50,65 @@ flowchart TD
     PC --> OE
     EP --> OE
 
-    R --> C["curves [evals, n_tasks]"]
-    C --> MET["src.metrics<br/>scalars"]
-    C --> PL["src.plotting<br/>the figure"]
-    P["src.probes<br/>extra readouts"] -.->|"readouts="| R
+    R --> C["curves · switches · snapshots"]
+    C --> S2["back to the script"]
+    S2 --> MET["src.metrics<br/>summarise() → the grid"]
+    S2 --> PL["src.plotting<br/>one figure"]
+
+    P["src.probes"] -.->|"readouts= (NCM)"| R
+    P -.->|"wrap= (alignment, weight path)"| T
 
     style OE fill:#2d6a4f,color:#fff
+    style PR fill:#7f4f24,color:#fff
     style S fill:#1d3557,color:#fff
 ```
 
-Read it as three stages. **Configure** (`data`, `model`) → **build** (`methods`) → **run and
-measure** (`runner`, `metrics`, `plotting`). `probes` is optional and plugs into the run as extra
-readouts.
+Read it as three stages. **Configure** — the script takes `PROTOCOL`, changes one line, and
+`src.protocol` derives everything else. **Run** — `methods` builds the rule, `runner` drives the
+loop. **Measure** — results come back to the script, which owns its analysis and its figure.
+
+`probes` attaches in two places: as extra `readouts` (measured at each evaluation) or as a `wrap`
+around `train_step` (measured at each update).
+
+---
+
+## Start here: `protocol.py`
+
+Everything that must be identical across the four rules lives in one frozen dataclass. A script
+imports it, changes **one line**, and says which line it changed — that sentence is also what goes
+on the slide.
+
+```python
+from src.protocol import PROTOCOL, load, run, replace
+
+proto = replace(PROTOCOL, hidden=64)              # the protocol
+proto = replace(proto, scenario="domain_il")      # ONE stated deviation
+```
+
+`replace` returns a **new** protocol, so a deviation cannot leak into the next script.
+
+| Call | Gives you |
+|---|---|
+| `proto.arch` / `proto.objective` | the `Arch` and `Objective`, derived — never hand-built |
+| `proto.tasks(seed)` | the class split for that seed, drawn per seed |
+| `proto.label_map(tasks)` | `None` for Class-IL, the class→unit map for Domain-IL |
+| `proto.describe()` | one line naming the setting actually run, for the figure title |
+| `load(proto)` | `Data(train, test, class_idx, stop_eval, report_eval)` — read once, reused |
+| `build(proto, method, seed)` | `(train_step, predict)` under the protocol |
+| `run(proto, method, seed, data=…)` | a full run: `curves`, `switches`, `reached`, `tasks`, `snapshots` |
+| `figure_path(__file__)` / `array_path(__file__)` | the figure and `.npz`, named from the script |
+
+Two things it does on your behalf, because the protocol requires them and every script would
+otherwise reimplement them: the **two disjoint eval sets** (stop on one, report the other) and
+**weight snapshots** at init and at each task end, returned as `out["snapshots"]`.
+
+**`hidden` has no default and `proto.arch` raises without it.** The hidden width is set by script
+40 on capacity grounds; inheriting a number from an old experiment is the failure this project is
+recovering from, so the code refuses to guess.
+
+It is deliberately *not* a harness. `run()` is one function that fills protocol values into
+`run_classil`. A script needing something different calls `run_classil` directly rather than
+growing an option here.
 
 ---
 
@@ -211,10 +260,31 @@ diagnostic:
 `frozen_ncm_fn` uses prototypes snapshotted at the task switch (has the code *moved*?). They
 answer different questions — see [probes.py:96-101](../src/probes.py#L96-L101).
 
+Two probes measure **per update** rather than per evaluation, so they wrap `train_step` and are
+passed as `run(..., wrap=…)`:
+
+- **`alignment_probe`** — target alignment, [R1] Fig 3b:
+  `cos(target − out_before, out_after − out_before)`. The update moved the output somewhere; this
+  asks how much of that movement was *toward the target*. The second forward pass sees no target.
+  Costs two extra forward passes per update — cheap for backprop and PC, expensive for EqProp,
+  whose `predict` runs a full settling. Use it on the script that asks this question.
+- **`weight_path_probe`** — accumulates `Σ|Δw|` per synapse, the L1 path length [R31] needs.
+  Negligible cost.
+
 ### [metrics.py](../src/metrics.py) — curves → numbers
-Pure numpy, no torch, no plotting. `crossover`, `value_when` (task-1 accuracy at the moment task
-2 reaches a standard), `first_cross`, `half_life`, `area_retained`, `bootstrap_ci`,
-`align_runs`/`pad_stack` for runs of unequal length under early stopping.
+Pure numpy, no torch, no plotting. Metric definitions live here and are **imported, never
+redefined in a script**.
+
+- **`summarise(steps, t1, t2, switch, threshold)`** — the whole scalar grid in one call:
+  `peak_t1`, `final_t1/t2`, `forgetting`, `crossover_step/height`, `t1_at_threshold`,
+  `area_retained`, `half_life`. Start here.
+- **`inefficiency(path, net)`** — [R31], `Σ|Δw| ÷ |w(T) − w(0)|`, **per synapse**, so you get the
+  distribution and not just a mean. 1.0 is a straight line; higher is more wandering. Synapses
+  that barely moved return NaN rather than infinity.
+- **`sem(values)`** — mean and standard error over seeds, which is what the protocol reports.
+- The pieces `summarise` is built from — `crossover`, `value_when`, `first_cross`, `half_life`,
+  `area_retained` — plus `bootstrap_ci` (for matching [R1]'s 68% CIs specifically) and
+  `align_runs`/`pad_stack` for runs of unequal length under early stopping.
 
 ### [plotting.py](../src/plotting.py) — figures
 `plot_learning_curves`, `plot_trajectory`, `plot_heatmap`. All take
@@ -225,36 +295,39 @@ Pure numpy, no torch, no plotting. `crossover`, `value_when` (task-1 accuracy at
 ## A complete experiment, top to bottom
 
 ```python
-from src.data import load_mnist, class_indices, make_eval_split
-from src.model import UNIFIED_ARCH, UNIFIED_OBJ, replace
-from src.methods import build_method
-from src.runner import run_classil
+"""Do PC and EqProp forget less than backprop?  Deviation from the protocol: none."""
+import numpy as np
+from src.protocol import PROTOCOL, load, run, replace, figure_path, array_path
+from src.metrics import summarise, sem
+from src.plotting import plot_learning_curves
 
-train, test = load_mnist(size=14)
-cidx  = class_indices(train)
-tasks = [[0, 1, 2, 3, 4], [5, 6, 7, 8, 9]]
+proto = replace(PROTOCOL, hidden=64)
+data  = load(proto)                      # read the dataset once, not once per run
 
-arch = replace(UNIFIED_ARCH, in_dim=196, hidden=H, out_dim=10)   # 5 for Domain-IL
-stop_eval, report_eval = make_eval_split(test, per_class=100)
+curves, grid = {}, {}
+for method in ["backprop", "replay", "pc", "eqprop"]:
+    runs, rows = [], []
+    for seed in range(proto.seeds):
+        out = run(proto, method, seed, data=data)
+        c = out["curves"]["argmax"]
+        runs.append(c)
+        rows.append(summarise(out["steps"], c[:, 0], c[:, 1], out["switches"][0],
+                              threshold=proto.stop_threshold))
+    curves[method] = np.stack(runs)
+    grid[method] = {k: sem([r[k] for r in rows]) for k in rows[0]}
 
-for seed in range(n_seeds):
-    handle = {}
-    train_step, predict = build_method(
-        "pc", arch=arch, obj=UNIFIED_OBJ, seed=seed, handle=handle, lr=lr)
-
-    out = run_classil(train_step, predict, tasks, train, cidx,
-                      report_eval=report_eval, stop_eval=stop_eval,
-                      stop_threshold=0.9, max_iters_per_task=2000)
-    # out["curves"]["argmax"] -> [evals, 2]
+plot_learning_curves(out["steps"], curves, list(curves), figure_path(__file__),
+                     title=proto.describe(), switches=out["switches"])
+np.savez(array_path(__file__), **{f"{m}_curves": v for m, v in curves.items()})
 ```
 
-For **Domain-IL** change two things and nothing else:
+**Switching to Domain-IL is one line** — `replace(proto, scenario="domain_il")`. The output width,
+the label map and the accuracy check all follow from it.
 
-```python
-arch      = replace(UNIFIED_ARCH, in_dim=196, hidden=H, out_dim=5)
-label_map = {c: i % 5 for i, c in enumerate(tasks[0] + tasks[1])}
-run_classil(..., label_map=label_map)
-```
+Two protocol requirements are worth not forgetting, because a run cannot be redone cheaply:
+`out["reached"]` says whether each task actually met its accuracy criterion (a rule that hit the
+iteration cap instead must be reported as such), and `out["snapshots"]` holds the weights at init
+and each task end — save them, since scripts 47–49 are re-analyses of exactly those arrays.
 
 ---
 
@@ -277,10 +350,9 @@ set written for a 2-layer net is harmless on a deeper one.
 
 | | |
 |---|---|
-| **No protocol object** | The protocol lives in prose in `presentation_plan.md`, not in code. Every script currently restates split, thresholds, seeds and eval sets by hand. This is the main piece of new code still to write. |
-| **No metrics grid** | `metrics.py` has most of the pieces, but target alignment and the [R31] inefficiency ratio are not implemented anywhere. |
-| **`BOGACZ_ARCH` is stale** | Encodes `(32,32)`/`out_dim=10`; experiment 34 later read the paper as 784-32-32-32-5. The reproduction is archived, but the constant is wrong and sits in a shared module. |
+| **`stop_threshold` is a guess** | `0.9` is a placeholder. The protocol says both tasks train to a fixed accuracy; it does not say which. Script 40/43 should settle it, and until then it is the one protocol number not derived from anything. |
+| **Per-rule learning rates are unset** | `Protocol.lr` is empty, so each rule falls back to `METHOD_DEFAULTS` — values inherited from the legacy era. The protocol requires a per-rule grid search matched on steps-to-threshold. **Script 43 does this, and nothing comparative should be believed before it.** |
+| **`BOGACZ_ARCH` is stale** | Encodes experiment 30's `(32,32)`/`out_dim=10` reading; experiment 34 later read the paper as 784-32-32-32-5. Left uncorrected on purpose so the archived scripts still mean what they meant — the comment now records both readings. Do not use for new work. |
 | **Experiment 15 is dead** | Calls `run_classil` positionally against the old signature and unpacks three values from what is now a dict. Left in `experiments/` because its question is live in the plan. |
-| **`run_alternating` points at nothing** | Its docstring cites `experiments/nature_forgetting/*.yaml`, which does not exist. The runner belongs to the archived reproduction. |
 | **`pc_settle` backtracking assumes MSE** | [predictive_coding.py:74](../src/predictive_coding.py#L74) treats `output_error` as a residual, true only under `mse`. Backtracking defaults off, so this is latent. |
 | **`loss_value` ignores `reduction`** | Always averages, while `batch_scale` honours `sum`. Reported loss disagrees with the applied gradient under `sum`. Reporting only. |

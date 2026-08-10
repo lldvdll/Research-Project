@@ -34,7 +34,10 @@ neuroscience & AI. Report target ~10,000 words.
 **Core question:** does an energy-based model with a biologically plausible local learning rule
 reduce catastrophic forgetting compared with backprop — and if not, why not, and can it be made to?
 
-**Authoritative scope — the advisor's four points** `[SETTLED]` [R-ADV]:
+**The advisor's four points — guidance, not scope** [R-ADV]. They arrived ad hoc, in an email
+responding to a set of results, and have already shifted once: EqProp and replay were each dropped
+and then reinstated as results came in. Taken seriously; **not** treated as a specification to be
+satisfied point by point. The project target is stated in `presentation_plan.md` §1.
 
 1. Pick one EBM. Be clear which; acknowledge others exist.
 2. Compare CF in that model vs a backprop model.

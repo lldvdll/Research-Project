@@ -1,0 +1,9 @@
+{
+  "_comment": "Personal, machine-local. Add this file to .gitignore. Anything here overrides .claude/settings.json except deny rules, which always win from any scope.",
+
+  "_examples": {
+    "model": "opusplan",
+    "effortLevel": "high",
+    "autoMemoryEnabled": true
+  }
+}

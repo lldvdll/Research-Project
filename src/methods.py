@@ -11,15 +11,19 @@ Optional `handle` dict is filled with:
 
 CONTROLLING THE COMPARISON
 --------------------------
-Pass `arch=` and `obj=` and EVERY method gets that architecture and that output structure:
+THE DEFAULT IS THE PROTOCOL. Every method gets model.UNIFIED_ARCH and model.UNIFIED_OBJ --
+the same architecture and the same output structure -- unless you say otherwise. Only the
+learning rule differs, which is what makes a learning-rule comparison a learning-rule
+comparison. Passing `arch=`/`obj=` explicitly is still preferred in new work, because it puts
+the specification in the script where a reader will look for it.
 
-    from src.model import UNIFIED_ARCH, UNIFIED_OBJ
-    build_method("pc", arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, ...)
+To reproduce a script written before unification, ask for its old specification BY NAME:
 
-Pass neither and each method falls back to model.LEGACY_SPEC -- i.e. what it used before
-unification (backprop: ReLU + cross-entropy + biases; pc: tanh + squared error; eqprop:
-tanh + hinge with +-1 targets). That default exists ONLY for backward compatibility with
-experiments 11-15. New experiments should always pass both explicitly.
+    make_backprop(..., **legacy("backprop"))     # ReLU + cross-entropy, as experiments 01-15
+
+Nothing falls back to model.LEGACY_SPEC silently. Under the legacy specification each rule got
+a different nonlinearity and a different loss, so any difference between rules confounds the
+rule with its output structure -- that is the confound the unified protocol exists to remove.
 """
 import torch
 
@@ -43,27 +47,44 @@ def make_optimizer(tensors, name="sgd", lr=0.05, momentum=0.9):
     raise ValueError(f"unknown optimizer {name!r}")
 
 
-def _spec(name, arch, obj):
-    """Resolve (arch, obj), falling back to the pre-unification defaults for this method."""
-    la, lo = LEGACY_SPEC.get(name.replace("_gated", "").replace("_replay", ""),
-                             (UNIFIED_ARCH, UNIFIED_OBJ))
-    return (arch or la), (obj or lo)
+def _spec(arch, obj):
+    """Resolve (arch, obj). The default is the unified protocol, the same for every rule.
+
+    Deliberately takes no method name: there is no way for the specification to depend on which
+    rule is being built, which is the property that makes the comparison controlled."""
+    return (arch or UNIFIED_ARCH), (obj or UNIFIED_OBJ)
+
+
+def legacy(name):
+    """The (arch, obj) this method used BEFORE unification, as keyword arguments.
+
+    Experiments 01-15 were written against these and now pass them explicitly, so changing the
+    library default cannot silently change what an old script means:
+
+        make_eqprop(..., **legacy("eqprop"))     # tanh, no bias, hinge with +-1 targets
+
+    Do not use in new work. Under these specifications backprop trains with ReLU and
+    cross-entropy while PC trains with tanh and squared error, so the rules are not comparable
+    to each other -- see model.LEGACY_SPEC."""
+    a, o = LEGACY_SPEC[name.replace("_gated", "").replace("_replay", "")]
+    return dict(arch=a, obj=o)
 
 
 def _apply_freeze(p, freeze):
-    """Zero the gradient of any parameter selected by `freeze` (a mutable set of specs), so an
-       experiment can freeze part of the network mid-run via handle["freeze"].add("W1").
-       Multi-layer aware: see model.resolve_freeze for the accepted specs."""
+    """Zero the gradient of every parameter NAMED in `freeze`, so an experiment can hold part of
+       the network still mid-run via handle["freeze"].add("W1").
+
+       Names are exact and 1-indexed: W1, b1, W2, b2, ... Freezing "W1" leaves b1 learning; to
+       hold a whole layer still, name both. That is the same convention pc_update and
+       eqprop_update already use, so one freeze set means the same thing under all four rules --
+       which is what makes a freezing experiment a comparison rather than a confound.
+       Unknown names are ignored (see model.resolve_freeze), so a set written for a 2-layer net
+       is harmless on a deeper one."""
     if not freeze:
         return
-    wi, bi = resolve_freeze(freeze, len(p.W))
-    for i in wi:
-        if p.W[i].grad is not None:
-            p.W[i].grad.zero_()
-    if p.b is not None:
-        for i in (bi | wi):
-            if i < len(p.b) and p.b[i].grad is not None:
-                p.b[i].grad.zero_()
+    for t in resolve_freeze(p, freeze):
+        if t.grad is not None:
+            t.grad.zero_()
 
 
 def _publish(handle, p, arch, obj, features, diag=None, freeze=None):
@@ -79,7 +100,7 @@ def _publish(handle, p, arch, obj, features, diag=None, freeze=None):
 # ------------------------------------------------------------------ backprop
 def make_backprop(in_dim=196, hidden=64, out_dim=10, lr=0.05, optimizer="sgd", seed=0,
                   device="cpu", arch=None, obj=None, handle=None, **_):
-    arch, obj = _spec("backprop", arch, obj)
+    arch, obj = _spec(arch, obj)
     arch = replace(arch, in_dim=in_dim, hidden=hidden, out_dim=out_dim)
     p = init_params(arch, seed=seed, device=device).requires_grad_(True)
     opt = make_optimizer(p.tensors(), optimizer, lr)
@@ -110,40 +131,72 @@ def make_backprop(in_dim=196, hidden=64, out_dim=10, lr=0.05, optimizer="sgd", s
 
 
 # ------------------------------------------------------------------ replay
-def make_replay(train_data, class_idx, in_dim=196, hidden=64, out_dim=10, lr=0.05,
+def make_replay(train_data=None, class_idx=None, in_dim=196, hidden=64, out_dim=10, lr=0.05,
                 optimizer="sgd",
                 per_class=20, replay_frac=None, buffer_seed=None, seed=0, device="cpu",
                 arch=None, obj=None, handle=None, **_):
     """Backprop + a stored-example buffer. NOT a learning rule -- a reference upper bound.
 
+    THE BUFFER STORES FROM THE STREAM -- a per-label reservoir of `per_class` examples each, and
+    the dataset is never consulted. Two reasons:
+
+      * Domain-IL. `y` is the output UNIT an example was trained on, not its class: under a
+        label_map, classes 5-9 arrive as units 0-4. Keying the buffer by class id therefore
+        mis-keys task 2, and any 'first per_class wins' rule never stores it at all, because
+        units 0-4 filled up during task 1. A reservoir fixes both -- see _store.
+      * It is the honest control. The earlier version fetched `per_class` images of a class
+        from the full training pool the instant it first saw ONE example of it -- i.e. it drew
+        on data the network had not been shown yet.
+
     replay_frac = None  : legacy behaviour, replay is APPENDED (batch grows to 2x, the model
                           sees strictly more data per step -- a confound).
     replay_frac = 0.5   : batch size held FIXED; half the batch is replay, so the model sees
                           FEWER new examples per step. Conservative; prefer this.
-    buffer_seed         : dedicated RNG for which examples are stored and sampled, so buffer
-                          composition is its own variance source (defaults to `seed`).
+    buffer_seed         : dedicated RNG for WHICH stored examples are replayed each step, so
+                          buffer sampling is its own variance source (defaults to `seed`).
+    train_data, class_idx : accepted and ignored, so scripts 01-15 still call this unchanged.
+                          The buffer no longer needs the dataset.
     """
-    arch, obj = _spec("replay", arch, obj)
+    arch, obj = _spec(arch, obj)
     arch = replace(arch, in_dim=in_dim, hidden=hidden, out_dim=out_dim)
     p = init_params(arch, seed=seed, device=device).requires_grad_(True)
     opt = make_optimizer(p.tensors(), optimizer, lr)
     g = torch.Generator(device="cpu").manual_seed(int(seed if buffer_seed is None else buffer_seed))
-    mem_x, mem_y, seen, freeze = [], [], set(), set()
+    mem_x, mem_y, freeze = [], [], set()
+    slots, counts = {}, {}          # label -> its row indices in mem_x ; label -> examples seen
 
-    def _store(c):
-        pool = class_idx[c]
-        pick = pool[torch.randperm(len(pool), generator=g)[:per_class]]
-        mem_x.append(torch.stack([train_data[i][0] for i in pick.tolist()]).to(device).reshape(len(pick), -1))
-        mem_y.append(torch.full((len(pick),), c, device=device))
+    def _store(xf, y):
+        """Per-label reservoir: `per_class` slots per label, holding a uniform sample of every
+        example of that label seen SO FAR (Algorithm R, one reservoir per label).
+
+        Straight 'keep the first per_class' would not do. Under Domain-IL classes 5-9 arrive as
+        units 0-4, whose slots are already full from task 1, so task 2 would never enter the
+        buffer at all. With a reservoir, class 5 competes with class 0 for unit 0's slots and
+        the buffer ends up holding both -- with no need to know where the task boundary was,
+        which is the point: `y` and `active` are identical across tasks under Domain-IL, so
+        train_step cannot detect a boundary even in principle.
+
+        Buffer size is fixed at per_class * n_labels and balanced across labels by construction.
+        """
+        u = torch.rand(y.size(0), generator=g)          # one RNG call per step, not per example
+        for i, c in enumerate(y.tolist()):
+            n = counts.get(c, 0)
+            counts[c] = n + 1
+            row = slots.setdefault(c, [])
+            if len(row) < per_class:
+                row.append(len(mem_x))
+                mem_x.append(xf[i].detach().clone())    # clone: xf is a view onto the batch
+                mem_y.append(c)
+            else:
+                j = int(u[i] * (n + 1))                 # uniform on 0..n
+                if j < per_class:
+                    mem_x[row[j]] = xf[i].detach().clone()
 
     def train_step(x, y, active=None):
-        for c in y.unique().tolist():
-            if c not in seen:
-                seen.add(c)
-                _store(c)
         xf = flatten(x)
+        _store(xf, y)
         if mem_x:
-            rx, ry = torch.cat(mem_x), torch.cat(mem_y)
+            rx, ry = torch.stack(mem_x), torch.tensor(mem_y, device=device)
             k = xf.size(0) if replay_frac is None else int(round(replay_frac * xf.size(0)))
             k = min(k, len(ry))
             if k > 0:
@@ -153,8 +206,10 @@ def make_replay(train_data, class_idx, in_dim=196, hidden=64, out_dim=10, lr=0.0
                 y = torch.cat([y[:keep], ry[s]])
         n = xf.size(0)
         target = make_target(y, arch, obj, device=device)
-        # replayed classes are legitimately present in this batch, so they are ACTIVE
-        av = active_vector(None if active is None else sorted(set(active) | seen), arch, device=device)
+        # replayed labels are legitimately present in this batch, so they are ACTIVE. `counts`
+        # is keyed by output unit, the same space as `active`, so this union is well defined.
+        av = active_vector(None if active is None else sorted(set(active) | set(counts)),
+                           arch, device=device)
         _, out = forward(xf, p, arch)
         e = output_error(out, target, obj, av)
         opt.zero_grad()
@@ -171,7 +226,11 @@ def make_replay(train_data, class_idx, in_dim=196, hidden=64, out_dim=10, lr=0.0
         with torch.no_grad():
             return hidden_code(x, p, arch)
 
-    _publish(handle, p, arch, obj, features, diag={"buffer_classes": seen}, freeze=freeze)
+    # buffer_seen counts examples ENCOUNTERED per label. buffer_x/buffer_labels are the live
+    # buffer itself, so len() gives its size and the contents can be inspected or plotted --
+    # under Domain-IL the labels alone cannot tell you which task an example came from.
+    _publish(handle, p, arch, obj, features, freeze=freeze,
+             diag={"buffer_seen": counts, "buffer_labels": mem_y, "buffer_x": mem_x})
     return train_step, predict
 
 
@@ -180,7 +239,7 @@ def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimi
             seed=0, device="cpu", arch=None, obj=None, handle=None, **_):
     """steps=0 disables relaxation entirely -> the 'PC without prospective configuration'
        control that should collapse onto backprop (experiment 23)."""
-    arch, obj = _spec("pc", arch, obj)
+    arch, obj = _spec(arch, obj)
     arch = replace(arch, in_dim=in_dim, hidden=hidden, out_dim=out_dim)
     p = init_params(arch, seed=seed, device=device)
     # PC computes its updates locally and explicitly. Routing them through a torch optimiser
@@ -211,7 +270,7 @@ def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimi
 def make_eqprop(in_dim=196, hidden=64, out_dim=10, lr=0.005, beta=0.3, dt=0.3, max_steps=500,
                 settle_patience=30, gate_frac=None, optimizer="sgd", seed=0, device="cpu",
                 arch=None, obj=None, handle=None, **_):
-    arch, obj = _spec("eqprop", arch, obj)
+    arch, obj = _spec(arch, obj)
     arch = replace(arch, in_dim=in_dim, hidden=hidden, out_dim=out_dim)
     p = init_params(arch, seed=seed, device=device).requires_grad_(True)
     opt = make_optimizer(p.tensors(), optimizer, lr)
@@ -252,7 +311,10 @@ METHOD_DEFAULTS = {
                          gate_frac=0.3),
 }
 
-_NEEDS_DATA = {"replay"}
+# Nothing needs the dataset at construction time any more -- replay fills its buffer from the
+# stream. `train_data`/`class_idx` are still accepted by build_method and ignored, so scripts
+# 01-15 keep working unchanged.
+_NEEDS_DATA = set()
 _BUILDERS = {"backprop": make_backprop, "replay": make_replay, "eqprop": make_eqprop,
              "pc": make_pc, "eqprop_gated": make_eqprop_gated}
 

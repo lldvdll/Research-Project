@@ -19,7 +19,7 @@ import numpy as np
 import torch
 
 from src.data import load_mnist, class_indices, make_eval_set
-from src.methods import build_method
+from src.methods import build_method, legacy
 from src.runner import run_joint
 from src.plotting import plot_heatmap
 
@@ -57,8 +57,11 @@ for i, hidden in enumerate(HIDDEN_SIZES):
             seed = BASE_SEED + 1000 * i + 100 * j + r
             classes = sorted(np.random.default_rng(seed).permutation(10)[:n_cls].tolist())
             eval_x, eval_y = make_eval_set(test, classes=classes, per_class=100, device=DEVICE)
+            # **legacy(...) pins the pre-unification specification this script was written
+            # against; the library default is now the unified protocol. Not for new work.
             step_fn, pred_fn = build_method("backprop", in_dim=IN_DIM, hidden=hidden,
-                                            lr=BP_LR, seed=seed, device=DEVICE)
+                                            lr=BP_LR, seed=seed, device=DEVICE,
+                                            **legacy("backprop"))
             steps, accs = run_joint(step_fn, pred_fn, classes, train, cidx, eval_x, eval_y,
                                     max_iters=MAX_ITERS, batch=BATCH, eval_every=EVAL_EVERY,
                                     device=DEVICE, stop_patience=CONV_PATIENCE)

@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, Subset
 
 from src.data import load_mnist, class_indices, make_eval_set
-from src.methods import make_backprop, make_replay, make_pc
+from src.methods import make_backprop, make_replay, make_pc, legacy
 
 # ============================ constants ============================
 DEVICE          = "cuda" if torch.cuda.is_available() else "cpu"
@@ -44,12 +44,15 @@ train, test = load_mnist(size=IMG_SIZE, root=str(DATA_DIR))
 cidx = class_indices(train)
 eval_x, eval_y = make_eval_set(test, classes=CLASSES, per_class=EVAL_PER_CLASS, device=DEVICE)
 
+# **legacy(...) pins the pre-unification specification this script was written against; the
+# library default is now the unified protocol. See src/methods.py legacy(). Not for new work.
 methods = {
-    "backprop": make_backprop(in_dim=IN_DIM, lr=BP_LR, seed=SEED, device=DEVICE),
+    "backprop": make_backprop(in_dim=IN_DIM, lr=BP_LR, seed=SEED, device=DEVICE,
+                              **legacy("backprop")),
     "replay":   make_replay(train, cidx, in_dim=IN_DIM, lr=RP_LR, per_class=RP_PER_CLASS,
-                            seed=SEED, device=DEVICE),
+                            seed=SEED, device=DEVICE, **legacy("replay")),
     "pc":       make_pc(in_dim=IN_DIM, lr=PC_LR, dt=PC_DT, steps=PC_STEPS,
-                        seed=SEED, device=DEVICE),
+                        seed=SEED, device=DEVICE, **legacy("pc")),
 }
 
 HDR = f"{'task':>5} {'step':>6} " + " ".join(f"{'T'+str(i+1)+'%':>6}" for i in range(len(TASKS))) + f" {'time':>6}"

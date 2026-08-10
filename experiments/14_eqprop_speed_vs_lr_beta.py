@@ -24,7 +24,7 @@ import numpy as np
 import torch
 
 from src.data import load_mnist, class_indices, make_eval_set
-from src.methods import build_method
+from src.methods import build_method, legacy
 from src.runner import run_joint
 from src.plotting import plot_heatmap
 
@@ -65,8 +65,10 @@ def steps_to_target(steps, accs):
 
 
 # ---------------------- reference: backprop speed ----------------------
+# **legacy(...) pins the pre-unification specification this script was written against; the
+# library default is now the unified protocol. See src/methods.py legacy(). Not for new work.
 step_fn, pred_fn = build_method("backprop", in_dim=IN_DIM, hidden=HIDDEN, lr=BP_LR,
-                                seed=SEED, device=DEVICE)
+                                seed=SEED, device=DEVICE, **legacy("backprop"))
 s, a = run_joint(step_fn, pred_fn, CLASSES, train, cidx, eval_x, eval_y,
                  max_iters=MAX_ITERS, batch=BATCH, eval_every=EVAL_EVERY,
                  device=DEVICE, stop_at=TARGET_ACC)
@@ -82,7 +84,8 @@ for i, lr in enumerate(LRS):
     for j, beta in enumerate(BETAS):
         step_fn, pred_fn = build_method("eqprop", in_dim=IN_DIM, hidden=HIDDEN, lr=lr, beta=beta,
                                         dt=EQP_DT, max_steps=EQP_MAX_STEPS,
-                                        settle_patience=EQP_SETTLE_PAT, seed=SEED, device=DEVICE)
+                                        settle_patience=EQP_SETTLE_PAT, seed=SEED, device=DEVICE,
+                                        **legacy("eqprop"))
         s, a = run_joint(step_fn, pred_fn, CLASSES, train, cidx, eval_x, eval_y,
                          max_iters=MAX_ITERS, batch=BATCH, eval_every=EVAL_EVERY,
                          device=DEVICE, stop_at=TARGET_ACC)

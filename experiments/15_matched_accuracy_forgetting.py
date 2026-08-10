@@ -24,7 +24,7 @@ import numpy as np
 import torch
 
 from src.data import load_mnist, class_indices, make_eval_set
-from src.methods import build_method
+from src.methods import build_method, legacy
 from src.runner import run_classil
 from src.metrics import align_runs, value_when, crossover
 from src.plotting import plot_learning_curves, plot_trajectory
@@ -82,9 +82,11 @@ for r in range(N_RUNS):
     print(f"\nrun {r + 1}/{N_RUNS}: task1={tasks[0]} task2={tasks[1]}")
     for m in METHODS:
         t0 = time.time()
+        # **legacy(...) pins the pre-unification specification this script was written against;
+        # the library default is now the unified protocol. Not for new work.
         step_fn, pred_fn = build_method(m, in_dim=IN_DIM, hidden=HIDDEN, seed=BASE_SEED + r,
                                         device=DEVICE, train_data=train, class_idx=cidx,
-                                        **OVERRIDES[m])
+                                        **legacy(m), **OVERRIDES[m])
         s, T, switches = run_classil(step_fn, pred_fn, tasks, train, cidx, eval_x, eval_y,
                                      max_iters_per_task=MAX_ITERS_PER_TASK, batch=BATCH,
                                      eval_every=EVAL_EVERY, device=DEVICE,

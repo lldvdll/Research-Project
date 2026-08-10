@@ -3,10 +3,10 @@ import sys
 import time
 from pathlib import Path
 
-# Set to None to run every .py file, or provide your own list
+# Set to None to run every .py file in THIS directory, or provide your own list.
+# The glob is not recursive, so anything under archive/ is skipped -- see archive/README.md.
 scripts = [
-    "30_reproduce_bogacz_fig4de.py",
-    "26_what_remains_after_masking.py", 
+    "26_what_remains_after_masking.py",
     "27_interaction_at_width_64.py"
     ]
 scripts = None

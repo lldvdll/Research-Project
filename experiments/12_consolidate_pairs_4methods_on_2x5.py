@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, Subset
 
 from src.data import load_mnist, class_indices, make_eval_set
-from src.methods import make_backprop, make_replay, make_eqprop, make_pc
+from src.methods import make_backprop, make_replay, make_eqprop, make_pc, legacy
 
 # ============================ constants ============================
 DEVICE          = "cuda" if torch.cuda.is_available() else "cpu"
@@ -47,17 +47,21 @@ cidx = class_indices(train)
 
 def build(name, tasks, seed):
     """Fresh model for this run. Hyperparameters fixed; only the seed and pairing change."""
+    # **legacy(...) pins the pre-unification specification this script was written against; the
+    # library default is now the unified protocol. See src/methods.py legacy(). Not for new work.
     if name == "backprop":
-        return make_backprop(in_dim=IN_DIM, lr=BP_LR, seed=seed, device=DEVICE)
+        return make_backprop(in_dim=IN_DIM, lr=BP_LR, seed=seed, device=DEVICE,
+                             **legacy("backprop"))
     if name == "replay":
         return make_replay(train, cidx, in_dim=IN_DIM, lr=RP_LR, per_class=RP_PER_CLASS,
-                           seed=seed, device=DEVICE)
+                           seed=seed, device=DEVICE, **legacy("replay"))
     if name == "eqprop":
         return make_eqprop(in_dim=IN_DIM, lr=EQP_LR, beta=EQP_BETA, dt=EQP_DT,
                            max_steps=EQP_MAX_STEPS, settle_patience=EQP_SETTLE_PAT,
-                           seed=seed, device=DEVICE)
+                           seed=seed, device=DEVICE, **legacy("eqprop"))
     if name == "pc":
-        return make_pc(in_dim=IN_DIM, lr=PC_LR, dt=PC_DT, steps=PC_STEPS, seed=seed, device=DEVICE)
+        return make_pc(in_dim=IN_DIM, lr=PC_LR, dt=PC_DT, steps=PC_STEPS, seed=seed,
+                       device=DEVICE, **legacy("pc"))
     raise ValueError(name)
 
 

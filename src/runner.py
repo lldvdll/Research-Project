@@ -38,12 +38,25 @@ def _next(it, loader):
         return next(it), it
 
 
-def _call(train_step, x, y, active):
-    """Call train_step with `active` if it accepts it (backward compatible with 2-arg closures)."""
+def _accepts_active(train_step):
+    """Does this train_step take an `active` argument? Read off its signature."""
     try:
+        return "active" in inspect.signature(train_step).parameters
+    except (TypeError, ValueError):
+        return True
+
+
+def _call(train_step, x, y, active):
+    """Call train_step, passing `active` only if it accepts it.
+
+    Asking the signature rather than catching TypeError matters. A TypeError raised INSIDE
+    train_step -- for any unrelated reason -- would be swallowed and the update silently retried
+    WITHOUT `active`, so a masked-loss experiment could quietly run unmasked and still produce a
+    plausible-looking curve. Every builder in src.methods accepts `active`; this branch exists
+    only for a hand-written 2-argument closure."""
+    if _accepts_active(train_step):
         return train_step(x, y, active=active)
-    except TypeError:
-        return train_step(x, y)
+    return train_step(x, y)
 
 
 def _acc(pred, eval_y, classes, label_map=None):
@@ -127,12 +140,16 @@ def run_classil(train_step, predict, tasks, train_data, class_idx,
         it = iter(loader)
         hits, countdown, hit_criterion = 0, None, False
         thr = thr_per[ti]
+        # `active` indexes OUTPUT UNITS, not classes. Under Class-IL they coincide. Under
+        # Domain-IL they do not: task [5,6,7,8,9] trains output units [0,1,2,3,4], and passing
+        # the class ids straight through indexes a length-5 vector at position 5.
+        active = task if label_map is None else sorted({label_map[int(c)] for c in task})
         for _ in range(iters_per[ti]):
             (x, y), it = _next(it, loader)
             y = y.to(device)
             if label_map is not None:
                 y = torch.tensor([label_map[int(v)] for v in y], device=device)
-            _call(train_step, x.to(device), y, task)
+            _call(train_step, x.to(device), y, active)
             step += 1
             if countdown is not None:
                 countdown -= 1

@@ -1,0 +1,62 @@
+## Project
+
+MSc thesis: does energy-based learning reduce catastrophic forgetting compared with backpropagation, and by what mechanism. Four methods on 14×14 MNIST, 196→64→10, one hidden layer, tanh, squared error, plain SGD: backprop (negative control), replay (positive control), predictive coding / prospective configuration, equilibrium propagation. Advisor's scope: pick one EBM, compare against backprop, explain the difference, try to reduce forgetting in the EBM.
+
+Immediate deliverable: 20-minute presentation, Friday.
+
+## What I can see
+
+The four PDFs and three handoff `.md` docs in the project. No code, no results, no plots, no other chats. `timeline.md` and `knowledge_base.md` were created from scratch in this chat by consolidating the handoff docs — every number in them is second-hand and flagged as such.
+
+## Decisions made this chat
+
+**Stop chasing numeric reproduction of Song & Bogacz Fig 4d.** Reproduce the protocol; the claim under test is qualitative. This is a conceptual replication and is stated as such on the deviations slide.
+
+**5×2 split for both scenarios.** Same partition, same schedule. Only the output layer differs — 10 units all active (Class-IL) or 2 shared units (Domain-IL). Scenario becomes the single variable. This is van de Ven's Split MNIST protocol, so baselines are comparable to a published table. It deviates from S&B (2 tasks × 5 classes, alternating), justified because their protocol varies task count and schedule alongside scenario.
+
+**Class-IL primary, Domain-IL also run.** Class-IL because it has the largest dynamic range between methods, is the standard ML benchmark, matches the common biological case, and exercises both trunk and output layer so forgetting can be attributed. Domain-IL because it is the scenario the interference claim was demonstrated in, and it isolates trunk drift.
+
+**The scenario-boundary idea is parked.** S&B Fig 4d used five shared output neurons, so it is Domain-IL — verified in their Methods. That's real, but it was briefly promoted to the talk's thesis without results to support it. Retired to `knowledge_base.md` §9.1; revisit after E4/E5/E6. No slide presupposes the answer.
+
+**EqProp is a contrast, not a second competitor** — strong clamp (PC) vs weak clamp (EqProp). If PC separates from backprop and EqProp doesn't, the effect is full relaxation, not energy-based-ness generally.
+
+**All experiments re-run.** No old plots.
+
+## Presentation
+
+20 slides, 15 mandatory, 5 optional. Progression: problem → scenarios → scenario choice → setup and controls → metrics → backprop baseline → where forgetting happens → what EBMs do differently → the interference claim → Class-IL results → Domain-IL results → comparison → target alignment → shown/not shown → next steps. Optional: deviations table, weight movement, rule × location, depth.
+
+Runs ~22 min as listed. Demote slide 9 first, then trim slides 3 and 11 by 30 s each.
+
+## Experiments
+
+| ID | Question |
+|---|---|
+| E-metrics | Lock four metric definitions and one plotting module |
+| E1 | How much does backprop forget in each scenario, does replay recover it |
+| E4 | Four rules compared, Class-IL 5×2 |
+| E5 | Four rules compared, Domain-IL 5×2 |
+| E2 | Do hidden features survive when the head doesn't (NCM probe) |
+| E3 | Is forgetting in W1 or W2 (freeze one, then the other) |
+| E6 | Target alignment per rule per scenario |
+| E0 | Does 14×14 preserve 28×28's joint accuracy |
+| E7 | Where does weight movement go during later contexts |
+| E8 | Does depth change the conclusion |
+
+Order as listed above.
+
+## Code
+
+Everything committed; no revert wanted. Keep the depth parameter and the S&B protocol work — nothing gets removed. Modularise so scenario and depth resolve at construction time, not inside the update step in `eqprop.py` and `predictive_coding.py`. Once a core function is readable and tested, freeze it; change only when an experiment can't be expressed otherwise. One script per experiment, one figure per script, same name. One change at a time, previous experiment re-run to confirm the figure is unchanged.
+
+## Two things flagged for checking
+
+The output-layer suppression argument in the knowledge base is derived for softmax cross-entropy. The implementation uses squared error, where suppression has a fixed point at zero. Restate before slide 9 relies on it.
+
+The trajectory plot was built for two tasks. With five contexts, decide the axes — pairwise first-vs-last, or mean-of-seen vs current. Part of E-metrics.
+
+## Working method
+
+One slide at a time: reading, bullet contents, task list, experiments. Discuss, you do the work, move on. No refinement passes until all mandatory slides exist.
+
+Next step is either slides 1–2, or the code cleanup and E-metrics — for the latter I need `src/`.

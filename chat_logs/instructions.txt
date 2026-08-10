@@ -1,0 +1,7 @@
+Maintain 2 separate markdown files in the current project. After each chat these will be updated.
+
+The first is a sequential timeline of chats called "timeline" which include the objective and the outcome summarised in a single sentence, split out into separate entries where a chat has more than one objective and outcome. Entries will not be  edited once added. This file will be loaded into context as required.
+
+The second file will aim to consolidate and organise all knowledge and observations to date called "knowledge_base". Information will be systematically structured and all references will be included. A reference list will be included at the end with links and with a one sentence summary of it's contents.  New information will be added, old entries amended, corrections and consolidations made. This will act as a reference point for all conversations. This file will be loaded into context at the start of each response.
+
+Continue to present response inside chat, even if there's some duplication in the log files.

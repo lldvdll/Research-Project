@@ -1,0 +1,158 @@
+"""Probes: ask what is still in the hidden layer, ignoring the output layer entirely.
+
+The nearest-class-mean (NCM) probe is the decisive diagnostic in knowledge_base.md §4.6.
+Discard the output layer, classify by whichever class's average hidden pattern is closest.
+
+    argmax accuracy is LOW but NCM accuracy is HIGH  -> the hidden code survived; the damage
+                                                        is in the output layer (calibration)
+    both LOW                                          -> the hidden code was destroyed
+                                                        (representation drift)
+
+Prototypes are built from TRAINING data of every class seen so far, which is information the
+network would not have during a task-free stream. That is deliberate: this is a measurement
+instrument, not a continual-learning method.
+"""
+import torch
+
+
+def class_prototypes(features_fn, train_data, class_idx, classes, per_class=100,
+                     device="cpu", seed=0):
+    """{class: mean hidden vector} from `per_class` training images of each class."""
+    g = torch.Generator().manual_seed(int(seed))
+    protos = {}
+    for c in classes:
+        pool = torch.as_tensor(class_idx[c])
+        pick = pool[torch.randperm(len(pool), generator=g)[:per_class]]
+        x = torch.stack([train_data[i][0] for i in pick.tolist()]).to(device)
+        protos[c] = features_fn(x).detach().mean(0)
+    return protos
+
+
+def ncm_predict_fn(features_fn, protos):
+    """fn(x) -> predicted class labels by nearest prototype (Euclidean)."""
+    classes = sorted(protos)
+    P = torch.stack([protos[c] for c in classes])                  # [n_classes, hidden]
+    lookup = torch.tensor(classes)
+
+    def predict(x):
+        f = features_fn(x).detach()                                 # [batch, hidden]
+        d = torch.cdist(f, P.to(f.device))                          # [batch, n_classes]
+        return lookup.to(f.device)[d.argmin(1)]
+
+    return predict
+
+
+def cosine_ncm_predict_fn(features_fn, protos):
+    """Direction-only variant: removes the magnitude degree of freedom that suppression corrupts."""
+    classes = sorted(protos)
+    P = torch.stack([torch.nn.functional.normalize(protos[c], dim=0) for c in classes])
+    lookup = torch.tensor(classes)
+
+    def predict(x):
+        f = torch.nn.functional.normalize(features_fn(x).detach(), dim=1)
+        return lookup.to(f.device)[(f @ P.to(f.device).t()).argmax(1)]
+
+    return predict
+
+
+def live_ncm_fn(features_fn, proto_x, proto_y, cosine=False):
+    """fn(x) -> labels, rebuilding prototypes from a FIXED image set at the CURRENT weights.
+
+    Use this as a readout inside run_classil: prototypes must track the drifting hidden code,
+    otherwise you are measuring staleness rather than representation quality. Costs one extra
+    forward pass over `proto_x` per evaluation.
+    """
+    classes = sorted(set(proto_y.tolist()))
+    lookup = torch.tensor(classes)
+
+    def predict(x):
+        pf = features_fn(proto_x).detach()
+        P = torch.stack([pf[proto_y == c].mean(0) for c in classes])
+        f = features_fn(x).detach()
+        if cosine:
+            f = torch.nn.functional.normalize(f, dim=1)
+            P = torch.nn.functional.normalize(P, dim=1)
+            return lookup.to(f.device)[(f @ P.t()).argmax(1)]
+        return lookup.to(f.device)[torch.cdist(f, P).argmin(1)]
+
+    return predict
+
+
+def prototype_images(train_data, class_idx, classes, per_class=50, device="cpu", seed=0):
+    """Fixed image set for live_ncm_fn. Drawn once, shared by every method and condition."""
+    g = torch.Generator().manual_seed(int(seed))
+    xs, ys = [], []
+    for c in classes:
+        pool = torch.as_tensor(class_idx[c])
+        pick = pool[torch.randperm(len(pool), generator=g)[:per_class]]
+        xs.append(torch.stack([train_data[i][0] for i in pick.tolist()]))
+        ys.append(torch.full((len(pick),), c))
+    return torch.cat(xs).to(device), torch.cat(ys).to(device)
+
+
+def frozen_ncm_fn(features_fn, protos_holder):
+    """fn(x) -> labels using prototypes SNAPSHOT at some earlier moment.
+
+    Contrast with live_ncm_fn, and note the difference carefully:
+      live prototypes   -> "is the class information still linearly decodable?"  Any consistent
+                           transformation of the hidden space is INVISIBLE, because the
+                           prototypes rotate with it.
+      frozen prototypes -> "has the code MOVED away from where it was?"  This is the one that
+                           actually measures representation drift.
+    `protos_holder` is a mutable dict {class: vector}, filled by a callback at the task switch.
+    """
+    def predict(x):
+        if not protos_holder:
+            return torch.full((x.size(0),), -1, dtype=torch.long, device=x.device)
+        classes = sorted(protos_holder)
+        P = torch.stack([protos_holder[c] for c in classes])
+        f = features_fn(x).detach()
+        return torch.tensor(classes, device=f.device)[torch.cdist(f, P.to(f.device)).argmin(1)]
+    return predict
+
+
+def restricted_argmax_fn(predict, classes):
+    """argmax over ONLY the classes used in this experiment.
+
+    With out_dim=10 but four classes in play, six output units are never a target. Under a
+    masked loss they are also never suppressed, so they keep their random initial weights and
+    can capture the argmax spuriously -- which penalises the masked condition and nothing
+    else. Restricting the argmax removes that artefact. Report both.
+    """
+    idx = torch.tensor(sorted(classes))
+
+    def fn(x):
+        out = predict(x, raw=True).detach()
+        return idx.to(out.device)[out[:, idx.to(out.device)].argmax(1)]
+    return fn
+
+
+def code_snapshot(features_fn, x):
+    """Hidden code for a fixed image set, for drift measurement."""
+    return features_fn(x).detach().clone()
+
+
+def code_drift(before, after):
+    """How far the hidden code moved. Two complementary numbers:
+         cosine    mean cosine similarity per image (1.0 = direction unchanged)
+         rel_l2    mean ||after - before|| / ||before||  (0.0 = identical)
+    A rigid rotation gives low cosine but may leave live-NCM accuracy untouched, which is
+    exactly why both are reported."""
+    cos = torch.nn.functional.cosine_similarity(before, after, dim=1).mean().item()
+    rel = ((after - before).norm(dim=1) / (before.norm(dim=1) + 1e-9)).mean().item()
+    return dict(cosine=cos, rel_l2=rel)
+
+
+def saturation(features_fn, x, thresh=0.95):
+    """Fraction of hidden units with |activation| above `thresh`. EqProp's main failure mode:
+       once tanh flattens, f'(h) -> 0 and the nudge can no longer reach the hidden layer."""
+    f = features_fn(x).detach()
+    return (f.abs() > thresh).float().mean().item()
+
+
+def output_unit_stats(predict, x):
+    """Per-output-unit mean raw score. Watch an absent class's score drift DOWN during a task
+       it does not belong to -- this is logit suppression, made visible."""
+    with torch.no_grad():
+        out = predict(x, raw=True)
+    return dict(mean=out.mean(0).tolist(), std=out.std(0).tolist())

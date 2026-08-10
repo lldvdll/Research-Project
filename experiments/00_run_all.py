@@ -5,9 +5,9 @@ from pathlib import Path
 
 # Set to None to run every .py file, or provide your own list
 scripts = [
-    "01_prepare.py", 
-    "02_process.py", 
-    "03_plot.py"
+    "30_reproduce_bogacz_fig4de.py",
+    "26_what_remains_after_masking.py", 
+    "27_interaction_at_width_64.py"
     ]
 scripts = None
 

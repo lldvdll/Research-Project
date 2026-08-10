@@ -80,3 +80,46 @@ def pad_stack(curve_list):
         c = np.asarray(c)
         out[r, :c.shape[0], :] = c
     return out
+
+
+def half_life(steps, series, after=0, peak=None, frac=0.5):
+    """Updates after `after` for `series` to fall to `frac` of its peak.
+
+    WHY THIS EXISTS: when every condition eventually collapses to zero, the final value has no
+    dynamic range and cannot separate methods. How FAST a method falls still can. Returns None
+    if it never falls that far (which is itself informative)."""
+    idx = [i for i, s in enumerate(steps) if s > after]
+    if not idx:
+        return None
+    pk = max(series[i] for i in idx[:1]) if peak is None else peak
+    target = frac * pk
+    for i in idx:
+        if series[i] <= target:
+            return steps[i] - after
+    return None
+
+
+def area_retained(steps, series, after=0, peak=None):
+    """Mean task-1 accuracy over the whole of task 2, as a fraction of its peak.
+
+    A single number combining 'how high' and 'how long'. Unlike the final value it does not
+    saturate at zero, and unlike half-life it is always defined."""
+    idx = [i for i, s in enumerate(steps) if s > after]
+    if not idx:
+        return float("nan")
+    pk = series[idx[0]] if peak is None else peak
+    if pk <= 0:
+        return float("nan")
+    return float(np.mean([series[i] for i in idx]) / pk)
+
+
+def bootstrap_ci(values, ci=68, n_boot=10000, seed=0):
+    """Percentile bootstrap CI of the mean. Song & Bogacz report 68% CIs computed this way."""
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return float("nan"), float("nan"), float("nan")
+    rng = np.random.default_rng(seed)
+    means = rng.choice(v, size=(n_boot, v.size), replace=True).mean(axis=1)
+    lo, hi = np.percentile(means, [(100 - ci) / 2, 100 - (100 - ci) / 2])
+    return float(v.mean()), float(lo), float(hi)

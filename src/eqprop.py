@@ -1,99 +1,149 @@
-"""The EqProp (Equilibrium Propagation) algorithm. One job per function.
-   A different energy-based model would be a sibling file (e.g. contrastive.py)."""
+"""Equilibrium Propagation (Scellier & Bengio 2017) -- MULTI-LAYER.
+
+Hopfield-style energy over the free state s_1 ... s_L (s_L is the output):
+
+    E = sum_l 1/2|s_l|^2  -  s_1.(x W_1)  -  sum_{l>=2} s_l.(f(s_{l-1}) W_l)
+
+Two settlings per update: a free phase, then a nudged phase warm-started from it in which
+the output is pulled toward the target by beta. Learning:
+
+    dW = (grad_nudged - grad_free) / beta
+
+a finite-difference estimate of the cost gradient, exact as beta -> 0 (Millidge et al. 2022).
+Verified numerically for both tanh and sigmoid in tests/test_numpy_mirror.py; sigmoid gives
+the same convergence rate but max|f'| = 0.25 against tanh's 1.0, so it needs a proportionally
+LARGER learning rate.
+
+beta is NOT a learning rate. It is a finite-difference step size in the denominator, and its
+bias grows with its size (Laborieux et al. 2021): measured rel. error ~42% at beta=0.3,
+~27% at 0.1, ~1.6% at 0.005.
+"""
 import torch
+from .model import (Arch, Objective, UNIFIED_ARCH, UNIFIED_OBJ, init_params, flatten,
+                    make_target, active_vector, output_error, batch_scale)
 
 
-def eqprop_init(in_dim=196, hidden=64, out_dim=10, seed=0, device="cpu"):
-    g = torch.Generator(device=device).manual_seed(seed)
-    W1 = (torch.randn(in_dim, hidden, generator=g, device=device) / in_dim ** 0.5).requires_grad_(True)
-    W2 = (torch.randn(hidden, out_dim, generator=g, device=device) / hidden ** 0.5).requires_grad_(True)
-    return W1, W2
+def eqprop_init(in_dim=196, hidden=64, out_dim=10, seed=0, device="cpu", arch=None):
+    """Always returns a Params with grads enabled. See the note in pc_init."""
+    if arch is None:
+        arch = Arch(in_dim=in_dim, hidden=hidden, out_dim=out_dim, act="tanh", bias=False)
+    return init_params(arch, seed=seed, device=device).requires_grad_(True)
 
 
-def eqprop_energy(x, h, y, W1, W2):
-    state = 0.5 * (h ** 2).sum() + 0.5 * (y ** 2).sum()
-    align = (h * (x @ W1)).sum() + (y * (torch.tanh(h) @ W2)).sum()
-    return state - align
+def eqprop_energy(x, states, p, arch):
+    """states = [s_1, ..., s_L]; s_L is the output layer."""
+    E = sum(0.5 * (s ** 2).sum() for s in states)
+    prev = x
+    for i, s in enumerate(states):
+        drive = prev @ p.Ws[i] if p.bs[i] is None else prev @ p.Ws[i] + p.bs[i]
+        E = E - (s * drive).sum()
+        prev = arch.f(s)
+    return E
 
 
-def eqprop_settle(x, W1, W2, target=None, beta=0.0, dt=0.3, max_steps=500,
-                  settle_patience=30, min_delta=1e-4, h0=None, y0=None, device="cpu"):
-    """Relax (h, y) until per-step movement stops improving for `settle_patience` steps (or max_steps)."""
+def eqprop_settle(x, p, arch, obj=None, target=None, active_vec=None, beta=0.0, dt=0.3,
+                  max_steps=500, settle_patience=30, min_delta=1e-4, init=None,
+                  device="cpu", return_steps=False):
+    """Relax all layers until per-step movement stops improving for `settle_patience` steps.
+
+    Patience rather than an absolute tolerance because the nudge keeps pushing while the cost
+    is unmet, so per-step movement plateaus at a non-zero floor. `return_steps` reports whether
+    the relaxation converged or hit max_steps -- log this as a run-validity gate.
+    """
     with torch.enable_grad():
-        x = x.reshape(x.size(0), -1)
-        h = (torch.zeros(x.size(0), W1.size(1), device=device) if h0 is None else h0.clone()).requires_grad_(True)
-        y = (torch.zeros(x.size(0), W2.size(1), device=device) if y0 is None else y0.clone()).requires_grad_(True)
-        best, since = float("inf"), 0
-        for _ in range(max_steps):
-            gh, gy = torch.autograd.grad(eqprop_energy(x, h, y, W1, W2), [h, y])
-            if target is not None:
-                gy = gy + beta * torch.where(1 - target * y > 0, -target, torch.zeros_like(target))
-            move = (dt * (gh.pow(2).sum() + gy.pow(2).sum()).sqrt()).item()
-            h.data -= dt * gh
-            y.data -= dt * gy
+        x = flatten(x)
+        w = arch.widths
+        if init is None:
+            states = [torch.zeros(x.size(0), w[i + 1], device=device).requires_grad_(True)
+                      for i in range(arch.n_weights)]
+        else:
+            states = [s.clone().requires_grad_(True) for s in init]
+        best, since, used = float("inf"), 0, 0
+        for step in range(max_steps):
+            used = step + 1
+            grads = torch.autograd.grad(eqprop_energy(x, states, p, arch), states)
+            grads = list(grads)
+            if target is not None and beta:
+                grads[-1] = grads[-1] - beta * output_error(states[-1], target, obj, active_vec)
+            move = (dt * sum(g.pow(2).sum() for g in grads).sqrt()).item()
+            for s, g in zip(states, grads):
+                s.data -= dt * g
             if move < best - min_delta:
                 best, since = move, 0
             else:
                 since += 1
             if since >= settle_patience:
                 break
-    return h.detach(), y.detach()
+    out = [s.detach() for s in states]
+    return (out, used, used >= max_steps) if return_steps else out
 
 
-def eqprop_update(x, y_labels, W1, W2, opt, beta=0.3, dt=0.3, max_steps=500, settle_patience=30, device="cpu"):
-    """One EqProp weight update for a batch. Labels -> ±1 targets. Updates W1, W2 in place."""
-    x = x.reshape(x.size(0), -1)
-    target = torch.full((x.size(0), W2.size(1)), -1.0, device=device)
-    target.scatter_(1, y_labels.unsqueeze(1), 1.0)
-    h_f, y_f = eqprop_settle(x, W1, W2, dt=dt, max_steps=max_steps, settle_patience=settle_patience, device=device)
-    h_n, y_n = eqprop_settle(x, W1, W2, target, beta, dt, max_steps, settle_patience, h0=h_f, y0=y_f, device=device)
+def eqprop_update(x, y_labels, p, opt, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, beta=0.3, dt=0.3,
+                  max_steps=500, settle_patience=30, active=None, gate_frac=None,
+                  device="cpu", return_delta=False, freeze=()):
+    """One EqProp weight update. `gate_frac` (advisor point 4) updates only the hidden nodes
+       that move MOST under the nudge, in the TOP hidden layer, and freezes the rest."""
+    x = flatten(x)
+    n = x.size(0)
+    target = make_target(y_labels, arch, obj, device=device)
+    av = active_vector(active, arch, device=device)
+
+    free = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
+                         settle_patience=settle_patience, device=device)
+    nudged = eqprop_settle(x, p, arch, obj=obj, target=target, active_vec=av, beta=beta,
+                           dt=dt, max_steps=max_steps, settle_patience=settle_patience,
+                           init=free, device=device)
+
+    tensors = p.tensors()
+    g_f = torch.autograd.grad(eqprop_energy(x, free, p, arch), tensors)
+    g_n = torch.autograd.grad(eqprop_energy(x, nudged, p, arch), tensors)
+    grads = [(gn - gf) / (beta * batch_scale(obj, n)) for gn, gf in zip(g_n, g_f)]
+
+    name_of = {id(t): nm for nm, t in p.named().items() if t is not None}
+    if gate_frac is not None and arch.n_hidden >= 1:
+        li = arch.n_hidden - 1                                   # top hidden layer
+        shift = (nudged[li] - free[li]).abs().mean(0)
+        k = max(1, int(gate_frac * shift.numel()))
+        mask = torch.zeros_like(shift)
+        mask[torch.topk(shift, k).indices] = 1.0
+        for j, t in enumerate(tensors):
+            nm = name_of.get(id(t), "")
+            if nm == f"W{li + 1}":
+                grads[j] = grads[j] * mask.unsqueeze(0)          # columns  [in, hidden]
+            elif nm == f"W{li + 2}":
+                grads[j] = grads[j] * mask.unsqueeze(1)          # rows     [hidden, out]
+            elif nm == f"b{li + 1}":
+                grads[j] = grads[j] * mask
+
     opt.zero_grad()
-    gW1_f, gW2_f = torch.autograd.grad(eqprop_energy(x, h_f, y_f, W1, W2), [W1, W2])
-    gW1_n, gW2_n = torch.autograd.grad(eqprop_energy(x, h_n, y_n, W1, W2), [W1, W2])
-    W1.grad = (gW1_n - gW1_f) / (beta * x.size(0))
-    W2.grad = (gW2_n - gW2_f) / (beta * x.size(0))
+    for t, g in zip(tensors, grads):
+        t.grad = torch.zeros_like(g) if name_of.get(id(t)) in freeze else g
     opt.step()
+    if return_delta:
+        sat = float(arch.f(free[arch.n_hidden - 1]).abs().gt(0.95).float().mean()) \
+            if arch.n_hidden >= 1 else 0.0
+        return dict(shift=float(sum((n_ - f_).abs().mean()
+                                    for n_, f_ in zip(nudged[:-1], free[:-1]))),
+                    saturation=sat)
 
 
-def eqprop_predict(x, W1, W2, dt=0.3, max_steps=500, settle_patience=30, device="cpu"):
-    """Free-phase prediction: settle with no target, take argmax of the output."""
-    _, y = eqprop_settle(x, W1, W2, dt=dt, max_steps=max_steps, settle_patience=settle_patience, device=device)
-    return y.argmax(1)
+def eqprop_predict(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=500, settle_patience=30,
+                   device="cpu", raw=False):
+    states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
+                           settle_patience=settle_patience, device=device)
+    return states[-1] if raw else states[-1].argmax(1)
 
 
-def eqprop_update_gated(x, y_labels, W1, W2, opt, beta=0.3, dt=0.3, max_steps=500,
-                        settle_patience=30, gate_frac=0.3, device="cpu"):
-    """Like eqprop_update, but only updates the `gate_frac` hidden nodes that move MOST under the nudge
-       (the nodes 'responsible' for this stimulus). The rest are frozen this step. (Advisor point 4.)"""
-    x = x.reshape(x.size(0), -1)
-    target = torch.full((x.size(0), W2.size(1)), -1.0, device=device)
-    target.scatter_(1, y_labels.unsqueeze(1), 1.0)
-    h_f, y_f = eqprop_settle(x, W1, W2, dt=dt, max_steps=max_steps, settle_patience=settle_patience, device=device)
-    h_n, y_n = eqprop_settle(x, W1, W2, target, beta, dt, max_steps, settle_patience, h0=h_f, y0=y_f, device=device)
-    shift = (h_n - h_f).abs().mean(0)                                    # per-node responsibility  [hidden]
-    k = max(1, int(gate_frac * shift.numel()))
-    mask = torch.zeros_like(shift)
-    mask[torch.topk(shift, k).indices] = 1.0                            # 1 for selected nodes, 0 for frozen
-    opt.zero_grad()
-    gW1_f, gW2_f = torch.autograd.grad(eqprop_energy(x, h_f, y_f, W1, W2), [W1, W2])
-    gW1_n, gW2_n = torch.autograd.grad(eqprop_energy(x, h_n, y_n, W1, W2), [W1, W2])
-    W1.grad = ((gW1_n - gW1_f) / (beta * x.size(0))) * mask.unsqueeze(0)  # gate hidden columns of W1 [in, hidden]
-    W2.grad = ((gW2_n - gW2_f) / (beta * x.size(0))) * mask.unsqueeze(1)  # gate hidden rows of W2   [hidden, out]
-    opt.step()
+def eqprop_features(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=500, settle_patience=30,
+                    device="cpu"):
+    states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
+                           settle_patience=settle_patience, device=device)
+    return arch.f(states[arch.n_hidden - 1])
 
 
-def eqprop_generate(W1, W2, y_class, n, gen_steps=200, dt=0.1, device="cpu"):
-    """Generate n synthetic inputs for `y_class`: clamp the output to that class and settle (x, h) from noise.
-       Note: this simple energy is a weak generator; inspect the samples before trusting synthetic replay."""
-    out_dim, in_dim, hidden = W2.size(1), W1.size(0), W1.size(1)
-    y = torch.full((n, out_dim), -1.0, device=device)
-    y[:, y_class] = 1.0
-    x = torch.rand(n, in_dim, device=device, requires_grad=True)
-    h = torch.zeros(n, hidden, device=device, requires_grad=True)
-    with torch.enable_grad():
-        for _ in range(gen_steps):
-            gx, gh = torch.autograd.grad(eqprop_energy(x, h, y, W1, W2), [x, h])
-            x.data -= dt * gx
-            h.data -= dt * gh
-            x.data.clamp_(0, 1)
-    return x.detach()
+def eqprop_free_output_scale(x, p, arch=UNIFIED_ARCH, **kw):
+    """Safety gate: how large are the free-phase output units? If they settle far below the
+       target magnitude, the loss will drive large weights and saturate the network."""
+    states = eqprop_settle(x, p, arch, **kw)
+    y = states[-1]
+    return dict(mean_abs=y.abs().mean().item(), max_abs=y.abs().max().item())

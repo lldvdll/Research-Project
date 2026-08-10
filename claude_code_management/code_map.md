@@ -350,7 +350,7 @@ set written for a 2-layer net is harmless on a deeper one.
 
 | | |
 |---|---|
-| **`stop_threshold` is a guess** | `0.9` is a placeholder. The protocol says both tasks train to a fixed accuracy; it does not say which. Script 40/43 should settle it, and until then it is the one protocol number not derived from anything. |
+| **`stop_threshold` is a guess** | `0.9` is a placeholder. The protocol says both tasks train to a fixed accuracy; it does not say which. Scripts 41 and 43 should settle it between them — it has to sit below the joint ceiling 41 finds. Until then it is the one protocol number not derived from anything. |
 | **Per-rule learning rates are unset** | `Protocol.lr` is empty, so each rule falls back to `METHOD_DEFAULTS` — values inherited from the legacy era. The protocol requires a per-rule grid search matched on steps-to-threshold. **Script 43 does this, and nothing comparative should be believed before it.** |
 | **`BOGACZ_ARCH` is stale** | Encodes experiment 30's `(32,32)`/`out_dim=10` reading; experiment 34 later read the paper as 784-32-32-32-5. Left uncorrected on purpose so the archived scripts still mean what they meant — the comment now records both readings. Do not use for new work. |
 | **Experiment 15 is dead** | Calls `run_classil` positionally against the old signature and unpacks three values from what is now a dict. Left in `experiments/` because its question is live in the plan. |

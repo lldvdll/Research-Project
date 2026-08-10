@@ -56,7 +56,7 @@ class Protocol:
     fashion: bool = False
 
     # ---- network ------------------------------------------------------------
-    # H IS NOT DECIDED. Script 40 sets it on capacity grounds and nothing else, so there is no
+    # H IS NOT DECIDED. Script 41 sets it on capacity grounds and nothing else, so there is no
     # default here -- inheriting a width from an old experiment is exactly the failure this
     # project is recovering from. `arch` raises with instructions if it is still None.
     hidden: object = None
@@ -105,7 +105,7 @@ class Protocol:
     def arch(self):
         if self.hidden is None:
             raise ValueError(
-                "Protocol.hidden is not set. The hidden width is decided by script 40 on "
+                "Protocol.hidden is not set. The hidden width is decided by script 41 on "
                 "capacity grounds, not inherited from an earlier experiment. Pass it "
                 "explicitly: replace(PROTOCOL, hidden=64)."
             )

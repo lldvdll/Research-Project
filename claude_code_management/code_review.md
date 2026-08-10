@@ -1,7 +1,8 @@
 # Code review — `src/`
 
-Review 2026-08-10. All eleven modules read. **B1, B2 and B3 are fixed and verified**; everything
-below them is open.
+Review 2026-08-10/11. All modules read. **Every finding is closed** — see the Status table at the
+end for what was fixed, what was left alone deliberately, and the two protocol numbers that are
+still placeholders.
 
 **Status key:** `TRACED` — followed in the source, not executed · `VERIFIED` — reproduced by
 running · `FIXED` — corrected and re-verified · `DESIGN` — not a bug, a decision to make.
@@ -237,7 +238,7 @@ to `experiments/archive/bogacz_reproduction/` alongside it. See `experiments/arc
 
 **15 was left in place** — it is not part of either archived line and its question (matched-accuracy
 forgetting) is live in the current plan. It needs a runner call updated to the current signature,
-not archiving. Not done: no experiment is being re-run, and script 40-something will ask this
+not archiving. Not done: no experiment is being re-run, and script 44 will ask this
 question fresh.
 
 ---

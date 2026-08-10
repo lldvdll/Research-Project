@@ -7,12 +7,21 @@ Maintenance: new information is *added*; existing entries are *amended in place*
 finding contradicts an earlier one, the old claim is **kept and marked corrected**, never silently
 deleted. Reference keys `[Rn]` resolve in §12. Terms are defined in §13.
 
-*Consolidated 2026-08-10 from fourteen superseded documents in `archive/chat_logs/`. Numbers
-carried over from those documents are second-hand and marked `≈`; they are **not citable** until
-re-derived from logged arrays.*
+*Consolidated 2026-08-10 from fourteen superseded documents in `archive/chat_logs/`, then extended
+the same day with experiments 13–34, which no source document recorded (§6.6).*
 
-**Unresolved contradictions between the source documents are listed in §9.3. Read that section
-before trusting any number in §6.**
+> ## A line has been drawn under all previous work
+>
+> **Nothing in §6 is evidence.** Prior results inform direction and experiment design; they do not
+> support claims. Any statement that reaches a slide is backed by a **fresh experiment, designed for
+> that slide, run under the new protocol** — not by a number recovered from here.
+>
+> This is deliberate. The prior work used an inconsistent array of setups (§6.6.2), several runs
+> contradict each other or their own documentation (§6.6.3, §9.3), the reproduction failed with the
+> cause unidentified (§6.5), and the code that produced all of it is not trusted (§6.7).
+>
+> Sections marked **DO NOT TRUST** carry sweeping conclusions that every archived document repeats
+> and that later work contradicts. They are kept for their reasoning, not their verdicts.
 
 ---
 
@@ -260,7 +269,13 @@ suppression, worse calibration. *You cannot win both with the same knob.* A **ge
 resolves it: p(x|y) per class, no negatives at all, common scale from every class model being a
 normalised density over the same input space rather than from a shared denominator.
 
-### 4.5 Where does forgetting live — trunk or head? `[EMPIRICAL, indirect]`
+### 4.5 Where does forgetting live — trunk or head? `[EMPIRICAL, indirect]` — **DO NOT TRUST**
+
+> ⚠️ **This section is a sweeping claim and is now contested. Do not carry it onto a slide.**
+> Every archived document asserts it; **experiment 26 (§6.6.3) points the other way**, reporting
+> that hidden-layer freezing recovers a large amount *once suppression is masked off*. Neither the
+> claim below nor the contradiction is verified. If the talk needs an answer to "trunk or head", it
+> gets a **fresh experiment designed for that slide**. Retained for the reasoning, not the verdict.
 
 Three independent observations already in our own data point at the **output layer** as the dominant
 damage site in this setup:
@@ -400,7 +415,12 @@ can be re-derived, because this script never logs its arrays — see D2 in §9.3
 plateau/recovery with a very wide thin-line spread (buffer-composition variance); eqprop = noisy,
 scattered runs; pc = gradual decay, tightly clustered runs.
 
-### 6.3 ⚑ The two orderings that disagree — this is the finding
+### 6.3 The two orderings that disagree — **DO NOT TRUST**
+
+> ⚠️ **Sweeping claim, unverified, and produced by a script that has never been run in its current
+> form** (§6.6.1). The method ordering below may also be an artefact of output structure rather than
+> of the learning rules, which is exactly what experiment 25 was built to test. Keep it as a
+> hypothesis about what to look for; do not present it.
 
 - **Trade-off efficiency** (area above the diagonal): **pc > replay > backprop > eqprop**
 - **Final task-1 retention:** **replay ≫ pc > eqprop > backprop**
@@ -457,6 +477,136 @@ unreadable.
 hyperparameters. The claim under test is qualitative — *does PC forget less than BP under matched
 conditions?* — so this is a **conceptual replication**, which is the scientifically standard framing.
 See §8.
+
+**Second ruling (2026-08-10, after recovering §6.6): the reproduction is closed.** A later attempt
+(`34_reproduce_bogacz_fig4d.py`) rebuilt the configuration from their published YAML rather than the
+paper text and still produced results inconsistent with the paper. The cause was never found. It
+costs hours per run. **Do not re-run it.** The forward path is to close the gap between our own
+cheap 2×5 setup and their configuration one axis at a time, so their claims can be explored
+efficiently. The axes are listed in §6.6.4.
+
+---
+
+## 6.6 Recovered experiment series 13–34 — **prior work, treated as unreliable**
+
+⚠️ **Read this framing first.** None of the fourteen archived source documents mentions any of these
+experiments; they were written after the last handoff was recorded. They were recovered by reading
+`experiments/` directly on 2026-08-10.
+
+**Status of everything in this section: informative, not evidential.** These runs used an
+inconsistent array of setups (§6.6.2), several contradict each other (§6.6.3), the reproduction
+failed, and the code they ran on is not trusted (§6.7). **They inform direction and experiment
+design. No claim from them goes on a slide.** Anything worth asserting gets a fresh experiment,
+designed for the slide that needs it, at the time that slide is built.
+
+### 6.6.1 What was asked, and whether it ran
+
+| # | Question it asks | Ran? |
+|---|---|---|
+| 11 | Four rules across random digit pairings, 2 tasks × 2 classes | **no** — only `_old.png` from a version no longer in the repo |
+| 12 | The same on 2 tasks × 5 classes | **no** — `_old.png` only |
+| 13 | Achievable accuracy vs hidden width and number of classes (the ceiling) | yes |
+| 14 | Which EqProp learning rate matches backprop's learning *speed*; does β affect speed | yes |
+| 15 | Forgetting when every method is trained to the *same accuracy standard* | yes |
+| 20 | Is the damage in the hidden layer or the output layer (mask × NCM factorial) | yes |
+| 21 | At what width does representation drift start to contribute | yes |
+| 22 | Does keeping the internal representation make any difference (freeze W1 / W2 / mask) | yes |
+| 23 | Is MNIST too easy — does a harder dataset widen the useful width range | yes |
+| 24 | Can each rule learn at all under each output structure (joint, safety gate) | yes |
+| 25 | How much of the rule difference is output *structure* rather than credit assignment | yes |
+| 26 | What remains after masking — mask × freeze-W1 factorial × 3 rules, hidden 16 | yes |
+| 27 | The same factorial at hidden 64 | **no** |
+| 30, 32, 33 | Reproduction attempts, superseded | 30 only |
+| 34 | Reproduction from their published YAML | yes — **failed to match the paper** |
+
+### 6.6.2 ⚑ The setups are not comparable to each other
+
+This is the central problem with the series and the reason a coherent story cannot be assembled from
+it. Nothing here was held fixed across experiments:
+
+| Axis | Values used across 13–34 |
+|---|---|
+| Classes per task | 2 (11, 15, 20) · 2 **and** 5 (21) · 5 (12, 22, 23, 25, 26, 27) |
+| Hidden width | 64 (11, 15, 20, 24, 27) · 16 (25, 26) · sweep 2–128 (13, 21, 23) · 16 and 64 (22) |
+| Biases | **off** (20, 21) · **on** (22, 23, 24, 25, 26, 27) |
+| Backprop learning rate | 0.05 · **0.1** (22 only) |
+| Task-1 stopping criterion | 0.80 (15, 20) · 0.75 (21) · 0.70 (22, 23, 25, 26, 27) |
+| Task-2 budget | matched-accuracy early stop (15) · 300 fixed (22, 23) · 250 fixed (26, 27) |
+| Dataset | MNIST 14×14 · both (23) · Fashion-MNIST (34) |
+| Seeds | 8 or 10 |
+| Output structure | ReLU+CE vs tanh+SE vs hinge (≤15) · standardised linear+SE 1/0 (≥24) |
+
+**Consequence:** no two of these experiments can be placed on the same axis, and a number quoted
+from one does not transfer to another. The fresh series must fix a single protocol first and vary
+one thing at a time.
+
+### 6.6.3 Recorded outcomes and the conflicts between them
+
+Reported here so the work is not repeated blindly. **Every figure is unverified.**
+
+- **Exp 26** (hidden 16, 2×5) reports that masking alone recovers task 1 to ≈30% while masking
+  **plus** freezing W1 recovers it to ≈65%, against a pre-switch peak of ≈84%. If that held, the two
+  pathologies would **interact** rather than being independent, and a learning rule would have a real
+  budget to compete for — **contradicting §4.5 and §6.3, which every archived document asserts.** It
+  also reports PC *behind* backprop in that cell, and PC *ahead* of backprop in the unmasked-frozen
+  cell. **Unverified; both readings are provisional.**
+- **Exp 22's prose contradicts its own saved arrays.** Its docstring quotes a freeze-W1 gain of
+  +3.3 points at hidden 16 and +0.1 at 64; the saved `.npz` gives ≈+0.0 at both. The masked figures
+  roughly agree. **Experiments 25 and 26 selected hidden = 16 on the strength of the quoted number.**
+- **Exp 23 refuted its own hypothesis.** It expected Fashion-MNIST to widen the range of widths where
+  the hidden layer matters. The saved arrays show the opposite — the freeze-W1 gap is smaller on
+  Fashion at nearly every width, and trained-NCM-minus-untrained-NCM goes negative. **The proposed
+  dataset switch is not supported by its own data.**
+- **Exp 21 invalidated exp 20's probe.** It records that exp 20's NCM arm sat near ceiling
+  throughout, including before task 2 was trained, so it had no dynamic range and could not have
+  detected drift. Exp 21 added a random-init floor and frozen prototypes to fix this.
+- **Exp 24** reports the three rules landing within ≈2 points of each other under linear + squared
+  error with a 1/0 target — the tightest agreement of the four output structures tested — and reports
+  EqProp failing under softmax with heavy saturation. This is the empirical case for the
+  standardisation in §7.1. **Still unverified, but it is the most directly useful result recovered.**
+- **Exp 34** records a possible error in the published source: [R1]'s `learn_code` slices
+  `(outputs - target)[:, 0:-1]`, excluding the last output unit from the loss while still including
+  it at test time. Reproducing that literally collapses the model. **This is a claim about a
+  published paper and must be verified against the repository before it is repeated anywhere.**
+
+### 6.6.4 Closing the gap to [R1]'s configuration
+
+Recovered from the stored config in `34_reproduce_bogacz_fig4d.npz`, traced to
+`base-shuffle-task-5-FashionMNIST.yaml`. These are the axes on which our cheap 2×5 setup differs
+from theirs — the list to work through one at a time rather than by attempting the whole
+reproduction again:
+
+| Axis | Theirs | Ours (2×5) |
+|---|---|---|
+| Input | 784 (28×28) | 196 (14×14) |
+| Depth | 3 hidden layers of 32 | 1 hidden layer |
+| Activation | sigmoid | tanh |
+| Biases | off | on (post-24) |
+| Output layer | 5 shared units — **Domain-IL** | 10 units (Class-IL) or 5 (Domain-IL) |
+| Training data | 600 images per class | full split |
+| Batch | 500 | 32 |
+| Loss reduction | **summed** over batch and outputs | mean |
+| Schedule | alternating, 4 iterations per task, 84 analysed | single switch |
+| Inference | T = 64 steps, x_lr 0.1, discount 0.9 | ~50 fixed steps |
+| Dataset | Fashion-MNIST | MNIST |
+
+The summed-vs-mean reduction alone explains why their learning rates (1e-4–5e-3) and ours
+(5e-3–5e-1) were never comparable units.
+
+## 6.7 Status of the codebase — **not trusted**
+
+Before the reproduction work, `src/` handled **single-layer networks only**. The reproduction
+required arbitrary depth, and the code was refactored to provide it — introducing the `Arch` /
+`Objective` dataclasses and a `run_classil` runner that the archived documents do not describe.
+**The reproduction then failed, and the cause was never identified, so the refactored code cannot be
+trusted.**
+
+Consequences: the interface contract recorded in §11.2 (`make_* → (train_step, predict)`) describes
+the *pre-refactor* code and is stale. Any result in §6.6 was produced by the untrusted code.
+
+**Pending work, ahead of or during the first experiment of the new series:** read the current
+modules, check them, and simplify — removing complicated interdependencies that could break core
+functions. Not now; this is a planning phase.
 
 ---
 
@@ -662,7 +812,12 @@ Adding a model = one new `make_*`; experiment scripts change only the `methods` 
 **Do not reintroduce:** wandb, Optuna, persistent HPO infrastructure, class hierarchies, a shared
 `harness.py`. All were built, found to cost more momentum than they saved, and deliberately deleted.
 
-### 11.2 Verified equations → code
+### 11.2 Equations → code — **describes the pre-refactor codebase; see §6.7**
+
+> ⚠️ **Stale.** This records the single-layer code as it stood before the depth refactor. The
+> current `src/` uses `Arch` / `Objective` dataclasses and a `run_classil` runner, and the
+> `make_* → (train_step, predict)` contract below no longer describes it. The equations are still
+> the right reference for *what the rules do*; the interface description is not.
 
 **Predictive coding** — `src/predictive_coding.py`, gradients finite-difference verified to ≈1e-9:
 

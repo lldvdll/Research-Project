@@ -38,19 +38,39 @@ confirm its figure is unchanged, before the next change starts.
 
 ## Project facts
 
-- Data: MNIST downsampled to 14×14 (196 inputs), scaled [0,1]. **5×2 split for both scenarios.**
-- Network: 196 → 64 → 10 (Class-IL) or 196 → 64 → 2 (Domain-IL). One hidden layer, tanh,
-  squared error. Identical across all four learning rules — only the rule varies.
+- Data: MNIST downsampled to 14×14 (196 inputs), scaled [0,1]. **2×5 split — 2 tasks, 5 classes
+  each — for both scenarios.**
+- Network: 196 → H → 10 (Class-IL) or 196 → H → 5 (Domain-IL). One hidden layer, tanh, squared
+  error. Identical across all four learning rules — only the rule varies.
+- **The hidden width H is not decided.** Prior work suggests the answer matters a great deal and
+  disagrees with itself about it (`knowledge_base.md` §6.6.3). It is settled by a fresh experiment,
+  not by inheriting a number.
 - Optimiser: plain SGD everywhere. Batch 32. Learning rate grid-searched **per rule**.
-- Scenarios: Class-IL is primary, Domain-IL also run. Only the output layer differs between them.
+- Scenarios: Class-IL is primary, Domain-IL also run. Only the output layer differs between them —
+  and Domain-IL at 2×5 with 5 shared outputs is structurally Song & Bogacz's Fig 4d.
 - Controls on every forgetting run: backprop (negative) and replay (positive).
 - Four methods: `backprop`, `replay`, `pc`, `eqprop`.
 
+## Evidence standard — the line under previous work
+
+**No prior result is evidence.** Everything before this point used inconsistent setups, contains
+internal contradictions, and ran on code that is not trusted (`knowledge_base.md` §6.6, §6.7).
+Prior work informs *direction and experiment design only*.
+
+Any claim that reaches a slide is backed by a **fresh experiment, designed for that slide, run under
+the new protocol**. Do not carry a number forward from `knowledge_base.md` §6. Do not re-run an old
+experiment to settle a question — redesign it for the slide that needs it.
+
+**Do not re-run the Song & Bogacz reproduction** (§6.5). It costs hours, failed, and the cause was
+never found.
+
 ## Code conventions
 
-- Interface contract: every `make_*` returns `(train_step, predict)`. `train_step(x, y)` does one
-  update. `predict(x, raw=False)` returns class indices, or raw pre-argmax outputs when `raw=True`.
-- Adding a model means one new `make_*` function. Experiment scripts change only the `methods` dict.
+- **The current interface is not documented and the code is not trusted.** `src/` was refactored for
+  arbitrary depth during the failed reproduction and now uses `Arch` / `Objective` dataclasses and a
+  `run_classil` runner. The older `make_* → (train_step, predict)` contract describes the
+  pre-refactor code only. Read the modules before relying on either. A check-and-simplify pass is
+  pending, ahead of or during the first experiment of the new series.
 - One script per experiment. One figure per script, named from `__file__`.
 - Metric definitions live in one module and are imported, never redefined per script.
 - Keep it minimal. wandb, Optuna, class hierarchies and a shared `harness.py` were all tried and

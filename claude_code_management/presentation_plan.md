@@ -29,10 +29,21 @@ PC. That is its job, and deviations are justified against it.**
 
 **Scripts are numbered sequentially from 40** for this phase. Name: `NN_question_key-detail.py`.
 
-**Script order tracks slide order.** If they diverge, the project is not linear and something is
-wrong. One inversion is accepted and stated: **script 40 (width) runs first because it fixes H, but
-is presented at slide 11**, since opening the talk with a capacity sweep would be a bad talk.
-Everything else is monotonic.
+**Two blocks, and within the second, script order tracks slide order exactly.**
+
+- **Calibration — 40, 41.** The protocol has two free constants: the hidden width H and the
+  per-rule learning rates. Neither can be inherited and neither is a finding, so each is measured
+  by its own experiment first and **reported as what it is** — parameter-finding, on its own slide.
+  It may end up a footnote; for now it is shown, because a comparison whose settings were chosen
+  invisibly is not a controlled comparison.
+- **Narrative — 42 onward.** Script number and slide number both increase, with no exceptions.
+
+**Parameters, then results, then mechanism.** Nothing interpretive runs before the protocol has its
+numbers. Mechanism work (46–49) comes after the results it explains (44–45), not alongside them.
+
+Earlier drafts numbered every script in execution order and accepted "one inversion", which put the
+first script written on the eleventh slide. Splitting the blocks removes the exception rather than
+excusing it.
 
 **Story order beats priority order.** The deck runs in the order the argument runs. A low-priority
 slide sitting mid-deck is fine and is framed as an **open question**, so the trajectory is visible
@@ -78,7 +89,7 @@ Defined **once**, in one object, imported by every script. A script varies one l
 | Scenarios | **Class-IL** — 10 outputs, all active · **Domain-IL** — 5 outputs shared. Both run, both reported; where they differ is analysis material |
 | Architecture | 196 → H → out, tanh on the way out, biases on |
 | Depth | **1 hidden layer throughout.** Depth is a separate later phase, not an axis of the main comparison |
-| Output structure | linear + squared error, one-hot 1/0 — confirmed by script 43 before anything depends on it |
+| Output structure | linear + squared error, one-hot 1/0 — confirmed by script 41 before anything depends on it |
 | Optimiser | plain SGD, batch 32 |
 | Learning rate | grid-searched **per rule**, matched on **steps-to-threshold**, not on the LR value |
 | Task 1 and Task 2 | **both trained to a fixed accuracy threshold**, not a fixed iteration budget, so faster rules do not get extra opportunity to forget |
@@ -131,17 +142,17 @@ Claim type: **L** literature, cited · **S** structural, derived · **R** result
 | # | Slide | Pri | Claim | Figure from |
 |---|---|---|---|---|
 | 1 | Title and question | H | — | — |
-| 2 | Catastrophic forgetting: here it is | H | R | **41** |
+| 2 | Catastrophic forgetting: here it is | H | R | **42** |
 | 3 | Why brains do not forget like this | H | L | schematic |
 | 4 | Continual learning scenarios, and our choice | H | L + S | schematic |
 | 5 | **The output layer: where the downward push comes from** | H | S | worked example |
 | 6 | What a learning rule can and cannot change | H | S | schematic |
-| 7 | How much room is there? | H | R | **42** |
+| 7 | How much room is there? | H | R | **43** |
 | 8 | Energy-based learning as a hypothesis about cortex | H | L | schematic |
 | 9 | What actually changes: backprop, PC, EqProp | H | S + L | diagram |
 | 10 | The interference claim: strong clamp vs weak clamp | H | L | redrawn from [R1] |
-| 11 | Setup, protocol and controls | H | S + R | table + **40** |
-| 12 | Can every rule learn the same problem? | H | R | **43** |
+| 11 | Setup, protocol and controls — including how the width was chosen | H | S + R | table + **40** |
+| 12 | Can every rule learn the same problem, and at what learning rate? | H | R | **41** |
 | 13 | Measuring forgetting | H | S | worked example |
 | 14 | Do the energy-based rules forget less? | H | R | **44** |
 | 15 | Class-IL against Domain-IL: where they differ | M | R | **45** |
@@ -183,12 +194,29 @@ including weight snapshots.
 
 Each row states its **single deviation** from the protocol in §2.
 
+### Calibration — fixes the protocol's two free constants
+
+Run first, before anything comparative. Each produces a number that goes **into** `Protocol`, and
+each is reported as parameter-finding rather than as a result.
+
 | # | Name | Question (one sentence) | Deviation | Slide |
 |---|---|---|---|---|
 | 40 | `40_accuracy_vs_hidden_width_joint` | How does accuracy vary with hidden width, and what width does this problem need? | joint training, no task sequence; width swept | 11 |
-| 41 | `41_does_backprop_forget` | Does backprop forget task 1 when task 2 arrives? | backprop only, no controls — a motivating example, not a comparison | 2 |
-| 42 | `42_how_much_room_is_there` | How much of the forgetting survives when the output push is removed, and when the hidden layer is frozen? | loss masked / W1 frozen, backprop only | 7 |
-| 43 | `43_can_each_rule_learn` | Under one shared output structure, can each rule learn the joint problem, and at what learning rate? | joint training, no task sequence | 12 |
+| 41 | `41_can_each_rule_learn` | Under one shared output structure, can each rule learn the joint problem, and at what learning rate? | joint training, no task sequence | 12 |
+
+**Why these two and no others.** H changes what every later experiment measures — script 43's
+freeze-W1 contrast is the clearest case, since the gap it reports is large at small widths and
+close to nothing at large ones. Learning rates must be matched on **steps-to-threshold** rather
+than on the LR value, or a rule that simply trains slower looks like a rule that forgets less.
+Until 41 has run, `Protocol.lr` falls back to legacy-era defaults and **no comparison between
+rules means anything.**
+
+### Narrative — script order tracks slide order
+
+| # | Name | Question (one sentence) | Deviation | Slide |
+|---|---|---|---|---|
+| 42 | `42_does_backprop_forget` | Does backprop forget task 1 when task 2 arrives? | backprop only, no controls — a motivating example, not a comparison | 2 |
+| 43 | `43_how_much_room_is_there` | How much of the forgetting survives when the output push is removed, and when the hidden layer is frozen? | loss masked / W1 frozen, backprop only | 7 |
 | 44 | `44_do_ebm_rules_forget_less` | Do PC and EqProp forget less than backprop in each scenario? | **none — this is the protocol** | 14 |
 | 45 | `45_scenario_contrast` | Where do the metrics disagree between Class-IL and Domain-IL? | none; re-analysis of 44's saved arrays | 15 |
 | 46 | `46_target_alignment_per_rule` | What is each rule's target alignment, and does it track retention? | none; extra measurement during the protocol run | 16 |
@@ -199,10 +227,13 @@ Each row states its **single deviation** from the protocol in §2.
 | 51 | `51_which_layer_does_forgetting_live_in` | With several hidden layers, which one carries the forgetting? | `n_layers` fixed > 1; layers frozen one at a time | 21 |
 | 52 | `52_output_structure_confound` | How much of any rule difference is output structure rather than credit assignment? | output structure swept | 22 |
 
-**Execution order:** 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52.
+**Execution order:** 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52 — the script
+numbers, in order, with no exceptions.
 
-Slide order matches, with the single stated inversion: **40 runs first but is presented at slide 11**,
-because it fixes H for everything and a talk cannot open on a capacity sweep.
+**Slide order within the narrative block** is 2, 7, 14, 15, 16, 17, 18, 19, 20, 21, 22: monotonic.
+The calibration block sits at slides 11–12, where the setting is explained. Nothing is presented
+out of order and nothing is run out of order; the two blocks simply answer different kinds of
+question.
 
 **Depth (50, 51) is a separate phase**, deliberately after the mechanism work. With the metrics
 understood and the tools built, it runs as a **sweep over `n_layers` reporting trends**, not as an
@@ -212,18 +243,18 @@ to be worth asking.
 
 ## 4.1 Pre-committed readings
 
-**41** — if all rules land within a few points under linear + squared error with a 1/0 target, that
-becomes the standard and any later difference is attributable to the rule. If one cannot learn under
-it, the standard changes before it contaminates anything downstream.
+**41** — if all rules land within a few points of each other under linear + squared error with a
+1/0 target, that becomes the standard and any later difference is attributable to the rule. If one
+cannot learn under it, the standard changes **before** it contaminates anything downstream.
 
-**43** — if PC separates from backprop on trajectory and crossover while EqProp does not, the active
+**43** — a large hidden-layer component means a rule had room to help, so 44's outcome is about the
+rule. A near-zero component means no rule could have helped: 44's null is then *explained* rather
+than excused, and that is what regime-dependence looks like from the inside.
+
+**44** — if PC separates from backprop on trajectory and crossover while EqProp does not, the active
 ingredient is full relaxation. If nothing separates in Class-IL but something does in Domain-IL, the
-scenario governs whether the mechanism can express itself. If nothing separates anywhere, 45 must
-show whether there was room to.
-
-**45** — a large hidden-layer component means a rule had room, and 43's outcome is about the rule. A
-near-zero component means no rule could have helped, 43's null is explained rather than excused, and
-that is what regime-dependence looks like from the inside.
+scenario governs whether the mechanism can express itself. If nothing separates anywhere, 43 is what
+says whether there was room to.
 
 **48/49** — if PC's movement concentrates away from task-1-important weights, or its path is more
 direct at equal endpoint, the locality mechanism has support and it carries a metabolic reading. If
@@ -296,8 +327,11 @@ logged; final new-task accuracy is always reported beside retention.
    output-mechanics slide, which slide 6 then depends on.
 2. **References** — `reference_acquisition.md`. Slides 3 and 8 are high priority and currently have
    **no primary sources in the project**.
-3. **Code** — untrusted and undocumented (`knowledge_base.md` §6.7). Verify and refactor before
-   script 40.
+3. ~~**Code** — untrusted and undocumented.~~ **Closed 2026-08-10.** All nine modules reviewed;
+   four glue bugs found and fixed, two of which blocked planned scripts (freezing, and Domain-IL
+   entirely). Protocol object and metric grid built. See `code_review.md` and `code_map.md`.
+   Outstanding: `Protocol.stop_threshold` is a placeholder and `Protocol.lr` is empty — **script 41
+   sets the learning rates and no comparison means anything before it.**
 4. **Report length** — 8,000 words as given; archived documents say ~10,000. Confirm.
 5. **`ref/cl_course/`** — eight lecture PDFs. Worth checking `02_forgetting` and `04_evaluation`
    against the metric grid before it is fixed.

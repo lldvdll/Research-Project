@@ -78,7 +78,7 @@ Defined **once**, in one object, imported by every script. A script varies one l
 | Scenarios | **Class-IL** — 10 outputs, all active · **Domain-IL** — 5 outputs shared. Both run, both reported; where they differ is analysis material |
 | Architecture | 196 → H → out, tanh on the way out, biases on |
 | Depth | **1 hidden layer throughout.** Depth is a separate later phase, not an axis of the main comparison |
-| Output structure | linear + squared error, one-hot 1/0 — confirmed by script 41 before anything depends on it |
+| Output structure | linear + squared error, one-hot 1/0 — confirmed by script 43 before anything depends on it |
 | Optimiser | plain SGD, batch 32 |
 | Learning rate | grid-searched **per rule**, matched on **steps-to-threshold**, not on the LR value |
 | Task 1 and Task 2 | **both trained to a fixed accuracy threshold**, not a fixed iteration budget, so faster rules do not get extra opportunity to forget |
@@ -117,7 +117,7 @@ distribution is the interesting object — see scripts 47–49.
 Two readings the project gets from this. It is a **direct test of [R1] Supp. Fig 7's "less erratic
 updates" claim**, using a measure they did not use. And it is a **metabolic** argument: a rule that
 reaches the same place having spent less is a better hypothesis about a brain under evolutionary
-pressure — which is [R31]'s own framing, and ties the mechanism work back to slide 6.
+pressure — which is [R31]'s own framing, and ties the mechanism work back to slide 8.
 
 ---
 
@@ -277,14 +277,14 @@ units. A learning rule changes the sharing; it cannot change whether the units c
 splits into a part no rule can touch and a part it might — and slide 7 measures how big the second
 part is.
 
-**6 Energy-based learning as a hypothesis about cortex.** Predictive coding as a theory of cortical
+**8 Energy-based learning as a hypothesis about cortex.** Predictive coding as a theory of cortical
 function — continual prediction, prediction-error signalling, mapping onto canonical microcircuitry.
 Locality: each synapse updates from the two neurons it connects; no separate backward pass, no
 weight transport. Honest counterweight [R3]: approximately symmetric weights and signed error
 signals are still required, so this is a *different paradigm*, not simply a more plausible one. The
 energy is never computed by the network — it is a Lyapunov function used by us.
 
-**12 Measuring forgetting.** The metric grid, with one worked example. Traps stated: the flat line at
+**13 Measuring forgetting.** The metric grid, with one worked example. Traps stated: the flat line at
 100/n_classes is the collapse floor, not chance; accuracy is a threshold readout, so raw outputs are
 logged; final new-task accuracy is always reported beside retention.
 
@@ -294,7 +294,7 @@ logged; final new-task accuracy is always reported beside retention.
 
 1. **Slide 5's MSE derivation** — write out output suppression for squared error in full. Blocks the
    output-mechanics slide, which slide 6 then depends on.
-2. **References** — `reference_acquisition.md`. Slides 3 and 6 are high priority and currently have
+2. **References** — `reference_acquisition.md`. Slides 3 and 8 are high priority and currently have
    **no primary sources in the project**.
 3. **Code** — untrusted and undocumented (`knowledge_base.md` §6.7). Verify and refactor before
    script 40.

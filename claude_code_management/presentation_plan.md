@@ -20,7 +20,19 @@ of the same question. Two questions means two scripts. **If a script's name is t
 experiment is too complicated.** Multiple analyses of the same run are separate scripts reading the
 same saved arrays — which is why weights and arrays are always saved.
 
+**One deviation at a time.** Every script states its **single** deviation from the protocol in §2, in
+its docstring and on its slide — "the protocol, with the loss masked", "the protocol, with
+`n_layers` swept". Nothing varies two things at once. This is what keeps each experiment's question
+legible without re-explaining the whole setting, and it is what makes the audience able to follow a
+sequence of figures. **The protocol exists to give a fair comparison of backprop, replay, EqProp and
+PC. That is its job, and deviations are justified against it.**
+
 **Scripts are numbered sequentially from 40** for this phase. Name: `NN_question_key-detail.py`.
+
+**Script order tracks slide order.** If they diverge, the project is not linear and something is
+wrong. One inversion is accepted and stated: **script 40 (width) runs first because it fixes H, but
+is presented at slide 11**, since opening the talk with a capacity sweep would be a bad talk.
+Everything else is monotonic.
 
 **Story order beats priority order.** The deck runs in the order the argument runs. A low-priority
 slide sitting mid-deck is fine and is framed as an **open question**, so the trajectory is visible
@@ -119,41 +131,48 @@ Claim type: **L** literature, cited · **S** structural, derived · **R** result
 | # | Slide | Pri | Claim | Figure from |
 |---|---|---|---|---|
 | 1 | Title and question | H | — | — |
-| 2 | Catastrophic forgetting: the problem | H | R + L | **42** |
+| 2 | Catastrophic forgetting: here it is | H | R | **41** |
 | 3 | Why brains do not forget like this | H | L | schematic |
 | 4 | Continual learning scenarios, and our choice | H | L + S | schematic |
-| 5 | What a learning rule can and cannot change | H | S | schematic |
-| 6 | Energy-based learning as a hypothesis about cortex | H | L | schematic |
-| 7 | What actually changes: backprop, PC, EqProp | H | S + L | diagram |
-| 8 | The interference claim: strong clamp vs weak clamp | H | L | redrawn from [R1] |
-| 9 | How big a network does this problem need? | M | R | **40** |
-| 10 | Can every rule learn the same problem? | H | R | **41** |
-| 11 | Setup, protocol and controls | H | S | table |
-| 12 | Measuring forgetting | H | S | worked example |
-| 13 | Do the energy-based rules forget less? | H | R | **43** |
-| 14 | Class-IL against Domain-IL: where they differ | M | R | **44** |
-| 15 | Where does forgetting live, and how much room was there? | H | R | **45** |
+| 5 | **The output layer: where the downward push comes from** | H | S | worked example |
+| 6 | What a learning rule can and cannot change | H | S | schematic |
+| 7 | How much room is there? | H | R | **42** |
+| 8 | Energy-based learning as a hypothesis about cortex | H | L | schematic |
+| 9 | What actually changes: backprop, PC, EqProp | H | S + L | diagram |
+| 10 | The interference claim: strong clamp vs weak clamp | H | L | redrawn from [R1] |
+| 11 | Setup, protocol and controls | H | S + R | table + **40** |
+| 12 | Can every rule learn the same problem? | H | R | **43** |
+| 13 | Measuring forgetting | H | S | worked example |
+| 14 | Do the energy-based rules forget less? | H | R | **44** |
+| 15 | Class-IL against Domain-IL: where they differ | M | R | **45** |
 | 16 | Target alignment: testing their mechanism | M | R + L | **46** |
 | 17 | Which weights move when a task is learned? | M | R | **47** |
 | 18 | Which weights move during continual learning? | M | R | **48** |
 | 19 | Is the learning path efficient? | M | R + L | **49** |
 | 20 | Open question: does depth change the answer? | O | R + L | **50** |
-| 21 | Open question: is the difference output structure, not the rule? | O | R | **51** |
-| 22 | Open question: can prediction error gate plasticity? | O | S | — |
-| 23 | Other energy-based models | O | L | — |
-| 24 | Limitations and what is not shown | H | S | — |
-| 25 | Next steps and timeline | H | — | — |
+| 21 | Open question: which layer does forgetting live in? | O | R + L | **51** |
+| 22 | Open question: is it the output structure, not the rule? | O | R | **52** |
+| 23 | Open question: can prediction error gate plasticity? | O | S | — |
+| 24 | Other energy-based models | O | L | — |
+| 25 | Limitations and what is not shown | H | S | — |
+| 26 | Next steps and timeline | H | — | — |
 
-**Story check.** 1–2 pose the problem. 3 says brains solve it and names three mechanisms — local
-plasticity, replay, consolidation — so the talk's question becomes *what can the first do alone*.
-4–5 fix the setting and state the split that makes the target answerable. 6–8 introduce the
-candidate and its claim. 9–12 establish that the test is fair and say how it is measured. 13–15 are
-the result and its decomposition. 16–19 are mechanism, ending on the metabolic reading that returns
-to slide 6. 20–23 are the open questions, in the order they arise. 24–25 close.
+**Story check.** 1–2 pose the problem with a plain example. 3 says brains solve it and names three
+mechanisms — local plasticity, replay, consolidation — so the talk's question becomes *what can the
+first do alone*, which is also why replay is the positive control rather than a competitor. 4 fixes
+the setting. **5 explains the output mechanics, 6 draws the consequence — a rule cannot touch that
+part — and 7 measures how much is left over.** Claim and evidence adjacent. 8–10 introduce the
+candidate and its claim. 11–13 establish the test is fair and say how it is measured. 14–15 are the
+result. 16–19 are mechanism, ending on the metabolic reading that returns to slide 8. 20–24 are open
+questions in the order they arise. 25–26 close.
 
-Slides 17–19 are the weight-displacement thread and are treated as a **line of research**, not three
-one-off figures: which weights move when a task is learned, which move when a second task arrives,
-and whether the path taken was efficient.
+**Slide 21 sits after depth deliberately.** At one hidden layer, "which layer forgets" has only two
+answers and is close to vacuous; it needs layers before it can say anything. Slide 7 supplies the
+budget that slide 14 needs; slide 21 supplies the layer-resolved version once there are layers.
+
+Slides 17–19 are the weight-displacement thread, treated as a **line of research** rather than three
+one-off figures: which weights move when a task is learned, which move when a second arrives, and
+whether the path taken was efficient.
 
 ---
 
@@ -162,27 +181,34 @@ and whether the path taken was efficient.
 One question, one script, one figure. Numbered from 40. Each writes `.npz` beside its figure,
 including weight snapshots.
 
-| # | Name | Question (one sentence) | Slide |
-|---|---|---|---|
-| 40 | `40_accuracy_vs_hidden_width_joint` | Under joint training, how does accuracy vary with hidden width, and what width does this problem actually need? | 9 |
-| 41 | `41_can_each_rule_learn_shared_structure` | Under one shared output structure, can each rule learn the joint problem, and at what learning rate? | 10 |
-| 42 | `42_does_backprop_forget_2x5` | Does backprop forget in each scenario, and does replay recover it? | 2 |
-| 43 | `43_do_ebm_rules_forget_less` | Under the fixed protocol, do PC and EqProp forget less than backprop in each scenario? | 13 |
-| 44 | `44_scenario_contrast` | Where do the metrics disagree between Class-IL and Domain-IL, and which rule does that favour? *(re-analysis of 43's arrays)* | 14 |
-| 45 | `45_where_does_forgetting_live` | How much of the forgetting is output-layer and how much is hidden-layer? | 15 |
-| 46 | `46_target_alignment_per_rule` | What is each rule's target alignment in each scenario, and does it track retention? | 16 |
-| 47 | `47_which_weights_move_learning_a_task` | When a single task is learned, how is weight movement distributed across weights? | 17 |
-| 48 | `48_which_weights_move_during_il` | During task 2, does movement concentrate on the weights task 1 depended on? | 18 |
-| 49 | `49_is_the_learning_path_efficient` | Is each rule's weight path more direct than backprop's, per [R31]'s inefficiency measure? | 19 |
-| 50 | `50_does_depth_change_the_answer` | As hidden layers are added, how do retention and the mechanism metrics trend? | 20 |
-| 51 | `51_output_structure_confound` | How much of any rule difference is output structure rather than credit assignment? | 21 |
+Each row states its **single deviation** from the protocol in §2.
 
-**Order of work:** 40 → 41 → 42 → 43 → 45 → 44 → 46 → 47 → 48 → 49 → 50 → 51.
+| # | Name | Question (one sentence) | Deviation | Slide |
+|---|---|---|---|---|
+| 40 | `40_accuracy_vs_hidden_width_joint` | How does accuracy vary with hidden width, and what width does this problem need? | joint training, no task sequence; width swept | 11 |
+| 41 | `41_does_backprop_forget` | Does backprop forget task 1 when task 2 arrives? | backprop only, no controls — a motivating example, not a comparison | 2 |
+| 42 | `42_how_much_room_is_there` | How much of the forgetting survives when the output push is removed, and when the hidden layer is frozen? | loss masked / W1 frozen, backprop only | 7 |
+| 43 | `43_can_each_rule_learn` | Under one shared output structure, can each rule learn the joint problem, and at what learning rate? | joint training, no task sequence | 12 |
+| 44 | `44_do_ebm_rules_forget_less` | Do PC and EqProp forget less than backprop in each scenario? | **none — this is the protocol** | 14 |
+| 45 | `45_scenario_contrast` | Where do the metrics disagree between Class-IL and Domain-IL? | none; re-analysis of 44's saved arrays | 15 |
+| 46 | `46_target_alignment_per_rule` | What is each rule's target alignment, and does it track retention? | none; extra measurement during the protocol run | 16 |
+| 47 | `47_which_weights_move_learning_a_task` | When one task is learned, how is weight movement distributed across weights? | single task only | 17 |
+| 48 | `48_which_weights_move_during_il` | During task 2, does movement concentrate on the weights task 1 depended on? | none; extra measurement | 18 |
+| 49 | `49_is_the_learning_path_efficient` | Is each rule's weight path more direct, by [R31]'s inefficiency measure? | none; re-analysis of saved weight snapshots | 19 |
+| 50 | `50_does_depth_change_the_answer` | As hidden layers are added, how do retention and the mechanism metrics trend? | `n_layers` swept | 20 |
+| 51 | `51_which_layer_does_forgetting_live_in` | With several hidden layers, which one carries the forgetting? | `n_layers` fixed > 1; layers frozen one at a time | 21 |
+| 52 | `52_output_structure_confound` | How much of any rule difference is output structure rather than credit assignment? | output structure swept | 22 |
 
-**Depth (50) is a separate phase**, deliberately after the mechanism work. With the metrics
+**Execution order:** 40 → 41 → 42 → 43 → 44 → 45 → 46 → 47 → 48 → 49 → 50 → 51 → 52.
+
+Slide order matches, with the single stated inversion: **40 runs first but is presented at slide 11**,
+because it fixes H for everything and a talk cannot open on a capacity sweep.
+
+**Depth (50, 51) is a separate phase**, deliberately after the mechanism work. With the metrics
 understood and the tools built, it runs as a **sweep over `n_layers` reporting trends**, not as an
 extra axis on every earlier plot — adding depth as an axis would make every figure unreadable.
-Frozen-layer variants are available there too, and that phase can be as rich as it earns.
+Frozen-layer variants live here too, and 51 is where "which layer forgets" finally has enough layers
+to be worth asking.
 
 ## 4.1 Pre-committed readings
 
@@ -217,11 +243,39 @@ timescales [R14], with metaplasticity [R13] and spine persistence [R4]. This tal
 first can do on its own** — which is exactly why replay is the positive control rather than a
 competitor, and why a null result would be informative rather than embarrassing.
 
-**5 What a learning rule can and cannot change.** *The conceptual core.* A rule shares blame among
-hidden units; it does not stop output units competing. Hence the split, hence the budget, with slide
-15 supplying the size. **Blocked:** the standard suppression derivation is for softmax cross-entropy
-and we use squared error, where the push has a fixed point at zero. Must be restated for MSE before
-this slide asserts it.
+**5 The output layer: where the downward push comes from.** *Written because the output mechanics
+are the hardest part of this project to hold in your head, and everything downstream leans on them.*
+
+The label says two things at once. Training on a 2, the target is 1 in position 2 and **0 in the
+other nine**. "Unit 2 should be high" is what we intend; "unit 0 should be low, unit 1 should be
+low…" is what we do not think about. Every image of a 2 is therefore also a training example that
+pushes unit 0 down. Do that a few hundred times and unit 0 has been trained into silence — so when a
+real 0 arrives it no longer wins, **not because the hidden layer forgot what a 0 looks like, but
+because the output unit was taught to keep quiet.**
+
+The four output structures differ only in *how hard and how far* they push:
+
+| structure | push on an absent class | where it stops |
+|---|---|---|
+| softmax + cross-entropy | driven down relative to the winner | **nowhere** — unbounded |
+| linear + squared error, target 0 | driven toward 0 | at 0 — the weight ends orthogonal to current features |
+| linear + squared error, target −1 | driven toward −1 | at −1, a whole unit further |
+| hinge, target −1 | driven toward −1 at constant force | at −1, and the push does not weaken on the way |
+
+**The push is not caused by softmax.** Softmax makes it unbounded; the *label* is the source. That
+is why swapping the output structure changes the severity but never removes it — only masking the
+absent classes does. **This slide earns the protocol's choice** (linear + squared error, 1/0): it is
+the mildest structure all three rules can take unaltered, which slide 12 then verifies.
+
+**Work needed:** the derivation for squared error, in full, before this slide is drawn. The
+familiar `∂L/∂z_o = p_o − 1[o=t]` result is for softmax cross-entropy; under MSE it is
+`∂L/∂z_o = z_o`, with a fixed point at zero. The table above depends on getting that right.
+
+**6 What a learning rule can and cannot change.** *The conceptual core, and it follows directly from
+5.* That downward push happens at the output layer no matter how blame was shared among hidden
+units. A learning rule changes the sharing; it cannot change whether the units compete. So forgetting
+splits into a part no rule can touch and a part it might — and slide 7 measures how big the second
+part is.
 
 **6 Energy-based learning as a hypothesis about cortex.** Predictive coding as a theory of cortical
 function — continual prediction, prediction-error signalling, mapping onto canonical microcircuitry.
@@ -238,8 +292,8 @@ logged; final new-task accuracy is always reported beside retention.
 
 # 6. Open items
 
-1. **Slide 5's MSE derivation** — restate output suppression for squared error. Blocks the
-   conceptual core.
+1. **Slide 5's MSE derivation** — write out output suppression for squared error in full. Blocks the
+   output-mechanics slide, which slide 6 then depends on.
 2. **References** — `reference_acquisition.md`. Slides 3 and 6 are high priority and currently have
    **no primary sources in the project**.
 3. **Code** — untrusted and undocumented (`knowledge_base.md` §6.7). Verify and refactor before

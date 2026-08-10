@@ -167,10 +167,13 @@ Claim type: **L** literature, cited · **S** structural, derived · **R** result
 | 20 | Open question: does depth change the answer? | O | R + L | **50** |
 | 21 | Open question: which layer does forgetting live in? | O | R + L | **51** |
 | 22 | Open question: is it the output structure, not the rule? | O | R | **52** |
-| 23 | Open question: can prediction error gate plasticity? | O | S | — |
-| 24 | Other energy-based models | O | L | — |
-| 25 | Limitations and what is not shown | H | S | — |
-| 26 | Next steps and timeline | H | — | — |
+| 23 | Open question: is forgetting just a step-size artefact? | O | R | **53** |
+| 24 | Open question: how short must the blocks be before forgetting stops? | O | R | **54** |
+| 25 | Open question: arbitrary tasks each phase — which classes survive? | O | R | **55** |
+| 26 | Open question: can prediction error gate plasticity? | O | S | — |
+| 27 | Other energy-based models | O | L | — |
+| 28 | Limitations and what is not shown | H | S | — |
+| 29 | Next steps and timeline | H | — | — |
 
 **Story check.** 1–2 pose the problem with a plain example. 3 says brains solve it and names three
 mechanisms — local plasticity, replay, consolidation — so the talk's question becomes *what can the
@@ -178,8 +181,11 @@ first do alone*, which is also why replay is the positive control rather than a 
 the setting. **5 explains the output mechanics, 6 draws the consequence — a rule cannot touch that
 part — and 7 measures how much is left over.** Claim and evidence adjacent. 8–10 introduce the
 candidate and its claim. 11–13 establish the test is fair and say how it is measured. 14–15 are the
-result. 16–19 are mechanism, ending on the metabolic reading that returns to slide 8. 20–24 are open
-questions in the order they arise. 25–26 close.
+result. 16–19 are mechanism, ending on the metabolic reading that returns to slide 8. 20–27 are open
+questions in the order they arise. 28–29 close.
+
+**23–25 came out of script 40's own figure** and are provisioned rather than promised — see §4.2.
+They are the questions the audience will ask, so they are raised rather than waited for.
 
 **Slide 21 sits after depth deliberately.** At one hidden layer, "which layer forgets" has only two
 answers and is close to vacuous; it needs layers before it can say anything. Slide 7 supplies the
@@ -213,6 +219,9 @@ Each row states its **single deviation** from the protocol in §2.
 | 50 | `50_does_depth_change_the_answer` | As hidden layers are added, how do retention and the mechanism metrics trend? | `n_layers` swept | 20 |
 | 51 | `51_which_layer_does_forgetting_live_in` | With several hidden layers, which one carries the forgetting? | `n_layers` fixed > 1; layers frozen one at a time | 21 |
 | 52 | `52_output_structure_confound` | How much of any rule difference is output structure rather than credit assignment? | output structure swept | 22 |
+| 53 | `53_is_forgetting_a_step_size_artefact` | Does the shape of the forgetting trade-off change with learning rate, or only the speed at which it happens? | backprop only; learning rate swept | 23 |
+| 54 | `54_block_length_vs_forgetting` | As the alternation gets finer, at what block length does forgetting stop? | backprop only; block length swept at fixed total updates | 24 |
+| 55 | `55_arbitrary_tasks_per_phase` | When each phase trains an arbitrary five of the ten classes, which classes survive? | task composition drawn afresh each phase; many phases; backprop only | 25 |
 
 **41 and 42 both serve slide 7**, because they are two halves of one question. *Is there room for a
 rule to help?* has a capacity answer and a component answer. 41: if the network cannot hold ten
@@ -270,6 +279,50 @@ the rules here.
 
 **50** — [R1] claims the advantage grows with depth. If it trends that way here, single-layer results
 are a lower bound. If it does not, that is a substantive disagreement with a published claim.
+
+**53** — if the trajectories for every learning rate collapse onto one curve, forgetting is
+structural: a rule cannot look better merely by stepping more slowly, and the metric grid is safe as
+it stands. If lower rates trace a higher path, step size is a lever on forgetting itself, and the
+size of that effect **bounds how much of any rule difference in 44 could be step size in disguise**.
+
+**54** — at block length 1 with both tasks' classes present in every batch, this *is* joint
+training, so retention must be high there and near zero at 400. The question is the shape between. A
+smooth curve makes catastrophic forgetting a continuum governed by interleaving granularity, and
+says replay works by moving you along it — which ties the positive control back to slide 3. A sharp
+threshold is a different and more interesting story.
+
+**55** — accuracy should track recency. The informative outcomes are the departures: a class that
+never recovers, a decay rate that slows across phases (consolidation-like), or classes that co-occur
+often propping each other up.
+
+## 4.2 Questions raised by script 40's result
+
+Script 40 showed backprop forgetting cleanly, and two things beyond that: **relearning is much
+faster than learning** (320 → 110 → 60 updates to reach 94%), and **task 1 falls below the collapse
+floor** (0.4% against a floor of 10%). Both raise questions the audience will ask. Where each is
+handled:
+
+| Question | Where | Status |
+|---|---|---|
+| Is the learning rate simply too fast, and the destruction an artefact of step size? | **53** | provisioned, open |
+| Is the network big enough to resolve all ten classes at once? | **41** | in the main line — this is exactly what it asks |
+| If relearning gets steadily cheaper, is there a point where the network stops forgetting? | **54** | provisioned, open |
+| Is the problem fundamental to *this* flavour of continual learning? | **45** + slide 4 | in the main line — both scenarios are run and contrasted |
+| Arbitrary five-class tasks each phase, over many phases | **55** | provisioned, open |
+| Every batch drawn from five random digits | **54** | the limiting case of the block-length sweep, and the natural check that its endpoint behaves as predicted |
+
+**Two are already the main line, and were before these results.** 41 asks whether there is capacity;
+45 asks whether the scenario governs the answer. Nothing new is needed for either — which is a
+reasonable sign the plan was pointed in the right direction.
+
+**Three are provisioned as open questions (53–55), not promised.** They are cheap — backprop only,
+no settling — but they are a second thread, and this project's failure mode is opening a second
+thread while the first is still running. They run **after 44**, or not at all.
+
+**One caution on 54.** It is tempting to link block length to EqProp and PC settling: both a shorter
+block and a longer relaxation reduce how far the weights move per unit of conflicting information,
+so they might sit on one axis. **That is a hypothesis and 54 does not test it.** Examine it only
+after 44 has run, and only if PC actually separates — otherwise it is a story looking for a result.
 
 ---
 

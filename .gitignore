@@ -3,3 +3,5 @@ notebooks/data
 *__pycache__*
 desktop.ini
 .venv
+.claude/settings.local.json
+CLAUDE.local.md

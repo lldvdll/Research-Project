@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "defaultMode": "plan",
+
+    "deny": [
+      "Edit(/ref/**)",
+      "Edit(/claude_code_management/archive/**)",
+      "Read(.env)"
+    ],
+
+    "ask": [
+      "Edit(/src/**)",
+      "Edit(/experiments/**)",
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git checkout *)",
+      "Bash(rm *)",
+      "Bash(pip install *)"
+    ],
+
+    "allow": [
+      "Bash(python --version)",
+      "Bash(python -c *)",
+      "Bash(pip list *)",
+      "Bash(git status *)",
+      "Bash(git log *)",
+      "Bash(git diff *)"
+    ]
+  },
+
+  "disableBundledSkills": false
+}

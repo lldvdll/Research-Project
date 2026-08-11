@@ -21,6 +21,7 @@ the wrong one. Flag it and ask.
 
 | File | What it is | When to read it |
 |---|---|---|
+| `claude_code_management/current_state.md` | **Where the project actually is.** Results, corrections, decisions, running order. | **First, every session.** It supersedes the plan where they disagree. |
 | `claude_code_management/knowledge_base.md` | Consolidated reference. Amendable. | Before any substantive claim. Start with §9.3. |
 | `claude_code_management/timeline.md` | Append-only log of chats. Entries are never edited. | When asked about history. |
 | `claude_code_management/presentation_plan.md` | The slide plan. Authoritative for what work happens next. | Start of any presentation or experiment work. |
@@ -42,12 +43,17 @@ confirm its figure is unchanged, before the next change starts.
   each — for both scenarios.**
 - Network: 196 → H → 10 (Class-IL) or 196 → H → 5 (Domain-IL). One hidden layer, tanh, squared
   error. Identical across all four learning rules — only the rule varies.
-- **The hidden width H is not decided.** Prior work suggests the answer matters a great deal and
-  disagrees with itself about it (`knowledge_base.md` §6.6.3). It is settled by a fresh experiment,
-  not by inheriting a number.
+- H was settled by script 41 rather than inherited, which matters because prior work disagrees
+  with itself about width (`knowledge_base.md` §6.6.3). Note that a capacity sweep run at too
+  short a budget produces a flat region that is indistinguishable from a capacity ceiling —
+  measure convergence first.
 - Optimiser: plain SGD everywhere. Batch 32. Learning rate grid-searched **per rule**.
-- Scenarios: Class-IL is primary, Domain-IL also run. Only the output layer differs between them —
-  and Domain-IL at 2×5 with 5 shared outputs is structurally Song & Bogacz's Fig 4d.
+- Scenarios: **Domain-IL is primary** (changed 2026-08-11). It is what Song & Bogacz use, and
+  output-layer suppression — which is rule-independent — cannot occur there, leaving
+  representation drift, which is what a learning rule acts on. Class-IL is run where relevant and
+  its result explains why it is a different question. Only the output layer differs between them.
+- **Hidden width H = 32**, fixed by script 41 on capacity grounds. Joint ceiling 93.6% (Class-IL)
+  and 94.3% (Domain-IL) — retention is read against those, not against 100%.
 - Controls on every forgetting run: backprop (negative) and replay (positive).
 - Four methods: `backprop`, `replay`, `pc`, `eqprop`.
 

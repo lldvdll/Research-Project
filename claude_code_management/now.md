@@ -7,23 +7,33 @@ docstring — keep this file short enough to read in one sitting.
 Started 2026-08-11.
 
 ## Next three
-1. **55** — the same comparison in **Class-IL**. Exp 12 was Class-IL and reported a PC
-   advantage; 52 was Domain-IL and found none. 54 says PC ≈ backprop on W1 at depth 1, so any
-   Class-IL difference would have to come from the output layer — the one place the scenarios
-   differ. That makes it a sharp test, not just a repeat.
-2. **Fix two confounds before it runs** (see below), then re-run 53 with a reachable threshold.
-3. **Depth.** 54 makes this the informative axis: PC's mechanism has no room to differ at one
-   hidden layer.
+1. Read **55** first when it lands — it decides whether everything at depth 1 was measured in
+   the least informative place available.
+2. Read **53** (re-run, threshold now 70% and derived), then **56/57** (Class-IL).
+3. The gap none of them close: **exp 12 also ran the legacy spec.** See below.
 
-## Two confounds to fix before the next comparison
-- **Replay trains on a double batch.** `METHOD_DEFAULTS["replay"]` omits `replay_frac`, so it
-  defaults to `None` — which `make_replay`'s own docstring calls a confound: replay is appended
-  and the batch grows to 64 while every other rule sees 32. Set `replay_frac=0.5` to hold batch
-  size fixed. Explains why replay looks slower to both learn and forget.
-- **The diagonal on the trajectory plots is wrong for Domain-IL.** `x + y = 100` is the perfect-
-  trade line only where two tasks compete for one resource. Domain-IL shares five output units
-  and features transfer, so sitting above it is expected and is *not* evidence that learning
-  outruns forgetting. Chance (20, 20) and the joint ceiling (94, 94) are the real references.
+## Running overnight
+| script | question | ~cost |
+|---|---|---|
+| 55 | does PC stop looking like backprop at depth 2 and 3? | 10 min |
+| 53 | Domain-IL at matched competence, task-2 threshold now **70%**, derived from 52 | 50 min |
+| 56 → 57 | Class-IL, fixed budget then matched competence (57 reads 56) | 100 min |
+
+## Fixed 2026-08-12
+- **53's non-smooth curves were a plotting bug, not learning.** NaN-padded ragged runs meant
+  `nanmean` averaged over a *varying number of seeds*, so the mean jumped as each run entered
+  or left the switch-relative axis. `plotting._mean_of_all` now draws the mean only where every
+  run is present. The `Mean of empty slice` warning was the symptom and was ignored.
+- **53's task-2 threshold is now derived, not assumed.** 90% was unreachable — replay missed it
+  on 4/5 seeds — so most runs were never at matched competence and the run was void.
+- **Replay was training on a double batch.** `replay_frac` defaulted to `None`, appending the
+  replay batch so replay saw 64 examples per step against everyone else's 32 — a confound
+  `make_replay`'s own docstring names. Now `0.5`, batch size held fixed.
+- **Trajectory plots: one axes, not four panels**, averaged against task-2 accuracy so ragged
+  runs are comparable. The equal-trade-off diagonal is gone — it belongs to Class-IL; in
+  Domain-IL the tasks share output units so sitting above it is expected and says nothing.
+- **`--smoke` writes to `_SMOKE` paths.** A smoke run of 52 had overwritten the real `.npz`
+  that 53 reads its threshold from.
 
 ## Settings now fixed, and where they came from
 | | value | from |
@@ -158,6 +168,15 @@ Also Díaz-Rodríguez et al. 2018 (arXiv:1810.13166) for the wider set.
   The trend is tolerance-dependent and not citable; the decisions do not rest on it.
 - ~~EqProp's patience rule was merely over-conservative~~ — it also **truncated**, to 0.34× of
   what was needed, at initialisation.
+
+## The gap 56/57 do not close
+Exp 12 differed from script 52 in **three** ways, not two: the scenario, the standardised
+output structure, and the matched learning rates. 56/57 change only the scenario. **If exp 12's
+PC advantage came from the legacy specification** — where backprop ran ReLU + cross-entropy and
+EqProp ran a hinge over ±1 targets, so every rule had a different nonlinearity *and* a different
+loss — then no run under the unified protocol can reproduce it, and 56/57 can neither confirm
+nor rule it out. The clean test is a deliberate legacy-spec run through `methods.legacy()`.
+Cheap, and it would settle the discrepancy rather than leaving it open. Not yet run.
 
 ## Archive — planned, not built. Revive with a new 50-series number if needed.
 - **Capacity-dependence of the mechanism split (C3).** Does W2-suppression vs W1-drift shift

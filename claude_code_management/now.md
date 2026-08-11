@@ -7,9 +7,23 @@ docstring — keep this file short enough to read in one sitting.
 Started 2026-08-11.
 
 ## Next three
-1. Read 52 and 53. Controls first: did replay recover, did every rule reach the threshold.
-2. **B1/B2/B3** — metrics, all three from one set of backprop runs.
-3. Decide whether EqProp continues past 53.
+1. **55** — the same comparison in **Class-IL**. Exp 12 was Class-IL and reported a PC
+   advantage; 52 was Domain-IL and found none. 54 says PC ≈ backprop on W1 at depth 1, so any
+   Class-IL difference would have to come from the output layer — the one place the scenarios
+   differ. That makes it a sharp test, not just a repeat.
+2. **Fix two confounds before it runs** (see below), then re-run 53 with a reachable threshold.
+3. **Depth.** 54 makes this the informative axis: PC's mechanism has no room to differ at one
+   hidden layer.
+
+## Two confounds to fix before the next comparison
+- **Replay trains on a double batch.** `METHOD_DEFAULTS["replay"]` omits `replay_frac`, so it
+  defaults to `None` — which `make_replay`'s own docstring calls a confound: replay is appended
+  and the batch grows to 64 while every other rule sees 32. Set `replay_frac=0.5` to hold batch
+  size fixed. Explains why replay looks slower to both learn and forget.
+- **The diagonal on the trajectory plots is wrong for Domain-IL.** `x + y = 100` is the perfect-
+  trade line only where two tasks compete for one resource. Domain-IL shares five output units
+  and features transfer, so sitting above it is expected and is *not* evidence that learning
+  outruns forgetting. Chance (20, 20) and the joint ceiling (94, 94) are the real references.
 
 ## Settings now fixed, and where they came from
 | | value | from |
@@ -35,12 +49,30 @@ Started 2026-08-11.
 - [x] **52** four-rule comparison, fixed budget → **nothing separates except replay.**
       Retention: backprop 51.0±6.3, replay 77.3±3.0, pc 48.5±6.6, eqprop 43.1±5.5. PC is 0.3 SE
       from backprop, EqProp 1.0 SE, replay 3.7 SE.
-- [ ] **53** four-rule comparison, accuracy stopping ← running
+- [~] **53** four-rule comparison, accuracy stopping → **void, re-run needed.** Task-2 threshold
+      set to 90% without checking it was reachable; replay missed it on 4/5 seeds and EqProp on
+      3/5, so most runs were never read at matched competence. Set the threshold from what is
+      achievable, as 43 did.
+- [x] **54** are the EBMs really settling → **yes, both. Neither is backprop.** But PC's hidden
+      update is 0.985 aligned with backprop's, at every settling amount ≥ 1 step. EqProp 0.316.
 - [ ] **B1/B2/B3** metrics, from one set of backprop runs
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison, then **E** why, then **F** does it generalise
 
 ## What we know
+- **At one hidden layer, PC's credit assignment is nearly backprop's (54).** cos(ΔW1) = 0.985,
+  flat across training and flat across settling amount. Structural, not a bug: PC's W1 update
+  is `x₀ᵀe₁`, and the relaxation displacement `e₁` is driven by `(e_out W₂ᵀ)⊙f'(x₁)` — which is
+  backprop's hidden error. **There is no intermediate layer for prospective configuration to
+  reconfigure, so PC ≈ backprop on the one layer where drift happens.** This predicts 52's null
+  result rather than being surprised by it, and it makes **depth** the informative next axis.
+- **EqProp genuinely differs (cos 0.316 on W1) and still gained no retention.** So different
+  credit assignment is not by itself sufficient. Its settling sweep is **non-monotonic** — most
+  backprop-like at ~20 steps, least at full relaxation — so it is the *full* relaxation that
+  makes it different, as [R1] claims for prospective configuration.
+- **Both rules do settle.** Relaxation moves the state 19% (PC) and 10% (EqProp) at the switch,
+  against 0% if they were not settling. Instrument verified: PC at `steps=0` reproduces
+  backprop's W2 update exactly (cos 1.0000) and leaves W1 untouched, as `pc_settle` predicts.
 - **No energy-based rule beat backprop at fixed budget (52).** Neither PC nor EqProp is
   distinguishable from backprop on final retention; only replay is. Read this as *no detected
   effect*, not as *no effect* — see the variance point below. `[EMPIRICAL]`

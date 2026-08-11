@@ -1,7 +1,20 @@
-"""Do the four learning rules forget task 1 differently, read at the moment each has learned
-task 2 to the same standard?
+"""Script 56 in CLASS-IL, read at matched competence instead of at a fixed budget.
 
-Script 52 with ONE thing changed: both tasks stop on accuracy instead of running a fixed
+This is to 56 what 53 is to 52, and it exists for the same reason: under a fixed budget a rule
+that learns task 2 more slowly receives fewer effective updates of interference and keeps more
+of task 1, which reads as "forgets less" when it is "learned less".
+
+IT MATTERS MORE HERE THAN IN DOMAIN-IL. In 2x5 Class-IL every condition eventually reaches zero
+on task 1 -- scripts 42 and 43 measured exactly that -- so an endpoint comparison has no dynamic
+range left and cannot rank anything. Reading at the moment each rule has learned task 2 to one
+standard is the only measurement with anything left to distinguish.
+
+Its task-2 threshold is derived from script 56, so 56 must run first.
+
+ORIGINAL QUESTION, unchanged: do the rules forget task 1 differently, read at the moment each
+has learned task 2 to the same standard?
+
+Script 56 with ONE thing changed: both tasks stop on accuracy instead of running a fixed
 budget. The pair is the argument, exactly as 42 and 43 were.
 
 WHY THE PAIR IS THE ARGUMENT, AGAIN
@@ -130,7 +143,7 @@ T1_THRESHOLD = float(z51["threshold"])          # the standard the learning rate
 # threshold only one rule can reach silently turns the comparison into "the rules that finished,
 # against the rules that were capped".
 z52 = np.load(array_path(str(ROOT / "experiments" /
-                             "52_do_the_rules_differ_fixed_budget.py")))
+                             "56_do_the_rules_differ_class_il.py")))
 reach = {m: float(z52[f"t2_{m}"][0]) for m in [str(x) for x in z52["methods"]]}
 T2_THRESHOLD = np.floor(min(reach.values()) * 0.95 / 5) * 5 / 100    # round down to a 5% step
 
@@ -154,7 +167,7 @@ def settle_kw(method):
     return {}
 
 
-base = replace(PROTOCOL, hidden=HIDDEN, scenario="domain_il",
+base = replace(PROTOCOL, hidden=HIDDEN, scenario="class_il",
                stop_threshold=[T1_THRESHOLD, T2_THRESHOLD], stop_patience=STOP_PATIENCE,
                max_iters_per_task=MAX_ITERS, eval_every=EVAL_EVERY, seeds=SEEDS)
 

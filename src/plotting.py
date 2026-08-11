@@ -21,6 +21,22 @@ def _grid(n, ncols):
     return fig, axes.ravel()
 
 
+def _mean_of_all(A):
+    """Mean over runs, but ONLY where every run contributes. NaN elsewhere.
+
+    A mean taken over a varying number of runs is not a mean of anything. Under accuracy
+    stopping runs have different lengths and are NaN-padded onto a shared axis, so at the edges
+    only the longest runs are present and a plain nanmean JUMPS DISCONTINUOUSLY as each run
+    enters or leaves. That reads as violent non-smoothness in the curve and is entirely an
+    artefact of the padding -- it cost an afternoon in script 53, where the task-1 block appeared
+    to collapse and recover twice. The thin per-run lines still show what happens beyond the
+    fully-populated region; the bold mean simply stops.
+    """
+    M = np.nanmean(A, axis=0)
+    M[np.isnan(A).any(axis=0)] = np.nan
+    return M
+
+
 def plot_learning_curves(steps, curves, methods, out_path, title="",
                          switches=None, blocks=None, ncols=2, task_labels=None,
                          task_colors=None, xlabel="training step", legend_kw=None):
@@ -47,7 +63,7 @@ def plot_learning_curves(steps, curves, methods, out_path, title="",
             c = colours[t % len(colours)]
             for r in range(A.shape[0]):
                 ax.plot(steps, A[r, :, t], color=c, lw=0.7, alpha=0.22)
-            ax.plot(steps, np.nanmean(A[:, :, t], axis=0), color=c, lw=2.6, label=labels[t])
+            ax.plot(steps, _mean_of_all(A[:, :, t]), color=c, lw=2.6, label=labels[t])
         for s in (switches or []):
             ax.axvline(s, color="k", lw=0.8, ls="--")
         ax.set_title(m)
@@ -82,7 +98,7 @@ def plot_trajectory(curves, methods, out_path, title="", ncols=2, threshold=None
         A = np.asarray(curves[m], dtype=float) * 100.0
         for r in range(A.shape[0]):
             ax.plot(A[r, :, 0], A[r, :, 1], color="tab:purple", lw=0.7, alpha=0.22)
-        M = np.nanmean(A, axis=0)
+        M = _mean_of_all(A)
         ax.plot(M[:, 0], M[:, 1], color="tab:purple", lw=2.6)
         ax.plot(M[-1, 0], M[-1, 1], "o", color="k", ms=7)                     # final point
         if threshold is None:
@@ -104,6 +120,68 @@ def plot_trajectory(curves, methods, out_path, title="", ncols=2, threshold=None
     fig.suptitle(title)
     fig.tight_layout()
     fig.savefig(out_path, dpi=120)
+    print(f"saved {out_path}")
+    return fig
+
+
+def plot_retention_curve(segments, methods, out_path, colors=None, title="",
+                         chance=None, threshold=None, figsize=(6.0, 5.6)):
+    """Task-1 accuracy against task-2 accuracy, every method on ONE axes. NaN-safe for runs of
+    unequal length.
+
+    WHY THIS AXIS. Averaging trajectories by eval index is meaningless when runs stop at
+    different times -- index i is a different point of each run's own path. Averaging against
+    TASK-2 ACCURACY is well defined: "by the time task 2 had reached y%, what was task 1?" is a
+    question each run answers on its own, whatever its length. It is also exactly the
+    matched-competence reading, drawn as a whole curve instead of sampled at one point, which
+    is why it is the right plot for comparing rules that learn task 2 at different speeds.
+
+    A curve that stays HIGH as it rises retained task 1 while learning task 2. One that falls
+    away to the left traded task 1 for it.
+
+    segments : {method: [array[k, 2], ...]} -- one array per run, POST-SWITCH only, columns
+               (task 1, task 2), in 0-1. Runs may have different k.
+    chance   : draw the chance point, e.g. 1/5 for Domain-IL. Pass it rather than assuming:
+               the equal-trade-off diagonal that suits Class-IL is meaningless in Domain-IL,
+               where the two tasks share output units and features transfer, so sitting above
+               it is expected and says nothing.
+    """
+    fig, ax = plt.subplots(figsize=figsize)
+    lv = np.linspace(0, 100, 101)
+    for i, m in enumerate(methods):
+        rows = []
+        for seg in segments[m]:
+            seg = np.asarray(seg, dtype=float) * 100.0
+            t1, t2 = seg[:, 0], seg[:, 1]
+            # first moment task 2 REACHED each level: monotone by construction, so np.interp is
+            # well posed even though the raw accuracy curve is noisy and non-monotonic.
+            mono = np.maximum.accumulate(t2)
+            v = np.full_like(lv, np.nan)
+            ok = lv <= mono[-1]
+            v[ok] = np.interp(lv[ok], mono, t1)
+            rows.append(v)
+        M = _mean_of_all(np.vstack(rows))
+        c = None if colors is None else colors[m]
+        ax.plot(M, lv, lw=2.4, color=c, label=m)
+        good = np.isfinite(M)
+        if good.any():
+            ax.plot(M[good][-1], lv[good][-1], "o", ms=7,
+                    color=ax.lines[-1].get_color())
+    if chance is not None:
+        ch = chance * 100.0
+        ax.plot([ch], [ch], "+", color="k", ms=12, mew=1.5)
+        ax.annotate("chance", xy=(ch, ch), xytext=(6, 6), textcoords="offset points",
+                    fontsize=8)
+    if threshold is not None:
+        ax.axhline(threshold * 100.0, color="gray", ls="--", lw=1)
+    ax.set_xlabel("task 1 accuracy (%)")
+    ax.set_ylabel("task 2 accuracy (%)")
+    ax.set_xlim(-2, 102); ax.set_ylim(-2, 102)
+    ax.grid(alpha=0.25)
+    ax.legend(fontsize=9)
+    ax.set_title(title, fontsize=10)
+    fig.tight_layout()
+    fig.savefig(out_path, dpi=120, bbox_inches="tight")
     print(f"saved {out_path}")
     return fig
 

@@ -1,7 +1,49 @@
-"""Do the four learning rules forget task 1 differently, when each has learned task 1 equally
-well and each gets the same training budget?
+"""Same question as script 52, in CLASS-IL instead of Domain-IL: do the four rules differ?
 
-THE FIRST COMPARISON OF THE NEW SERIES, and the point of the whole project stated as one run.
+WHY THIS EXISTS, AND WHAT WOULD MAKE IT INFORMATIVE
+    Experiment 12 -- pre-protocol, on untrusted code -- ran Class-IL and reported that PC
+    reduced forgetting. Script 52 ran Domain-IL under the current protocol and found nothing
+    separating PC or EqProp from backprop. Three things differ between those runs: the
+    scenario, the standardised output structure, and the matched learning rates. This changes
+    exactly one of them.
+
+    Script 54 sharpens what a difference here would mean. At one hidden layer PC assigns credit
+    to W1 almost exactly as backprop does (cos 0.985), so a large PC advantage from the HIDDEN
+    layer should not be available in either scenario at this depth. If Class-IL reproduces exp
+    12's difference anyway, it cannot be coming from the hidden layer -- and the only thing left
+    is the output layer, which is precisely where the two scenarios differ:
+
+        Class-IL   ten output units, five per task. During task 2 the target at every task-1
+                   unit is 0, so gradient descent actively pushes those units down. This is
+                   OUTPUT-LAYER SUPPRESSION and scripts 42/43 showed it is the dominant
+                   mechanism here.
+        Domain-IL  five shared units, every one a target for some class in both tasks, so
+                   suppression cannot occur at all.
+
+    So this is a test of a specific hypothesis, not a repeat: does a learning rule change how
+    much the output layer suppresses absent classes?
+
+    NOTE WHAT IT CANNOT SETTLE. Exp 12 also ran the LEGACY specification, where each rule had a
+    different nonlinearity and a different loss (backprop on ReLU + cross-entropy, EqProp on a
+    hinge over +-1 targets). If its difference came from THAT, no run under the unified protocol
+    can reproduce it, and the clean test would be a deliberate legacy-spec run via
+    methods.legacy(). That is a separate experiment and is not this one.
+
+READ THE ABSOLUTE NUMBERS AGAINST THE RIGHT BASELINE
+    Chance is 10% here against Domain-IL's 20%, and the joint ceiling is 93.6% against 94.3%
+    (script 41). Accuracies are NOT comparable across the two scenarios; only the ORDERING of
+    the rules within a scenario is.
+
+    Expect task-1 retention to fall BELOW 10%. That is not a broken run -- it means task-2
+    output units are winning the argmax on task-1 images, which is suppression, and script 40
+    already recorded it (0.4% against a 10% floor). Endpoint retention will therefore be close
+    to useless for ranking, exactly as the metric table predicts; the retention CURVE against
+    task-2 progress is the figure to read.
+
+ORIGINAL QUESTION, unchanged: do the rules forget task 1 differently, when each has learned
+task 1 equally well and each gets the same training budget?
+
+The Class-IL half of the comparison. Script 52 is the Domain-IL half.
 Everything before it was groundwork: 41 fixed the width, 42/43 established where the forgetting
 lives and that the measurement point decides the answer, 50 established that the two
 energy-based rules genuinely settle.
@@ -141,7 +183,7 @@ def settle_kw(method):
     return {}
 
 
-base = replace(PROTOCOL, hidden=HIDDEN, scenario="domain_il", stop_threshold=None,
+base = replace(PROTOCOL, hidden=HIDDEN, scenario="class_il", stop_threshold=None,
                max_iters_per_task=ITERS, eval_every=EVAL_EVERY, seeds=SEEDS)
 
 # ---------------------------------------------------------------- run

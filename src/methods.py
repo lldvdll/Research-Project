@@ -314,7 +314,11 @@ def make_eqprop_gated(gate_frac=0.3, **kw):
 # ------------------------------------------------------------------ dispatch
 METHOD_DEFAULTS = {
     "backprop":     dict(lr=0.05),
-    "replay":       dict(lr=0.05, per_class=20),
+    # replay_frac=0.5 holds the BATCH SIZE FIXED at the protocol's value: half new, half
+    # replayed. The alternative, replay_frac=None, appends the replay batch so the model trains
+    # on 64 examples per step while every other rule gets 32 -- more data per update, which is
+    # a confound in any comparison the replay control appears in. See make_replay.
+    "replay":       dict(lr=0.05, per_class=20, replay_frac=0.5),
     # settle_tol is calibrated for dt=0.3 by experiment 50; see eqprop.eqprop_settle.
     "eqprop":       dict(lr=0.005, beta=0.3, dt=0.3, max_steps=800, settle_tol=1e-4),
     "pc":           dict(lr=0.05, dt=0.1, steps=50),

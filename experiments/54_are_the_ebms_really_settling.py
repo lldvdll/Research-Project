@@ -82,11 +82,30 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 
-from src.protocol import PROTOCOL, load, run, build, replace, figure_path, array_path
+from src.protocol import PROTOCOL, load, run, build, replace, figure_path as _figure_path, array_path as _array_path
 from src.model import make_target, active_vector
 from src.predictive_coding import pc_settle
 from src.eqprop import eqprop_settle
 from src.methods import METHOD_DEFAULTS
+
+# --smoke writes NOTHING. Its outputs would otherwise overwrite the real .npz that later
+# scripts read their settings from -- script 53 takes its task-2 threshold from 52's measured
+# ceilings, and a smoke-sized 52 silently poisons it.
+SMOKE = "--smoke" in sys.argv
+
+
+def _tag(f, suffix):
+    """Suffix only THIS script's own outputs, never the .npz files it reads from others."""
+    own = Path(f).resolve() == Path(__file__).resolve()
+    return (suffix + "_SMOKE").lstrip("_") if (SMOKE and own) else suffix
+
+
+def figure_path(f, suffix=""):      # noqa: F811  - shadows the import, on purpose
+    return _figure_path(f, _tag(f, suffix))
+
+
+def array_path(f, suffix=""):       # noqa: F811
+    return _array_path(f, _tag(f, suffix))
 
 # ---------------------------------------------------------------- settings
 CHECKPOINTS = [0, 100, 250, 420]        # updates into task 1; 420 is the calibrated switch

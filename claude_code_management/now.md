@@ -65,17 +65,33 @@ Started 2026-08-11.
       achievable, as 43 did.
 - [x] **54** are the EBMs really settling → **yes, both. Neither is backprop.** But PC's hidden
       update is 0.985 aligned with backprop's, at every settling amount ≥ 1 step. EqProp 0.316.
+- [x] **55** does PC need depth → **no.** Retention curves for PC and backprop are superimposed
+      at depths 1, 2 and 3. Divergence grows toward the output (W4 0.623) while W1 stays
+      backprop-like (0.952) — and W1 is the layer whose drift damages task 1.
 - [ ] **B1/B2/B3** metrics, from one set of backprop runs
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison, then **E** why, then **F** does it generalise
 
 ## What we know
-- **At one hidden layer, PC's credit assignment is nearly backprop's (54).** cos(ΔW1) = 0.985,
-  flat across training and flat across settling amount. Structural, not a bug: PC's W1 update
-  is `x₀ᵀe₁`, and the relaxation displacement `e₁` is driven by `(e_out W₂ᵀ)⊙f'(x₁)` — which is
-  backprop's hidden error. **There is no intermediate layer for prospective configuration to
-  reconfigure, so PC ≈ backprop on the one layer where drift happens.** This predicts 52's null
-  result rather than being surprised by it, and it makes **depth** the informative next axis.
+- **PC trades task 1 for task 2 along the SAME CURVE as backprop, at depths 1, 2 and 3 (55).**
+  The retention curves — task-1 accuracy against task-2 accuracy, which removes time — are
+  superimposed. This is a much stronger null than 52's "not separated at 5 seeds": the curves
+  coincide along their whole length rather than at one sampled point, and it is robust to the
+  uncalibrated per-depth learning rates, because a different rate moves a rule *along* the
+  curve without moving the curve. **Depth does not rescue PC.** `[EMPIRICAL]`
+- **Beware 55's endpoint table, which says the opposite.** It shows PC keeping 54.9% against
+  backprop's 40.8% at depth 3 — but PC took 800 updates to reach competence on task 1 where
+  backprop took 370, and reached 79.9% on task 2 against 85.9%. It is slower at an uncalibrated
+  learning rate, so it simply travelled less far along the shared curve. Textbook "forgot less
+  = learned less". The endpoint would have sold this as a win.
+- **PC's divergence from backprop grows with DISTANCE FROM THE INPUT, not with depth (55).**
+  cos(ΔW) at depth 3: W1 0.952, W2 0.939, W3 0.837, W4 0.623. The input mapping stays
+  backprop-like at every depth; the output-side layers pull away. Since 42/43 established that
+  **drift in W1 is what damages task 1**, PC is reconfiguring the end of the network and leaving
+  the part that matters alone — which predicts exactly the null the retention curves show.
+- ~~At one hidden layer PC ≈ backprop because there is no intermediate layer to reconfigure~~ —
+  **wrong**, and it was my inference from 54, not a measurement. It predicted cos(ΔW1) would
+  fall with depth. It does not (0.987 → 0.952). See the two entries above for what replaced it.
 - **EqProp genuinely differs (cos 0.316 on W1) and still gained no retention.** So different
   credit assignment is not by itself sufficient. Its settling sweep is **non-monotonic** — most
   backprop-like at ~20 steps, least at full relaxation — so it is the *full* relaxation that

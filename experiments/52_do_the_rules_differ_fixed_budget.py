@@ -77,6 +77,8 @@ METHODS = ["backprop", "replay", "pc", "eqprop"]
 SEEDS = 5                       # the protocol's minimum; 68% intervals reported
 EVAL_EVERY = 10
 TASK_COLORS = ["tab:orange", "tab:blue"]           # task 1 orange, task 2 blue, as in 40-43
+COLORS = {"backprop": "tab:gray", "replay": "tab:brown",
+          "pc": "tab:red", "eqprop": "tab:green"}  # per-rule, as in script 51
 
 # ---- everything below is READ, not chosen here ----------------------------
 HIDDEN = int(np.load(array_path(str(ROOT / "experiments" /
@@ -208,17 +210,29 @@ plot_learning_curves(
 
 # Companion: the trade-off with time removed. Every run has the same budget here, so unlike
 # script 43 a mean trajectory is well defined -- eval index i is the same update for every run.
-figt, axt = plt.subplots(figsize=(5.6, 5.4))
+#
+# The WHOLE path is drawn, from initialisation, not from the task switch. Starting at the
+# switch hides the task-1 learning phase and opens the plot at an arbitrary-looking point.
+# Read it as: right along the bottom while task 1 is learned, then up and to the left as task 2
+# displaces it. The corner it turns is the trade.
+figt, axt = plt.subplots(figsize=(5.8, 5.6))
 for m in METHODS:
     A = curves[m].mean(0) * 100
-    axt.plot(A[i_sw:, 0], A[i_sw:, 1], lw=2, label=m)
-    axt.plot(A[-1, 0], A[-1, 1], "o", ms=6, color=axt.lines[-1].get_color())
+    axt.plot(A[:i_sw + 1, 0], A[:i_sw + 1, 1], lw=1.2, alpha=0.45,
+             color=COLORS[m])                                     # task 1 block
+    axt.plot(A[i_sw:, 0], A[i_sw:, 1], lw=2.2, color=COLORS[m], label=m)
+    axt.plot(A[i_sw, 0], A[i_sw, 1], "s", ms=6, color=COLORS[m])  # the switch
+    axt.plot(A[-1, 0], A[-1, 1], "o", ms=7, color=COLORS[m])      # the end
+CH = 100.0 / base.classes_per_task
+axt.plot([CH], [CH], "+", color="k", ms=12, mew=1.5)
+axt.annotate("chance, at initialisation", xy=(CH, CH), xytext=(6, 6),
+             textcoords="offset points", fontsize=8)
 axt.plot([100, 0], [0, 100], color="gray", ls=":", lw=1)
 axt.set_xlabel("task 1 accuracy (%)")
 axt.set_ylabel("task 2 accuracy (%)")
 axt.set_xlim(-2, 102); axt.set_ylim(-2, 102)
 axt.grid(alpha=0.2)
-axt.legend(fontsize=9)
+axt.legend(fontsize=9, title="faint = task 1 block, square = switch", title_fontsize=7)
 figt.tight_layout()
 figt.savefig(figure_path(__file__, "trajectory"), dpi=120, bbox_inches="tight")
 

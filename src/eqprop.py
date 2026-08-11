@@ -42,13 +42,35 @@ def eqprop_energy(x, states, p, arch):
 
 
 def eqprop_settle(x, p, arch, obj=None, target=None, active_vec=None, beta=0.0, dt=0.3,
-                  max_steps=500, settle_patience=30, min_delta=1e-4, init=None,
+                  max_steps=800, settle_tol=1e-4, init=None,
                   device="cpu", return_steps=False):
-    """Relax all layers until per-step movement stops improving for `settle_patience` steps.
+    """Relax all layers until the state stops moving: until one step displaces it by less than
+    `settle_tol` of its own norm. The standard relative-residual stopping rule.
 
-    Patience rather than an absolute tolerance because the nudge keeps pushing while the cost
-    is unmet, so per-step movement plateaus at a non-zero floor. `return_steps` reports whether
-    the relaxation converged or hit max_steps -- log this as a run-validity gate.
+    A test on the STATE, not on the rate at which movement is improving. The previous rule
+    stopped once per-step movement had failed to improve by min_delta for `settle_patience`
+    consecutive steps, and experiment 50 measured both of its failure modes:
+
+      it fires on a temporary plateau -- at initialisation, seed 2 needed 529 steps to reach
+      equilibrium and the rule stopped at 178, so the weight update was computed from a state
+      a third of the way there;
+      and it overshoots everywhere else by 3-4x, because movement goes on decaying long after
+      the state has arrived.
+
+    A relative displacement test does neither: it is small only once the state has settled.
+
+    CHOOSING settle_tol, AND WHEN IT MUST BE RE-DERIVED. Near the fixed point the error decays
+    geometrically, so stopping at move <= tol*|state| leaves a distance of roughly tol/(dt*L)
+    from equilibrium, where L is the slowest curvature of the energy. The tolerance is
+    therefore NOT dimensionless in dt and not a universal constant: 1e-4 is calibrated for
+    dt=0.3 at the protocol's architecture, where experiment 50 measures it stopping at worst
+    0.57% from the settled state -- against the 2% that experiment calls settled, so a 3.5x
+    safety margin. Change dt, the width or the depth and re-run experiment 50, which re-derives
+    it. Calibrate on that DISTANCE, never on the step count: step counts are discretised and
+    the distance falls steeply near convergence, so a step-count test is over-sensitive
+    exactly at the boundary where the choice is made.
+
+    `return_steps` reports whether it converged or hit max_steps -- log it as a validity gate.
     """
     with torch.enable_grad():
         x = flatten(x)
@@ -58,7 +80,7 @@ def eqprop_settle(x, p, arch, obj=None, target=None, active_vec=None, beta=0.0, 
                       for i in range(arch.n_weights)]
         else:
             states = [s.clone().requires_grad_(True) for s in init]
-        best, since, used = float("inf"), 0, 0
+        used = 0
         for step in range(max_steps):
             used = step + 1
             grads = torch.autograd.grad(eqprop_energy(x, states, p, arch), states)
@@ -68,18 +90,14 @@ def eqprop_settle(x, p, arch, obj=None, target=None, active_vec=None, beta=0.0, 
             move = (dt * sum(g.pow(2).sum() for g in grads).sqrt()).item()
             for s, g in zip(states, grads):
                 s.data -= dt * g
-            if move < best - min_delta:
-                best, since = move, 0
-            else:
-                since += 1
-            if since >= settle_patience:
+            if move <= settle_tol * sum(s.pow(2).sum() for s in states).sqrt().item():
                 break
     out = [s.detach() for s in states]
     return (out, used, used >= max_steps) if return_steps else out
 
 
 def eqprop_update(x, y_labels, p, opt, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, beta=0.3, dt=0.3,
-                  max_steps=500, settle_patience=30, active=None, gate_frac=None,
+                  max_steps=800, settle_tol=1e-4, active=None, gate_frac=None,
                   device="cpu", return_delta=False, freeze=()):
     """One EqProp weight update. `gate_frac` (advisor point 4) updates only the hidden nodes
        that move MOST under the nudge, in the TOP hidden layer, and freezes the rest."""
@@ -89,9 +107,9 @@ def eqprop_update(x, y_labels, p, opt, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, beta=
     av = active_vector(active, arch, device=device)
 
     free = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                         settle_patience=settle_patience, device=device)
+                         settle_tol=settle_tol, device=device)
     nudged = eqprop_settle(x, p, arch, obj=obj, target=target, active_vec=av, beta=beta,
-                           dt=dt, max_steps=max_steps, settle_patience=settle_patience,
+                           dt=dt, max_steps=max_steps, settle_tol=settle_tol,
                            init=free, device=device)
 
     tensors = p.tensors()
@@ -127,17 +145,17 @@ def eqprop_update(x, y_labels, p, opt, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, beta=
                     saturation=sat)
 
 
-def eqprop_predict(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=500, settle_patience=30,
+def eqprop_predict(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=800, settle_tol=1e-4,
                    device="cpu", raw=False):
     states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                           settle_patience=settle_patience, device=device)
+                           settle_tol=settle_tol, device=device)
     return states[-1] if raw else states[-1].argmax(1)
 
 
-def eqprop_features(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=500, settle_patience=30,
+def eqprop_features(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=800, settle_tol=1e-4,
                     device="cpu"):
     states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                           settle_patience=settle_patience, device=device)
+                           settle_tol=settle_tol, device=device)
     return arch.f(states[arch.n_hidden - 1])
 
 

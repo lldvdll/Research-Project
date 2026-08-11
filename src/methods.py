@@ -268,8 +268,18 @@ def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimi
 
 # ------------------------------------------------------------------ equilibrium propagation
 def make_eqprop(in_dim=196, hidden=64, out_dim=10, lr=0.005, beta=0.3, dt=0.3, max_steps=500,
-                settle_patience=30, gate_frac=None, optimizer="sgd", seed=0, device="cpu",
-                arch=None, obj=None, handle=None, **_):
+                settle_tol=1e-4, gate_frac=None, optimizer="sgd", seed=0, device="cpu",
+                arch=None, obj=None, handle=None, settle_patience=None, **_):
+    # settle_patience is named only so that passing it FAILS instead of being swallowed by **_.
+    # Experiments 01-27 pass it, and silently ignoring it would run them under a different
+    # settling rule than they specify while still producing a plausible-looking figure.
+    if settle_patience is not None:
+        raise TypeError(
+            "settle_patience was replaced by settle_tol. Experiment 50 measured the patience "
+            "rule stopping the relaxation a third of the way to equilibrium at initialisation, "
+            "and overshooting 3-4x once trained. Pass settle_tol instead (1e-4 is calibrated "
+            "for dt=0.3 at H=32; see src/eqprop.py:eqprop_settle)."
+        )
     arch, obj = _spec(arch, obj)
     arch = replace(arch, in_dim=in_dim, hidden=hidden, out_dim=out_dim)
     p = init_params(arch, seed=seed, device=device).requires_grad_(True)
@@ -278,20 +288,20 @@ def make_eqprop(in_dim=196, hidden=64, out_dim=10, lr=0.005, beta=0.3, dt=0.3, m
 
     def train_step(x, y, active=None):
         d = eqprop_update(x, y, p, opt, arch=arch, obj=obj, beta=beta, dt=dt,
-                          max_steps=max_steps, settle_patience=settle_patience,
+                          max_steps=max_steps, settle_tol=settle_tol,
                           active=active, gate_frac=gate_frac, device=device,
                           return_delta=True, freeze=freeze)
         diag.update(d)
 
     def predict(x, raw=False):
         states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                               settle_patience=settle_patience, device=device)
+                               settle_tol=settle_tol, device=device)
         return states[-1] if raw else states[-1].argmax(1)
 
     def features(x):
         from .eqprop import eqprop_features
         return eqprop_features(x, p, arch, dt=dt, max_steps=max_steps,
-                               settle_patience=settle_patience, device=device)
+                               settle_tol=settle_tol, device=device)
 
     _publish(handle, p, arch, obj, features, diag=diag, freeze=freeze)
     return train_step, predict
@@ -305,9 +315,10 @@ def make_eqprop_gated(gate_frac=0.3, **kw):
 METHOD_DEFAULTS = {
     "backprop":     dict(lr=0.05),
     "replay":       dict(lr=0.05, per_class=20),
-    "eqprop":       dict(lr=0.005, beta=0.3, dt=0.3, max_steps=500, settle_patience=30),
+    # settle_tol is calibrated for dt=0.3 by experiment 50; see eqprop.eqprop_settle.
+    "eqprop":       dict(lr=0.005, beta=0.3, dt=0.3, max_steps=800, settle_tol=1e-4),
     "pc":           dict(lr=0.05, dt=0.1, steps=50),
-    "eqprop_gated": dict(lr=0.005, beta=0.3, dt=0.3, max_steps=500, settle_patience=30,
+    "eqprop_gated": dict(lr=0.005, beta=0.3, dt=0.3, max_steps=800, settle_tol=1e-4,
                          gate_frac=0.3),
 }
 

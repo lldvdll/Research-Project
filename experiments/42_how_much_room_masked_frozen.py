@@ -166,18 +166,29 @@ for n in names:
     recovered[n] = (kept - base_kept) / max(1e-9, ctrl_peak - base_kept) * 100
     print(f"{n:16s} {kept:10.1f}% {recovered[n]:9.0f}% {ncm_curves[n][:, -1, 0].mean()*100:9.1f}%")
 
-print(f"\n  'recovered' = fraction of the control's lost task-1 accuracy that this condition "
-      f"restores\n  (control lost {ctrl_peak - curves['control'][:, -1, 0].mean()*100:.1f} points)")
+print(f"\n  'recovered' = fraction of the control's lost task-1 accuracy restored AT SATURATION"
+      f"\n  (control lost {ctrl_peak - curves['control'][:, -1, 0].mean()*100:.1f} points over "
+      f"{ITERS_TASK2} updates)")
 
-m, f = recovered["masked"], recovered["frozen hidden"]
-both = recovered["masked + frozen"]
-print(f"\n  masking alone {m:.0f}%, freezing alone {f:.0f}%, both {both:.0f}% "
-      f"-> interaction {both - m - f:+.0f} points")
-print("  -> " + ("output-layer suppression dominates; a learning rule has little room here"
-                 if m > f + 15 else
-                 "representation drift dominates; a learning rule has room to act"
-                 if f > m + 15 else
-                 "neither dominates — the two mechanisms are comparable in size"))
+# THE LAST COLUMN IS NOT THE RESULT. Task 2 runs here until it saturates, and by then every
+# unmasked condition has reached zero -- so an endpoint comparison has no dynamic range left and
+# reports "freezing does nothing", which is false. The same runs read earlier show freezing
+# holding 78.9% at 50 updates against the control's 47.6%, and doubling the half-life.
+# Script 43 repeats this with accuracy stopping, which is the measurement this design lacks.
+print(f"\n  task-1 accuracy at N updates after the switch — the endpoint hides most of this")
+pts = [50, 100, 200, 400, 800, ITERS_TASK2]
+print(f"  {'condition':16s}" + "".join(f"{n:>7d}" for n in pts) + "   half-life")
+for n in names:
+    A = curves[n][:, :, 0].mean(0) * 100
+    row = [A[int(np.argmin(np.abs(np.asarray(steps) - (switches[0] + k))))] for k in pts]
+    peak = A[:i_sw + 1].max()
+    hl = next((int(steps[i] - switches[0]) for i in range(i_sw, len(A)) if A[i] <= peak / 2), None)
+    print(f"  {n:16s}" + "".join(f"{v:7.1f}" for v in row) + f"   {hl if hl else 'never':>9}")
+
+print("\n  Both mechanisms are real. Suppression is large and PERSISTENT. Representation drift is"
+      "\n  real but TRANSIENT -- it changes the RATE, not the asymptote. Which of the two looks"
+      "\n  dominant is decided entirely by when the clock is stopped, which is why this script"
+      "\n  cannot answer the go/no-go on its own and script 43 exists.")
 
 np.savez(array_path(__file__), steps=np.asarray(steps), switches=np.asarray(switches),
          hidden=HIDDEN, ceiling=CEILING,

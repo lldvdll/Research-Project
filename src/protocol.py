@@ -145,8 +145,11 @@ class Protocol:
     def describe(self):
         """One line for the figure title / slide, stating the setting actually run."""
         data = "fashion-mnist" if self.fashion else "mnist"
-        stop = (f"stop at {self.stop_threshold:.0%}" if self.stop_threshold is not None
-                else f"{self.max_iters_per_task} updates per block")
+        # stop_threshold and max_iters_per_task may each be a scalar or a per-task list
+        t = self.stop_threshold
+        stop = (f"{self.max_iters_per_task} updates per block" if t is None
+                else f"stop at {'/'.join(f'{v:.0%}' for v in t)}"
+                if isinstance(t, (list, tuple)) else f"stop at {t:.0%}")
         return (f"{data} {self.img_size}x{self.img_size} | "
                 f"{self.scenario} {self.n_tasks}x{self.classes_per_task} | "
                 f"{self.in_dim}-{self.hidden}x{self.n_layers}-{self.out_dim} {self.act} | "

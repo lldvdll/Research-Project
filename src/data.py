@@ -1,13 +1,34 @@
 """Data: MNIST at a chosen resolution, class-IL splits, fixed eval sets.
 
-New in the 20-series: `make_eval_split` returns two DISJOINT held-out sets. Stop on one,
-report on the other, so early stopping does not bias the number you publish.
+`make_eval_split` returns two DISJOINT held-out sets. Stop on one, report on the other, so early
+stopping does not bias the number you publish.
+
+USE `load_mnist` -- it caches. The resize happens once, ever, and is then stored at the working
+resolution. See below for why that matters.
 """
+from pathlib import Path
 import torch, torchvision, torchvision.transforms as T
 
 
-def load_mnist(size=14, root="./data", fashion=False):
-    """MNIST (or Fashion-MNIST) resized to size x size, scaled to [0,1]. Returns (train, test)."""
+class TensorMNIST(torch.utils.data.Dataset):
+    """MNIST already resized and converted, held as one tensor.
+
+    Interchangeable with the torchvision dataset for everything this project does: indexing
+    gives (image, label), and `.targets` is the label vector that class_indices() reads.
+    """
+
+    def __init__(self, x, targets):
+        self.x, self.targets = x, targets
+
+    def __len__(self):
+        return len(self.x)
+
+    def __getitem__(self, i):
+        return self.x[i], self.targets[i]
+
+
+def _load_mnist_raw(size=14, root="./data", fashion=False):
+    """The slow path: torchvision, with the transform re-run on every single access."""
     # Skip the resize when the source is already the requested size: Resize((28,28)) on a
     # 28x28 PIL image still runs the interpolation filter and can perturb pixel values.
     steps = ([] if size == 28 else [T.Resize((size, size), antialias=True)]) + [T.ToTensor()]
@@ -15,6 +36,36 @@ def load_mnist(size=14, root="./data", fashion=False):
     ds = torchvision.datasets.FashionMNIST if fashion else torchvision.datasets.MNIST
     return (ds(root, train=True, download=True, transform=tf),
             ds(root, train=False, download=True, transform=tf))
+
+
+def load_mnist(size=14, root="./data", fashion=False):
+    """MNIST (or Fashion-MNIST) at size x size, scaled to [0,1]. Returns (train, test).
+
+    THE RESIZE HAPPENS ONCE, EVER. torchvision applies its transform inside __getitem__, so
+    every batch re-runs a PIL resize on 32 images: measured at 8.1 ms per batch, which across a
+    width sweep is tens of minutes of doing the same arithmetic again and again. Here the whole
+    set is converted once and written to <root>/preprocessed/<name>_<size>.pt as a single
+    tensor; later runs load that file and a batch becomes an index.
+
+    Pixel values are identical either way -- the transform is deterministic, so this changes
+    only the cost. Delete the .pt to force a rebuild.
+    """
+    name = f"{'fashion' if fashion else 'mnist'}_{size}.pt"
+    path = Path(root) / "preprocessed" / name
+    if path.exists():
+        blob = torch.load(path, weights_only=True)
+    else:
+        tr, te = _load_mnist_raw(size=size, root=root, fashion=fashion)
+        blob = {
+            "train_x": torch.stack([tr[i][0] for i in range(len(tr))]),
+            "train_y": tr.targets.clone(),
+            "test_x": torch.stack([te[i][0] for i in range(len(te))]),
+            "test_y": te.targets.clone(),
+        }
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(blob, path)
+    return (TensorMNIST(blob["train_x"], blob["train_y"]),
+            TensorMNIST(blob["test_x"], blob["test_y"]))
 
 
 def class_indices(dataset):

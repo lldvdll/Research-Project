@@ -152,24 +152,31 @@ for name in CONDITIONS:
           f"{hl} {agg['area']:6.1f}% {agg['final']:8.1f}% {agg['ncm']:6.1f}%")
 
 # ---------------------------------------------------------------- figures
-# Runs have different lengths (each stops when its task 2 is competent), so pad to plot.
+# Every run stops when ITS task 2 is competent, so runs have different lengths and different
+# switch points -- the control's task-2 block is ~38 updates, the masked one's ~700. Plotted on
+# a shared absolute axis the short conditions are compressed into the left edge and unreadable.
+# So the x axis is UPDATES RELATIVE TO THE TASK SWITCH: every run has its switch at x = 0, and
+# negative x is task-1 training. This is the only axis on which the four panels are comparable.
 names = list(CONDITIONS)
-n_ev = max(len(o["steps"]) for n in names for o in runs[n])
-steps = max((o["steps"] for n in names for o in runs[n]), key=len)
+LO, HI = -400, 900
+grid = np.arange(LO, HI + EVAL_EVERY, EVAL_EVERY)
 padded = {}
 for n in names:
-    A = np.full((SEEDS, n_ev, 2), np.nan)
+    A = np.full((SEEDS, len(grid), 2), np.nan)
     for i, o in enumerate(runs[n]):
-        A[i, :len(o["steps"])] = o["curves"]["argmax"]
+        rel = np.asarray(o["steps"]) - o["switches"][0]
+        for j, r in enumerate(rel):
+            k = int(round((r - LO) / EVAL_EVERY))
+            if 0 <= k < len(grid):
+                A[i, k] = o["curves"]["argmax"][j]
     padded[n] = A
+steps = grid
 
-sw_mean = np.mean([o["switches"][0] for o in runs["control"]])
 plot_learning_curves(
-    steps, padded, names, figure_path(__file__),
-    title=f"Task 2 stopped at {T2_THRESHOLD:.0%}, not run to saturation\n{base.describe()}"
-          f"  |  backprop, {SEEDS} seeds  |  compare with script 42, where it saturated",
-    blocks=[(0, sw_mean, 0), (sw_mean, steps[-1], 1)], ncols=2,
+    grid, padded, names, figure_path(__file__),
+    blocks=[(LO, 0, 0), (0, HI, 1)], ncols=2,
     task_colors=TASK_COLORS, task_labels=["task 1", "task 2"],
+    xlabel="training step, relative to the task switch",
     legend_kw=dict(loc="upper left", bbox_to_anchor=(1.02, 1), frameon=False),
 )
 
@@ -198,7 +205,7 @@ figt.suptitle("The trade-off with time removed — each line is one seed, from t
 figt.tight_layout()
 figt.savefig(figure_path(__file__, "trajectory"), dpi=120, bbox_inches="tight")
 
-np.savez(array_path(__file__), steps=np.asarray(steps), switch=sw_mean, hidden=HIDDEN,
+np.savez(array_path(__file__), steps=np.asarray(grid), switch=0, hidden=HIDDEN,
          t1_threshold=T1_THRESHOLD, t2_threshold=T2_THRESHOLD,
          **{f"argmax_{n}": padded[n] for n in names},
          **{f"{k}_{n}": summary[n][k] for n in names for k in summary[n]})

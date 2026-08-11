@@ -75,8 +75,6 @@ blocks = [(bounds[b], bounds[b + 1], b % 2) for b in range(2 * CYCLES)]
 # ---------------------------------------------------------------- figure
 plot_learning_curves(
     steps, curves, ["backprop"], figure_path(__file__),
-    title=f"Backprop forgets, and keeps forgetting  —  {CYCLES} cycles, {proto.seeds} seeds"
-          f"\n{proto.describe()}",
     blocks=blocks, ncols=1, task_colors=TASK_COLORS,
     task_labels=["task 1", "task 2"],
     legend_kw=dict(loc="upper left", bbox_to_anchor=(1.02, 1), frameon=False),

@@ -91,11 +91,21 @@ base = replace(PROTOCOL, hidden=HIDDEN, stop_threshold=None,
                eval_every=EVAL_EVERY, seeds=SEEDS)
 
 # ---------------------------------------------------------------- run
-data = load(base)
-curves = {c: [] for c in CONDITIONS}
-ncm_curves = {c: [] for c in CONDITIONS}
+REPLOT = "--replot" in sys.argv and Path(array_path(__file__)).exists()
+if REPLOT:
+    z = np.load(array_path(__file__))
+    steps, switches = z["steps"], list(z["switches"])
+    curves = {n: z[f"argmax_{n}"] for n in CONDITIONS}
+    ncm_curves = {n: z[f"ncm_{n}"] for n in CONDITIONS}
+    i_sw = int(np.argmin(np.abs(steps - switches[0])))
+    print("--replot: redrawing from saved arrays, no training\n")
 
-for name, (mask, freeze) in CONDITIONS.items():
+data = None if REPLOT else load(base)
+if not REPLOT:
+    curves = {c: [] for c in CONDITIONS}
+    ncm_curves = {c: [] for c in CONDITIONS}
+
+for name, (mask, freeze) in ({} if REPLOT else CONDITIONS).items():
     proto = replace(base, mask=mask)
     for seed in range(SEEDS):
         tasks = proto.tasks(seed)                  # same split for every condition at this seed
@@ -132,28 +142,47 @@ for name, (mask, freeze) in CONDITIONS.items():
           f"   -> after task 2 {A[:, -1, 0].mean():5.1f}%"
           f"   (task 2 {A[:, -1, 1].mean():5.1f}%)")
 
-curves = {k: np.stack(v) for k, v in curves.items()}
-ncm_curves = {k: np.stack(v) for k, v in ncm_curves.items()}
+if not REPLOT:
+    curves = {k: np.stack(v) for k, v in curves.items()}
+    ncm_curves = {k: np.stack(v) for k, v in ncm_curves.items()}
 names = list(CONDITIONS)
 blocks = [(0, switches[0], 0), (switches[0], steps[-1], 1)]
 
 # ---------------------------------------------------------------- main figure
 plot_learning_curves(
     steps, curves, names, figure_path(__file__),
-    title=f"How much of the forgetting can an intervention remove?\n{base.describe()}"
-          f"  |  backprop, {SEEDS} seeds  |  joint ceiling {CEILING:.1f}%",
     blocks=blocks, ncols=2, task_colors=TASK_COLORS, task_labels=["task 1", "task 2"],
     legend_kw=dict(loc="upper left", bbox_to_anchor=(1.02, 1), frameon=False),
 )
 
-# ------------------------------------------------- supporting figure: is the code still there?
-plot_learning_curves(
-    steps, ncm_curves, names, figure_path(__file__, "ncm"),
-    title="Diagnostic: nearest-class-mean, output layer discarded\n"
-          "high here while argmax is low means the hidden code survived and the head is at fault",
-    blocks=blocks, ncols=2, task_colors=TASK_COLORS, task_labels=["task 1", "task 2"],
-    legend_kw=dict(loc="upper left", bbox_to_anchor=(1.02, 1), frameon=False),
-)
+# ---------------- supporting figure: is the information still in the hidden layer?
+# Both readouts for TASK 1 on the SAME axes, so the comparison is one line against another
+# rather than two figures to hold side by side.
+#   solid  = the network's own prediction (hidden layer -> output layer -> argmax)
+#   dashed = nearest class mean (hidden layer only; the output layer is discarded)
+# Dashed staying high while solid falls means the hidden layer still separates the task-1
+# classes and the output layer is what stopped reporting them.
+import matplotlib.pyplot as plt
+
+fign, axn = plt.subplots(2, 2, figsize=(11, 6.5), sharex=True, sharey=True)
+for ax, n in zip(axn.ravel(), names):
+    ax.axvspan(0, switches[0], color=TASK_COLORS[0], alpha=0.10, lw=0)
+    ax.axvspan(switches[0], steps[-1], color=TASK_COLORS[1], alpha=0.10, lw=0)
+    ax.plot(steps, curves[n][:, :, 0].mean(0) * 100, color="k", lw=2.4,
+            label="task 1, network prediction")
+    ax.plot(steps, ncm_curves[n][:, :, 0].mean(0) * 100, color="tab:red", lw=2.4, ls="--",
+            label="task 1, nearest class mean (hidden layer only)")
+    ax.set_title(n)
+    ax.set_ylim(-2, 103)
+    ax.grid(alpha=0.2)
+for ax in axn[1]:
+    ax.set_xlabel("training step")
+for ax in axn[:, 0]:
+    ax.set_ylabel("task 1 accuracy (%)")
+axn[0, 0].legend(fontsize=8, loc="lower left")
+fign.tight_layout()
+fign.savefig(figure_path(__file__, "ncm"), dpi=120, bbox_inches="tight")
+print(f"saved {figure_path(__file__, 'ncm')}")
 
 # ---------------------------------------------------------------- readings
 print()

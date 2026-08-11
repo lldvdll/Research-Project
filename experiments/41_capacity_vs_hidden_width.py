@@ -95,80 +95,78 @@ def joint(proto, seed, data):
 # updates x 8 widths x 5 seeds and takes ~22 minutes; adjusting a label should not cost that.
 REPLOT = "--replot" in sys.argv and Path(array_path(__file__)).exists()
 
+SCENARIOS = ["class_il", "domain_il"]
+
 if REPLOT:
     z = np.load(array_path(__file__))
-    acc, rise, dom, steps = z["acc_class_il"], z["rise"], z["acc_domain_il"], z["steps"]
-    learning = {w: z[f"curve_{w}"] for w in WIDTHS}
-    data = None
+    acc = {s: z[f"acc_{s}"] for s in SCENARIOS}
+    rise = {s: z[f"rise_{s}"] for s in SCENARIOS}
+    learning = {s: {w: z[f"curve_{s}_{w}"] for w in WIDTHS} for s in SCENARIOS}
+    steps, data = z["steps"], None
     print(f"--replot: redrawing from {array_path(__file__)}, no training\n")
 else:
     data = load(replace(base, hidden=1))            # hidden is irrelevant to loading
-    acc = np.zeros((len(WIDTHS), SEEDS))
-    rise = np.zeros((len(WIDTHS), SEEDS))
-    learning = {}
+    acc = {s: np.zeros((len(WIDTHS), SEEDS)) for s in SCENARIOS}
+    rise = {s: np.zeros((len(WIDTHS), SEEDS)) for s in SCENARIOS}
+    learning = {s: {} for s in SCENARIOS}
     t0 = time.perf_counter()
 
-    for wi, width in enumerate(WIDTHS):
-        proto = replace(base, hidden=width, scenario="class_il")
-        curves = []
-        for seed in range(SEEDS):
-            steps, c = joint(proto, seed, data)
-            curves.append(c)
-            k = PLATEAU_EVALS
-            acc[wi, seed] = c[-k:].mean()
-            # Convergence must be tested as "is it still RISING", not "is the best above the
-            # final". Small widths oscillate several points around a flat mean, and a
-            # best-minus-final test calls that undertrained when it is only noisy.
-            rise[wi, seed] = c[-k:].mean() - c[-3 * k:-2 * k].mean()
-        learning[width] = np.mean(curves, axis=0)
-        print(f"  H={width:4d}  {acc[wi].mean():5.1f} ± {acc[wi].std(ddof=1)/np.sqrt(SEEDS):.1f}%"
-              f"   still rising {rise[wi].mean():+.2f} pts"
-              f"   [{time.perf_counter()-t0:5.0f}s]")
+    for scen in SCENARIOS:
+        for wi, width in enumerate(WIDTHS):
+            proto = replace(base, hidden=width, scenario=scen)
+            curves = []
+            for seed in range(SEEDS):
+                steps, c = joint(proto, seed, data)
+                curves.append(c)
+                k = PLATEAU_EVALS
+                acc[scen][wi, seed] = c[-k:].mean()
+                # Convergence is tested as "is it still RISING", not "is the best above the
+                # final". Small widths oscillate several points around a flat mean, and a
+                # best-minus-final test calls that undertrained when it is only noisy.
+                rise[scen][wi, seed] = c[-k:].mean() - c[-3 * k:-2 * k].mean()
+            learning[scen][width] = np.mean(curves, axis=0)
+            print(f"  {scen:10s} H={width:4d}  {acc[scen][wi].mean():5.1f} ± "
+                  f"{acc[scen][wi].std(ddof=1)/np.sqrt(SEEDS):.1f}%"
+                  f"   still rising {rise[scen][wi].mean():+.2f} pts"
+                  f"   [{time.perf_counter()-t0:5.0f}s]")
 
-mean, sem = acc.mean(1), acc.std(1, ddof=1) / np.sqrt(SEEDS)
+mean = {s: acc[s].mean(1) for s in SCENARIOS}
+sem = {s: acc[s].std(1, ddof=1) / np.sqrt(SEEDS) for s in SCENARIOS}
 
 # ---------------------------------------------------------------- choose H
-chosen = next((w for w, m in zip(WIDTHS, mean) if m >= mean.max() - TOLERANCE), WIDTHS[-1])
-print(f"\n  H = {chosen}  (smallest width within {TOLERANCE:.1f} points of the best, "
-      f"{mean.max():.1f}% at H={WIDTHS[int(np.argmax(mean))]})")
-print("  gain from each doubling: " +
-      ", ".join(f"{a}->{b}: {mean[i+1]-mean[i]:+.1f}" for i, (a, b) in
-                enumerate(zip(WIDTHS[:-1], WIDTHS[1:]))))
-if rise.mean(1).max() > RISE_TOL:
-    w = WIDTHS[int(np.argmax(rise.mean(1)))]
-    print(f"  WARNING: H={w} still gaining {rise.mean(1).max():+.2f} points — raise MAX_ITERS")
-else:
-    print(f"  converged: largest remaining gain {rise.mean(1).max():+.2f} points")
+# H must be adequate in BOTH scenarios, so the criterion is applied to both and the larger wins.
+per_scen = {s: next((w for w, m in zip(WIDTHS, mean[s]) if m >= mean[s].max() - TOLERANCE),
+                    WIDTHS[-1]) for s in SCENARIOS}
+chosen = max(per_scen.values())
+print(f"\n  H = {chosen}   (smallest width within {TOLERANCE:.1f} points of that scenario's best: "
+      + ", ".join(f"{s} {per_scen[s]}" for s in SCENARIOS) + ")")
+for s in SCENARIOS:
+    print(f"  {s:10s} best {mean[s].max():.1f}% at H={WIDTHS[int(np.argmax(mean[s]))]}"
+          f" | gain per doubling: "
+          + ", ".join(f"{a}->{b}:{mean[s][i+1]-mean[s][i]:+.1f}"
+                      for i, (a, b) in enumerate(zip(WIDTHS[:-1], WIDTHS[1:]))))
+    r = rise[s].mean(1).max()
+    print(f"  {s:10s} {'WARNING: still gaining' if r > RISE_TOL else 'converged; largest gain'}"
+          f" {r:+.2f} points over the last quarter")
 
-# ---------------------------------------------------------------- domain-IL, at the chosen H only
-if not REPLOT:
-    dom_proto = replace(base, hidden=chosen, scenario="domain_il")
-    dom = np.array([joint(dom_proto, s, data)[1][-PLATEAU_EVALS:].mean() for s in range(SEEDS)])
-print(f"\n  domain-IL at H={chosen}: {dom.mean():.1f} ± {dom.std(ddof=1)/np.sqrt(SEEDS):.1f}%"
-      f"  (chance 20%, against 10% for class-IL — not directly comparable)")
+COLORS = {"class_il": "tab:purple", "domain_il": "tab:green"}
+CHANCE = {"class_il": 10, "domain_il": 20}
 
 # ---------------------------------------------------------------- main figure
-fig, ax = plt.subplots(figsize=(7.2, 5))
-ax.errorbar(WIDTHS, mean, yerr=sem, marker="o", capsize=3, lw=2,
-            color="tab:purple", label="class-IL (10 outputs)")
-ax.errorbar([chosen], [dom.mean()], yerr=[dom.std(ddof=1) / np.sqrt(SEEDS)], marker="D",
-            capsize=3, ms=8, color="tab:green", ls="none",
-            label=f"domain-IL (5 shared outputs), at H={chosen}")
-ax.axhline(10, color="tab:purple", ls=":", lw=1, alpha=0.7)
-ax.axhline(20, color="tab:green", ls=":", lw=1, alpha=0.7)
-ax.text(WIDTHS[0], 11, "chance, class-IL", fontsize=7, color="tab:purple")
-ax.text(WIDTHS[0], 21, "chance, domain-IL", fontsize=7, color="tab:green")
+fig, ax = plt.subplots(figsize=(7.6, 5))
+for s in SCENARIOS:
+    ax.errorbar(WIDTHS, mean[s], yerr=sem[s], marker="o", capsize=3, lw=2, color=COLORS[s],
+                label=f"{s.replace('_', '-')}  ({10 if s == 'class_il' else 5} outputs)")
+    ax.axhline(CHANCE[s], color=COLORS[s], ls=":", lw=1, alpha=0.6)
+    ax.text(WIDTHS[0], CHANCE[s] + 1.5, f"chance {CHANCE[s]}%", fontsize=7, color=COLORS[s])
 ax.axvline(chosen, color="k", ls="--", lw=1)
-ax.annotate(f"H = {chosen}", xy=(chosen, 62), xytext=(8, 0), textcoords="offset points",
+ax.annotate(f"H = {chosen}", xy=(chosen, 55), xytext=(8, 0), textcoords="offset points",
             fontsize=12, fontweight="bold")
 ax.set_xscale("log", base=2)
-ax.set_xticks(WIDTHS)
-ax.set_xticklabels(WIDTHS)
-ax.set_xlabel("hidden width H")
-ax.set_ylabel("joint accuracy on all 10 classes (%)")
+ax.set_xticks(WIDTHS); ax.set_xticklabels(WIDTHS)
+ax.set_xlabel("hidden units")
+ax.set_ylabel("accuracy on all 10 classes (%)")
 ax.set_ylim(0, 100)
-ax.set_title("Is there room to hold both tasks?\n"
-             f"joint training to convergence, {MAX_ITERS:,} updates, mean ± SEM over {SEEDS} seeds")
 ax.legend(fontsize=9, loc="lower right")
 ax.grid(alpha=0.25)
 fig.tight_layout()
@@ -176,25 +174,26 @@ fig.savefig(figure_path(__file__), dpi=120, bbox_inches="tight")
 print(f"\nsaved {figure_path(__file__)}")
 
 # ------------------------------------------------- supporting figure: is the budget enough?
-fig2, ax2 = plt.subplots(figsize=(7.2, 4.4))
+fig2, ax2 = plt.subplots(1, 2, figsize=(12, 4.2), sharey=True)
 cmap = plt.get_cmap("viridis")
-for i, width in enumerate(WIDTHS):
-    ax2.plot(steps, learning[width], lw=1.6,
-             color=cmap(i / max(1, len(WIDTHS) - 1)), label=f"H={width}")
-ax2.set_xlabel("training step")
-ax2.set_ylabel("joint accuracy (%)")
-ax2.set_ylim(0, 100)
-ax2.set_title("Diagnostic: is the budget past convergence?\n"
-              "curves must be flat at the right edge, or the sweep measures the budget")
-ax2.legend(fontsize=7, ncol=2, loc="lower right")
-ax2.grid(alpha=0.25)
+for a, s in zip(ax2, SCENARIOS):
+    for i, width in enumerate(WIDTHS):
+        a.plot(steps, learning[s][width], lw=1.6, color=cmap(i / max(1, len(WIDTHS) - 1)),
+               label=f"{width}")
+    a.set_xlabel("training step"); a.set_ylim(0, 100); a.grid(alpha=0.25)
+    a.set_title(s.replace("_", "-"))
+ax2[0].set_ylabel("accuracy (%)")
+ax2[1].legend(fontsize=7, ncol=2, loc="lower right", title="hidden units")
+fig2.suptitle("Diagnostic: curves must be flat at the right edge, "
+              "or the sweep is measuring the training budget")
 fig2.tight_layout()
 fig2.savefig(figure_path(__file__, "convergence"), dpi=120, bbox_inches="tight")
 print(f"saved {figure_path(__file__, 'convergence')}")
 
 # ---------------------------------------------------------------- save
 np.savez(array_path(__file__),
-         widths=np.asarray(WIDTHS), steps=np.asarray(steps), chosen=chosen,
-         acc_class_il=acc, rise=rise, acc_domain_il=dom, max_iters=MAX_ITERS,
-         **{f"curve_{w}": learning[w] for w in WIDTHS})
+         widths=np.asarray(WIDTHS), steps=np.asarray(steps), chosen=chosen, max_iters=MAX_ITERS,
+         **{f"acc_{s}": acc[s] for s in SCENARIOS},
+         **{f"rise_{s}": rise[s] for s in SCENARIOS},
+         **{f"curve_{s}_{w}": learning[s][w] for s in SCENARIOS for w in WIDTHS})
 print(f"saved {array_path(__file__)}")

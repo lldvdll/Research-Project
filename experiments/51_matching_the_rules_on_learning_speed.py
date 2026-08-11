@@ -25,10 +25,16 @@ WHAT IS MATCHED, AND WHY THIS QUANTITY
     measurement, and choosing learning rates by it would remove the very difference the
     comparison is meant to detect.
 
-    The common target is TARGET_STEPS, chosen for legibility rather than from theory. At ~300
-    updates to competence a 600-update task-2 block spreads the transition across half the
-    axis; the earlier scripts ran transitions of ~200 updates inside 4000 and the curves read
-    as step functions.
+    The common target is TARGET_STEPS = 420 updates, picked for two practical reasons rather
+    than from theory: it is where the four rules match most closely on this grid (1.25x spread,
+    against 1.75x at a target of 300), and a slower rise makes the transition after the task
+    switch occupy a readable fraction of the axis. The earlier scripts ran transitions of ~200
+    updates inside 4000 and the curves read as step functions.
+
+    What is LEFT after matching is 1.25x, and that is not nothing. It is accepted rather than
+    refined because script 52 is an uncontrolled first look and says so, script 53 stops both
+    tasks on accuracy and so cannot be confounded by a budget at all, and the trajectory plots
+    remove time entirely. Tighten it before making a controlled claim, not before looking.
 
 EXPERIMENT 12's LEARNING RATES CANNOT BE CARRIED FORWARD
     They were set under the legacy specification, where backprop ran ReLU with cross-entropy
@@ -97,8 +103,21 @@ from src.runner import run_classil
 # ---------------------------------------------------------------- settings
 THRESHOLD = 0.90        # task-1 competence, against a 94.3% Domain-IL joint ceiling (script 41)
 STOP_PATIENCE = 3
-TARGET_STEPS = 300      # the common learning speed every rule is calibrated to
-MAX_ITERS = 900         # cap at 3x the target: a rule slower than that is not a candidate
+TARGET_STEPS = 420      # the common learning speed every rule is calibrated to.
+# 420 rather than 300, chosen AFTER seeing the grid, for two reasons that are worth stating
+# because choosing a target from data invites the obvious objection.
+#   It is where the four rules match best. At 300 the nearest grid points are 240/340/420/247
+#   -- a 1.75x spread. At 420 they are 427/340/420/413 -- 1.26x. Same runs, better matching.
+#   And it stretches the curves, which is the other thing wanted here: a longer rise means the
+#   transition after the task switch occupies a readable fraction of the axis instead of
+#   looking like a step function.
+# This is safe because the target is COMMON to all four rules and is measured on task 1 alone,
+# before task 2 exists. It cannot move any rule relative to another on the quantity being
+# compared. Choosing per-rule learning rates by where their CROSSOVER landed would not be safe,
+# and is why that option was rejected.
+MAX_ITERS = 700         # cap: a rule needing >2.3x the target is not a candidate anyway, and
+                        # the runs that never reach threshold are what the EqProp budget is
+                        # spent on -- they cannot stop early
 EVAL_EVERY = 20         # steps-to-threshold IS the measurement, but EqProp pays 0.25 s an eval
 SEEDS = 3
 
@@ -109,7 +128,10 @@ GRIDS = {
     "backprop": [0.005, 0.01, 0.02, 0.05, 0.1, 0.2],
     "replay":   [0.005, 0.01, 0.02, 0.05, 0.1, 0.2],
     "pc":       [0.005, 0.01, 0.02, 0.05, 0.1, 0.2],
-    "eqprop":   [0.0005, 0.001, 0.002, 0.005, 0.01, 0.02],
+    # shifted up one decade from the others: EqProp divides its finite difference by beta
+    # before the optimiser sees it, so the same lr is not the same step. A pilot at lr=0.005
+    # reached only 49% in 60 updates where backprop at 0.05 reached 87%.
+    "eqprop":   [0.001, 0.002, 0.005, 0.01, 0.02, 0.05],
 }
 
 # EqProp costs ~185 ms per update here, so the full grid is ~45 minutes. `--smoke` runs every
@@ -160,11 +182,16 @@ base = replace(PROTOCOL, hidden=HIDDEN, scenario="domain_il", stop_threshold=THR
 # ---------------------------------------------------------------- run
 REPLOT = "--replot" in sys.argv and Path(array_path(__file__)).exists()
 
+
+
+
 if REPLOT:
     z = np.load(array_path(__file__), allow_pickle=True)
     steps_to = {m: z[f"steps_{m}"] for m in METHODS}
     final = {m: z[f"final_{m}"] for m in METHODS}
-    print("--replot: redrawing from saved arrays, no training\n")
+    data = None
+    print("--replot: grid loaded from disk, nothing re-run. The CHOICE is still recomputed, "
+          "so changing TARGET_STEPS and replotting reselects from the saved grid.\n")
 else:
     data = load(base)
     steps_to = {m: np.full((len(GRIDS[m]), SEEDS), np.nan) for m in METHODS}
@@ -218,18 +245,27 @@ for m in METHODS:
     f = np.nanmean(final[m][li]) if li is not None else float("nan")
     print(f"  {m:10s} {chosen[m]:9g} {achieved[m]:8.0f} {f:10.1f}%")
 
-spread = np.nanmax(list(achieved.values())) / max(1e-9, np.nanmin(list(achieved.values())))
-print(f"\n  spread in learning speed after matching: {spread:.2f}x "
-      + ("- acceptable" if spread < 1.5 else "- LARGE, the grid is too coarse near the target"))
+spread = float("nan")
+got = [v for v in achieved.values() if np.isfinite(v)]
+if len(got) < len(METHODS):
+    missing = [m for m in METHODS if not np.isfinite(achieved[m])]
+    print(f"\n  {', '.join(missing)} reached {THRESHOLD:.0%} at NO learning rate on the grid. "
+          f"Widen GRIDS or raise MAX_ITERS before the comparison uses this.")
+if got:
+    spread = max(got) / max(1e-9, min(got))
+    print(f"\n  spread in learning speed after matching: {spread:.2f}x "
+          + ("- acceptable" if spread < 1.5 else
+             "- LARGE, the grid is too coarse near the target"))
 
 # Is a global learning-rate divide safe? It is, if steps-to-threshold responds to learning rate
 # with the same exponent for every rule. Fit log(steps) = a + b*log(lr) per rule and compare b.
-slopes = {}
+slopes, intercepts = {}, {}
 for m in METHODS:
     x = np.log(np.asarray(GRIDS[m], dtype=float))
     y = np.log(np.array([np.nanmean(steps_to[m][li]) for li in range(len(GRIDS[m]))]))
     ok = np.isfinite(y)
-    slopes[m] = np.polyfit(x[ok], y[ok], 1)[0] if ok.sum() >= 2 else np.nan
+    b, a = np.polyfit(x[ok], y[ok], 1) if ok.sum() >= 2 else (np.nan, np.nan)
+    slopes[m], intercepts[m] = b, a
 sl = np.array(list(slopes.values()))
 print(f"\n  d log(steps) / d log(lr): "
       + ", ".join(f"{m} {slopes[m]:+.2f}" for m in METHODS))
@@ -237,6 +273,23 @@ print("  " + ("curves are parallel -- dividing every lr by the same factor keeps
               if np.nanmax(sl) - np.nanmin(sl) < 0.3 else
               "curves are NOT parallel -- a global lr divide breaks the matching; re-run this "
               "grid at a larger TARGET_STEPS instead"))
+
+# ---------------------------------------------------------------- residual mismatch
+# What is left after choosing from a grid this coarse. The grid steps by ~2x in lr and
+# steps-to-threshold goes as lr^-0.5, so one grid step is ~1.4x in steps and the nearest point
+# can sit ~1.2x off the target -- two rules off by that much in OPPOSITE directions is the
+# spread printed above.
+#
+# It is not refined further by interpolating the fit and re-running, deliberately. Script 52 is
+# an uncontrolled first look and says so; script 53 stops BOTH tasks on accuracy, which removes
+# the budget confound by construction -- a slower rule cannot appear to forget less when its
+# task-2 block ends on competence rather than on a step count; and the trajectory plots remove
+# time entirely. The place a tight match is load-bearing is the controlled claim later, and by
+# then there will be a result to justify a denser grid rather than a guess that one is needed.
+print(f"\n  residual mismatch {spread:.2f}x. "
+      + ("Fine for 52 (uncontrolled) and irrelevant to 53 (accuracy-stopped)."
+         if spread < 1.35 else
+         "Tighten before making a CONTROLLED claim: add grid points near TARGET_STEPS."))
 
 # ---------------------------------------------------------------- figure
 fig, ax = plt.subplots(1, 2, figsize=(11.5, 4.4))
@@ -253,7 +306,12 @@ for m in METHODS:
         ax[0].plot([chosen[m]], [achieved[m]], "*", color=COLORS[m], ms=18, mec="k", mew=0.6)
 
 ax[0].axhline(TARGET_STEPS, color="k", ls="--", lw=1)
-ax[0].set_xscale("log"); ax[0].set_yscale("log")
+ax[0].set_xscale("log")
+# A rule that reached threshold at no learning rate leaves this axis with nothing positive to
+# scale. That is a real possible outcome, not just a smoke-test artefact, so it must not crash
+# the figure that would show it.
+if any(np.isfinite(steps_to[m]).any() for m in METHODS):
+    ax[0].set_yscale("log")
 ax[0].set_xlabel("learning rate")
 ax[0].set_ylabel(f"updates to reach {THRESHOLD:.0%} on task 1")
 ax[0].legend(fontsize=8)

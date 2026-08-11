@@ -21,7 +21,8 @@ the wrong one. Flag it and ask.
 
 | File | What it is | When to read it |
 |---|---|---|
-| `claude_code_management/current_state.md` | **Where the project actually is.** Results, corrections, decisions, running order. | **First, every session.** It supersedes the plan where they disagree. |
+| `claude_code_management/now.md` | **The dashboard.** What is running, next three actions, checklist, recent decisions. Deliberately short — keep it that way. | **First, every session.** |
+| `claude_code_management/current_state.md` | **Where the project actually is.** Results, corrections, decisions, running order. | Second. It supersedes the plan where they disagree. |
 | `claude_code_management/knowledge_base.md` | Consolidated reference. Amendable. | Before any substantive claim. Start with §9.3. |
 | `claude_code_management/timeline.md` | Append-only log of chats. Entries are never edited. | When asked about history. |
 | `claude_code_management/presentation_plan.md` | The slide plan. Authoritative for what work happens next. | Start of any presentation or experiment work. |

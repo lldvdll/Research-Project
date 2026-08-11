@@ -32,13 +32,28 @@ Started 2026-08-11.
 - [x] **43** the same, read at matched competence → the correction. This pair is the argument.
 - [x] **50** settling → PC fully settled; EqProp's stopping rule was truncating at init, fixed.
 - [x] **51** learning-rate calibration → matched to 1.25×.
-- [ ] **52** four-rule comparison, fixed budget ← running
+- [x] **52** four-rule comparison, fixed budget → **nothing separates except replay.**
+      Retention: backprop 51.0±6.3, replay 77.3±3.0, pc 48.5±6.6, eqprop 43.1±5.5. PC is 0.3 SE
+      from backprop, EqProp 1.0 SE, replay 3.7 SE.
 - [ ] **53** four-rule comparison, accuracy stopping ← running
 - [ ] **B1/B2/B3** metrics, from one set of backprop runs
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison, then **E** why, then **F** does it generalise
 
 ## What we know
+- **No energy-based rule beat backprop at fixed budget (52).** Neither PC nor EqProp is
+  distinguishable from backprop on final retention; only replay is. Read this as *no detected
+  effect*, not as *no effect* — see the variance point below. `[EMPIRICAL]`
+- **Seed variance is the binding constraint, not the effect size.** ±6 points SEM on a ~50%
+  retention mean, with all four rules matched to ±0.8% at the switch — so the spread arises
+  after the switch, not from unequal starting competence. Detecting a 6-point difference needs
+  roughly 4× the seeds.
+- **Area retained is less noisy than endpoint retention.** EqProp vs backprop: 1.0 SE on final
+  retention, **2.2 SE on area**. Integrating the curve beats sampling its last point — an
+  argument for the metrics work that arrived from the data rather than from the literature.
+- **Task 1 is still falling when the budget ends.** The endpoint is not a resting place, so
+  under a fixed budget "how much was forgotten" is partly "how long did we run". Visible
+  directly in 52's figure; it is why 53 exists.
 - **The information survives.** NCM (classify from the hidden layer, output layer discarded)
   holds ~80% on task 1 while the network's own prediction reads 0.2%. With the hidden layer
   frozen, NCM is flat by construction and the prediction still collapses — so the collapse is

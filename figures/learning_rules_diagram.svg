@@ -1,0 +1,280 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1060 1000" width="1060" height="1000"
+     role="img" aria-label="Three learning rules compared. Backprop computes one global gradient at the output that reaches every weight. Predictive coding clamps the output to the target, relaxes the hidden layer, and updates each weight from the two nodes on its own edge. Equilibrium propagation settles twice, free then nudged, and updates each weight from the difference between the two settled states."
+     font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif">
+  <title>Backprop, predictive coding and equilibrium propagation: where the weight update comes from</title>
+  <desc>Three panels sharing one column grid. Red marks the forward or prediction direction, green marks
+  the forces that move node states during settling, blue marks the weight update. Backprop's blue path
+  runs the length of the network; both energy-based rules' blue paths never exceed one edge.</desc>
+
+  <defs>
+    <!-- forward / prediction -->
+    <marker id="aF" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="11" markerHeight="11"
+            orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0.5 L10,5 L0,9.5 Z" fill="#C0392B"/>
+    </marker>
+    <!-- settling: state moves -->
+    <marker id="aS" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="11" markerHeight="11"
+            orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0.5 L10,5 L0,9.5 Z" fill="#0E7C5A"/>
+    </marker>
+    <marker id="aSr" viewBox="0 0 10 10" refX="0.5" refY="5" markerWidth="11" markerHeight="11"
+            orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M10,0.5 L0,5 L10,9.5 Z" fill="#0E7C5A"/>
+    </marker>
+    <!-- weight update -->
+    <marker id="aU" viewBox="0 0 10 10" refX="9.5" refY="5" markerWidth="10" markerHeight="10"
+            orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0.5 L10,5 L0,9.5 Z" fill="#1D4ED8"/>
+    </marker>
+  </defs>
+
+  <!-- delete this rect for a transparent background -->
+  <rect id="bg" x="0" y="0" width="1060" height="1000" fill="#FCFCFB"/>
+
+  <!-- ==================================================================== -->
+  <!-- PANEL 1 : BACKPROP                                                   -->
+  <!-- ==================================================================== -->
+  <g id="panel-backprop">
+    <text x="60" y="44" font-size="15" font-weight="700" letter-spacing="1.6" fill="#16181C">BACKPROP</text>
+    <text x="60" y="63" font-size="11.5" fill="#6B7280">one forward pass, then one gradient computed at the output</text>
+    <text x="1000" y="44" font-size="11.5" font-weight="600" text-anchor="end" fill="#1D4ED8">update path: output &#8594; every weight</text>
+
+    <!-- forward -->
+    <g stroke="#C0392B" stroke-width="2" fill="none" marker-end="url(#aF)">
+      <line x1="201" y1="140" x2="284" y2="140"/>
+      <line x1="336" y1="140" x2="419" y2="140"/>
+      <line x1="471" y1="140" x2="554" y2="140"/>
+      <line x1="606" y1="140" x2="689" y2="140"/>
+      <line x1="741" y1="140" x2="851" y2="140"/>
+    </g>
+
+    <!-- weights -->
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.4">
+      <rect x="286" y="126" width="48" height="28" rx="5"/>
+      <rect x="556" y="126" width="48" height="28" rx="5"/>
+    </g>
+    <g font-size="13" text-anchor="middle" fill="#16181C">
+      <text x="310" y="145">W&#8321;</text>
+      <text x="580" y="145">W&#8322;</text>
+    </g>
+
+    <!-- nodes -->
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.8">
+      <circle cx="175" cy="140" r="24"/>
+      <circle cx="445" cy="140" r="24"/>
+      <circle cx="715" cy="140" r="24"/>
+    </g>
+    <line x1="157" y1="140" x2="193" y2="140" stroke="#16181C" stroke-width="1.8"/>
+    <g font-size="15" text-anchor="middle" fill="#16181C">
+      <text x="175" y="145.5">x&#8320;</text>
+      <text x="445" y="145.5">x&#8321;</text>
+      <text x="715" y="145.5">x&#8322;</text>
+    </g>
+
+    <!-- loss -->
+    <rect x="855" y="120" width="90" height="40" rx="6" fill="#FCFCFB" stroke="#16181C" stroke-width="1.4"/>
+    <text x="900" y="145" font-size="14" text-anchor="middle" fill="#16181C">L(y)</text>
+
+    <!-- the global gradient -->
+    <g stroke="#1D4ED8" stroke-width="2" fill="none" stroke-dasharray="7 5">
+      <path d="M900 162 L900 218 L310 218"/>
+      <path d="M580 218 L580 158" marker-end="url(#aU)"/>
+      <path d="M310 218 L310 158" marker-end="url(#aU)"/>
+    </g>
+    <g font-size="11.5" fill="#1D4ED8">
+      <text x="598" y="196">&#8706;L/&#8706;W&#8322;</text>
+      <text x="328" y="196">&#8706;L/&#8706;W&#8321;</text>
+    </g>
+    <text x="700" y="240" font-size="11" text-anchor="end" fill="#6B7280">one signal, formed at the output, carried back to every weight</text>
+  </g>
+
+  <line x1="60" y1="272" x2="1000" y2="272" stroke="#16181C" stroke-width="1" opacity="0.15"/>
+
+  <!-- ==================================================================== -->
+  <!-- PANEL 2 : PREDICTIVE CODING                                          -->
+  <!-- ==================================================================== -->
+  <g id="panel-pc">
+    <text x="60" y="306" font-size="15" font-weight="700" letter-spacing="1.6" fill="#16181C">PREDICTIVE CODING</text>
+    <text x="60" y="325" font-size="11.5" fill="#6B7280">output clamped to the target; the hidden layer relaxes until the errors balance</text>
+    <text x="1000" y="306" font-size="11.5" font-weight="600" text-anchor="end" fill="#1D4ED8">update path: one edge</text>
+
+    <!-- predictions -->
+    <g stroke="#C0392B" stroke-width="2" fill="none" marker-end="url(#aF)">
+      <line x1="201" y1="452" x2="284" y2="452"/>
+      <path d="M336 452 C 386 452 412 424 428 396"/>
+      <line x1="471" y1="452" x2="554" y2="452"/>
+      <path d="M606 452 C 656 452 682 424 698 396"/>
+    </g>
+
+    <!-- top-down error, through W2 transpose -->
+    <path d="M698 378 C 630 372 540 396 466 436" stroke="#0E7C5A" stroke-width="2" fill="none"
+          marker-end="url(#aS)"/>
+    <text x="602" y="374" font-size="11" text-anchor="middle" fill="#0E7C5A">W&#8322;<tspan dy="-4" font-size="8.5">T</tspan></text>
+
+    <!-- state feeds its own error unit (definition, not a transmitted signal) -->
+    <g stroke="#16181C" stroke-width="1.2" opacity="0.45" fill="none">
+      <line x1="437" y1="428" x2="437" y2="394"/>
+      <line x1="715" y1="428" x2="715" y2="394"/>
+    </g>
+    <!-- local error drives the state -->
+    <line x1="453" y1="394" x2="453" y2="424" stroke="#0E7C5A" stroke-width="2" marker-end="url(#aS)"/>
+    <text x="478" y="410" font-size="11" fill="#0E7C5A">&#8706;F/&#8706;x&#8321;</text>
+
+    <!-- weights -->
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.4">
+      <rect x="286" y="438" width="48" height="28" rx="5"/>
+      <rect x="556" y="438" width="48" height="28" rx="5"/>
+    </g>
+    <g font-size="13" text-anchor="middle" fill="#16181C">
+      <text x="310" y="457">W&#8321;</text>
+      <text x="580" y="457">W&#8322;</text>
+    </g>
+
+    <!-- error units -->
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.6">
+      <rect x="428" y="364" width="34" height="28" rx="4"/>
+      <rect x="698" y="364" width="34" height="28" rx="4"/>
+    </g>
+    <g font-size="13" text-anchor="middle" fill="#16181C">
+      <text x="445" y="383">e&#8321;</text>
+      <text x="715" y="383">e&#8322;</text>
+    </g>
+    <text x="490" y="360" font-size="10.5" fill="#6B7280">e&#8321; = x&#8321; &#8722; &#956;&#8321;</text>
+    <text x="760" y="360" font-size="10.5" fill="#6B7280">e&#8322; = y &#8722; &#956;&#8322;</text>
+
+    <!-- nodes -->
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.8">
+      <circle cx="175" cy="452" r="24"/>
+      <circle cx="445" cy="452" r="24"/>
+      <circle cx="715" cy="452" r="24"/>
+    </g>
+    <g stroke="#16181C" stroke-width="1.8">
+      <line x1="157" y1="452" x2="193" y2="452"/>
+      <line x1="697" y1="452" x2="733" y2="452"/>
+    </g>
+    <g font-size="15" text-anchor="middle" fill="#16181C">
+      <text x="175" y="457.5">x&#8320;</text>
+      <text x="445" y="457.5">x&#8321;</text>
+      <text x="715" y="457.5">y</text>
+    </g>
+
+    <!-- local updates -->
+    <g stroke="#1D4ED8" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#aU)">
+      <path d="M180 478 C 220 496 258 490 292 472"/>
+      <line x1="430" y1="397" x2="336" y2="437"/>
+      <path d="M450 478 C 490 496 528 490 562 472"/>
+      <line x1="700" y1="397" x2="606" y2="437"/>
+    </g>
+    <g font-size="11.5" text-anchor="middle" fill="#1D4ED8">
+      <text x="240" y="518">&#916;W&#8321; &#8733; x&#8320; e&#8321;</text>
+      <text x="510" y="518">&#916;W&#8322; &#8733; x&#8321; e&#8322;</text>
+    </g>
+    <text x="1000" y="540" font-size="11" text-anchor="end" fill="#6B7280">every update reads only the two nodes its own edge connects</text>
+  </g>
+
+  <line x1="60" y1="566" x2="1000" y2="566" stroke="#16181C" stroke-width="1" opacity="0.15"/>
+
+  <!-- ==================================================================== -->
+  <!-- PANEL 3 : EQUILIBRIUM PROPAGATION                                    -->
+  <!-- ==================================================================== -->
+  <g id="panel-eqprop">
+    <text x="60" y="600" font-size="15" font-weight="700" letter-spacing="1.6" fill="#16181C">EQUILIBRIUM PROPAGATION</text>
+    <text x="60" y="619" font-size="11.5" fill="#6B7280">no forward pass at all &#8212; the free equilibrium is the prediction; the target only nudges</text>
+    <text x="1000" y="600" font-size="11.5" font-weight="600" text-anchor="end" fill="#1D4ED8">update path: one edge, read twice</text>
+
+    <!-- free phase -->
+    <text x="140" y="672" font-size="11" text-anchor="end" fill="#16181C" font-weight="600">free phase</text>
+    <line x1="201" y1="668" x2="419" y2="668" stroke="#0E7C5A" stroke-width="2" marker-end="url(#aS)"/>
+    <line x1="471" y1="668" x2="689" y2="668" stroke="#0E7C5A" stroke-width="2"
+          marker-start="url(#aSr)" marker-end="url(#aS)"/>
+    <g font-size="12" text-anchor="middle" fill="#16181C">
+      <text x="310" y="654">W&#8321;</text>
+      <text x="580" y="654">W&#8322; / W&#8322;<tspan dy="-4" font-size="8.5">T</tspan></text>
+    </g>
+    <text x="748" y="664" font-size="11" fill="#0E7C5A">relaxes until &#8706;E/&#8706;s = 0</text>
+    <text x="748" y="683" font-size="10.5" fill="#6B7280">W&#8321; has no return arrow: x&#8320; is clamped</text>
+
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.8">
+      <circle cx="175" cy="668" r="24"/>
+      <circle cx="445" cy="668" r="24"/>
+      <circle cx="715" cy="668" r="24"/>
+    </g>
+    <line x1="157" y1="668" x2="193" y2="668" stroke="#16181C" stroke-width="1.8"/>
+    <g font-size="15" text-anchor="middle" fill="#16181C">
+      <text x="175" y="673.5">x&#8320;</text>
+      <text x="445" y="673.5">s&#8321;</text>
+      <text x="715" y="673.5">s&#8322;</text>
+    </g>
+
+    <!-- the update, between the phases -->
+    <g stroke="#1D4ED8" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#aU)">
+      <line x1="310" y1="680" x2="310" y2="754"/>
+      <line x1="580" y1="680" x2="580" y2="754"/>
+      <line x1="310" y1="860" x2="310" y2="790"/>
+      <line x1="580" y1="860" x2="580" y2="790"/>
+    </g>
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.4">
+      <rect x="286" y="758" width="48" height="28" rx="5"/>
+      <rect x="556" y="758" width="48" height="28" rx="5"/>
+    </g>
+    <g font-size="13" text-anchor="middle" fill="#16181C">
+      <text x="310" y="777">W&#8321;</text>
+      <text x="580" y="777">W&#8322;</text>
+    </g>
+    <text x="624" y="776" font-size="11.5" fill="#1D4ED8">&#916;W&#8343; = ( &#10216;s&#8343;&#8331;&#8321;s&#8343;&#10217;<tspan dy="3" font-size="8.5">nudged</tspan><tspan dy="-3"> &#8722; &#10216;s&#8343;&#8331;&#8321;s&#8343;&#10217;</tspan><tspan dy="3" font-size="8.5">free</tspan><tspan dy="-3"> ) / &#946;</tspan></text>
+
+    <!-- nudged phase -->
+    <text x="140" y="876" font-size="11" text-anchor="end" fill="#16181C" font-weight="600">nudged phase</text>
+    <line x1="201" y1="872" x2="419" y2="872" stroke="#0E7C5A" stroke-width="2" marker-end="url(#aS)"/>
+    <line x1="471" y1="872" x2="689" y2="872" stroke="#0E7C5A" stroke-width="2"
+          marker-start="url(#aSr)" marker-end="url(#aS)"/>
+    <line x1="878" y1="872" x2="743" y2="872" stroke="#0E7C5A" stroke-width="2" marker-end="url(#aS)"/>
+    <text x="812" y="856" font-size="11" text-anchor="middle" fill="#0E7C5A">&#946;(y &#8722; s&#8322;)</text>
+    <text x="898" y="877" font-size="15" fill="#16181C">y</text>
+
+    <g fill="#FCFCFB" stroke="#16181C" stroke-width="1.8">
+      <circle cx="175" cy="872" r="24"/>
+      <circle cx="445" cy="872" r="24"/>
+      <circle cx="715" cy="872" r="24"/>
+    </g>
+    <line x1="157" y1="872" x2="193" y2="872" stroke="#16181C" stroke-width="1.8"/>
+    <line x1="697" y1="872" x2="733" y2="872" stroke="#16181C" stroke-width="1.8" stroke-dasharray="9 6"/>
+    <g font-size="15" text-anchor="middle" fill="#16181C">
+      <text x="175" y="877.5">x&#8320;</text>
+      <text x="445" y="877.5">s&#8321;</text>
+      <text x="715" y="877.5">s&#8322;</text>
+    </g>
+    <text x="445" y="916" font-size="10.5" text-anchor="middle" fill="#6B7280">same relaxation, warm-started from the free state</text>
+  </g>
+
+  <!-- ==================================================================== -->
+  <!-- LEGEND  (delete this group if the legend lives on the slide instead) -->
+  <!-- ==================================================================== -->
+  <g id="legend" font-size="11" fill="#16181C">
+    <line x1="60" y1="944" x2="1000" y2="944" stroke="#16181C" stroke-width="1" opacity="0.15"/>
+
+    <line x1="60" y1="968" x2="86" y2="968" stroke="#C0392B" stroke-width="2" marker-end="url(#aF)"/>
+    <text x="98" y="972">forward &#183; prediction</text>
+
+    <line x1="228" y1="968" x2="254" y2="968" stroke="#0E7C5A" stroke-width="2" marker-end="url(#aS)"/>
+    <text x="266" y="972">settling &#183; which way a node moves</text>
+
+    <line x1="470" y1="968" x2="496" y2="968" stroke="#1D4ED8" stroke-width="2"
+          stroke-dasharray="6 4" marker-end="url(#aU)"/>
+    <text x="508" y="972">weight update</text>
+
+    <circle cx="612" cy="968" r="9" fill="#FCFCFB" stroke="#16181C" stroke-width="1.6"/>
+    <line x1="605" y1="968" x2="619" y2="968" stroke="#16181C" stroke-width="1.6"/>
+    <text x="628" y="972">clamped</text>
+
+    <circle cx="704" cy="968" r="9" fill="#FCFCFB" stroke="#16181C" stroke-width="1.6"/>
+    <line x1="697" y1="968" x2="711" y2="968" stroke="#16181C" stroke-width="1.6" stroke-dasharray="5 4"/>
+    <text x="720" y="972">nudged</text>
+
+    <circle cx="808" cy="968" r="9" fill="#FCFCFB" stroke="#16181C" stroke-width="1.6"/>
+    <text x="824" y="972">free</text>
+
+    <rect x="872" y="960" width="18" height="16" rx="3" fill="#FCFCFB" stroke="#16181C" stroke-width="1.6"/>
+    <text x="898" y="972">error unit</text>
+  </g>
+</svg>

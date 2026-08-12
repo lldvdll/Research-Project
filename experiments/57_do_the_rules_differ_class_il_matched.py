@@ -90,7 +90,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.protocol import PROTOCOL, load, run, replace, figure_path as _figure_path, array_path as _array_path
-from src.metrics import crossover, half_life, value_when, area_retained
+from src.metrics import crossover, half_life, value_when, area_retained, paired_diff
 from src.plotting import plot_learning_curves, plot_retention_curve
 
 # --smoke writes NOTHING. Its outputs would otherwise overwrite the real .npz that later
@@ -211,7 +211,7 @@ for m in METHODS:
 print(f"\n  read at the moment task 2 first holds >= {T2_THRESHOLD:.0%} for {STOP_PATIENCE} evals\n")
 print(f"  {'rule':10s} {'t1 at switch':>13s} {'t1 kept':>9s} {'t2 final':>9s} "
       f"{'crossover':>10s} {'half-life':>10s} {'t2 block':>9s}")
-summary = {}
+summary, per_seed_kept = {}, {}
 for m in METHODS:
     rows = []
     for o in runs[m]:
@@ -237,28 +237,39 @@ for m in METHODS:
     s_ = {k: agg(k) for k in rows[0]}
     s_["n_crossed"] = sum(1 for r in rows if r["xh"] is not None and np.isfinite(r["xh"]))
     s_["reached2"] = sum(o["reached"][1] for o in runs[m])
+    per_seed_kept[m] = [r["kept"] if r["kept"] is not None else np.nan
+                        for r in rows]
     summary[m] = s_
     xh = f"{s_['xh'][0]:8.1f}%" if s_["n_crossed"] else "   never"
     hl = f"{s_['hl'][0]:10.0f}" if np.isfinite(s_["hl"][0]) else "     never"
     print(f"  {m:10s} {s_['at_switch'][0]:12.1f}% {s_['kept'][0]:8.1f}% {s_['t2'][0]:8.1f}% "
           f"{xh} {hl} {s_['block'][0]:9.0f}")
 
-bp, rp = summary["backprop"]["kept"][0], summary["replay"]["kept"][0]
-print(f"\n  controls: backprop keeps {bp:.1f}%, replay keeps {rp:.1f}%.")
-drop = summary["backprop"]["at_switch"][0] - bp
-print("  " + ("Replay recovers task 1, so retention IS achievable here."
-              if rp > bp + 10 else
-              f"backprop has lost only {drop:.0f} points by this threshold, so there is barely "
-              f"anything for replay\n  to prevent. The reading is TOO EARLY to separate the "
-              f"rules -- raise the task-2 threshold.\n  This is not a failure of the control."
-              if drop < 30 else
-              "REPLAY DID NOT RECOVER TASK 1. The positive control failed; nothing else on this "
-              "figure can be interpreted."))
+# ---- THE COMPARISON: paired against backprop, seed by seed ------------------
+# Group means are the wrong statistic here and script 53 proved it the hard way. Every rule sees
+# the same class split and the same initialisation at a given seed, so most of the between-seed
+# variance is shared; comparing group means discards that and the noise swamps everything. On
+# 53's own runs, backprop retained 38.2% on one seed and 78.0% on another -- a 40-point range set
+# by which digits the split happened to pair -- and REPLAY, the positive control, came out at
+# 0.7 sem and read as a failure. Paired, the same runs give +11.6 +- 2.3, i.e. 5.1 sem.
+print("\n  PAIRED against backprop, per seed. This is the comparison; the table above is "
+      "descriptive.")
+print(f"  {'rule':10s} {'diff in task 1 kept':>21s} {'sem':>7s} {'':>10s}")
+paired = {}
 for m in METHODS:
-    if summary[m]["reached2"] < SEEDS:
-        print(f"  {m}: task 2 hit the {MAX_ITERS} cap on "
-              f"{SEEDS - summary[m]['reached2']}/{SEEDS} seeds -- those runs are NOT at matched "
-              f"competence and the comparison does not hold for them.")
+    if m == "backprop":
+        continue
+    d, s, n = paired_diff(per_seed_kept[m], per_seed_kept["backprop"])
+    paired[m] = (d, s, n)
+    print(f"  {m:10s} {d:+18.1f} pts {s:7.1f} {n:6.1f} sem  "
+          + ("SEPARATED" if n > 2 else "not separated"))
+
+rp_n = paired.get("replay", (0, 0, 0))[2]
+print("  " + ("positive control holds: replay separates from backprop, so retention IS "
+              "achievable here"
+              if rp_n > 2 else
+              "POSITIVE CONTROL FAILED even paired -- replay does not separate. Nothing else on "
+              "this figure can be interpreted."))
 
 # ---------------------------------------------------------------- figures
 # Switch-relative axis. Every run's switch is at x = 0; negative x is task-1 training. This is
@@ -305,7 +316,8 @@ plot_retention_curve(
           "Dashed line is where the runs stop. Further right at that line = better retention.",
 )
 
-np.savez(array_path(__file__), steps=np.asarray(grid), switch=0, hidden=HIDDEN,
+np.savez(array_path(__file__), steps=np.asarray(grid),
+         **{f"perseed_{m}": np.asarray(per_seed_kept[m], dtype=float) for m in METHODS}, switch=0, hidden=HIDDEN,
          t1_threshold=T1_THRESHOLD, t2_threshold=T2_THRESHOLD, methods=np.asarray(METHODS),
          lr=np.asarray([LR[m] for m in METHODS]),
          **{f"argmax_{m}": padded[m] for m in METHODS},

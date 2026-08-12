@@ -7,17 +7,31 @@ docstring — keep this file short enough to read in one sitting.
 Started 2026-08-11.
 
 ## Next three
-1. Read **55** first when it lands — it decides whether everything at depth 1 was measured in
-   the least informative place available.
-2. Read **53** (re-run, threshold now 70% and derived), then **56/57** (Class-IL).
-3. The gap none of them close: **exp 12 also ran the legacy spec.** See below.
+1. Read **59** when it lands — depth × width, the last A-series run and PC's best chance.
+2. **B series is mostly already answered** — see below. It is a write-up, not four experiments.
+3. **60** — why the seed matters so much (see below). A 40-point nuisance term.
 
-## Running overnight
-| script | question | ~cost |
+## Running
+| script | question | status |
 |---|---|---|
-| 55 | does PC stop looking like backprop at depth 2 and 3? | 10 min |
-| 53 | Domain-IL at matched competence, task-2 threshold now **70%**, derived from 52 | 50 min |
-| 56 → 57 | Class-IL, fixed budget then matched competence (57 reads 56) | 100 min |
+| 59 | depth {1,2,3,5} × width {32,128}, per-cell LR calibration, paired | running, hours |
+
+## The single most important methodological finding
+**Compare paired, per seed.** Every rule sees the same class split and initialisation at a given
+seed, so the between-seed variance is shared and comparing group means throws it away. On
+script 53's runs, group means put **the positive control at 0.7σ** and it read as a failure;
+paired, the same runs give 5.1σ. Five seeds were always enough — the statistic was wrong.
+`metrics.paired_diff` now carries this, with the numbers, in its docstring.
+
+## The B series is smaller than planned
+- **B1 — do standard metrics work here?** Answered. Group-mean endpoint retention cannot detect
+  the positive control (0.7σ) where the paired difference gives 5.1σ. And in Class-IL at a fixed
+  budget everything lands at 0–7%, so endpoint retention cannot rank anything at all.
+- **B3 — where do we compare?** Answered. Fixed budget vs matched competence *flips PC's sign*.
+- **B2 — rate metrics.** half-life and crossover height are already computed in 52/53/56/57.
+
+So B is a write-up of evidence in hand. The one genuinely new figure worth building is the
+paired-vs-unpaired demonstration — the strongest methodological point the project has.
 
 ## Fixed 2026-08-12
 - **53's non-smooth curves were a plotting bug, not learning.** NaN-padded ragged runs meant
@@ -71,6 +85,27 @@ Started 2026-08-11.
 - [ ] **B1/B2/B3** metrics, from one set of backprop runs
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison, then **E** why, then **F** does it generalise
+
+## THE RESULT — paired difference in task-1 retention vs backprop, 5 seeds
+Every rule sees the same class split and initialisation at a given seed, so the comparison is
+**per seed**. σ = standard errors of the paired difference.
+
+| | Domain-IL fixed | Domain-IL matched | Class-IL fixed | Class-IL matched |
+|---|---|---|---|---|
+| **replay** | +26.2 (6.5σ) | +11.6 (5.1σ) | +57.4 (17.2σ) | +41.4 (8.1σ) |
+| **pc** | −2.6 (2.7σ) | +2.5 (1.3σ) | −2.0 (4.0σ) | +1.6 (0.7σ) |
+| **eqprop** | −8.0 (4.9σ) | −2.9 (1.2σ) | −6.6 (3.3σ) | −13.9 (3.4σ) |
+
+**Neither energy-based rule reduces forgetting, in either scenario, under either measurement.**
+PC is within ±2.6 points of backprop everywhere — never better. EqProp is consistently worse.
+Replay separates hugely in all four, so the problem is solvable and they fail at something
+achievable. `[EMPIRICAL]`
+
+**The scenario is not what explains exp 12.** Class-IL gives the same PC verdict as Domain-IL.
+
+PC's sign flips between fixed budget (−) and matched competence (+): at a fixed budget it
+learns task 2 further so it forgets more. Small either way, but it is the 42/43 lesson
+reappearing inside the rule comparison.
 
 ## What we know
 - **PC trades task 1 for task 2 along the SAME CURVE as backprop, at depths 1, 2 and 3 (55).**
@@ -184,6 +219,33 @@ Also Díaz-Rodríguez et al. 2018 (arXiv:1810.13166) for the wider set.
   The trend is tolerance-dependent and not citable; the decisions do not rest on it.
 - ~~EqProp's patience rule was merely over-conservative~~ — it also **truncated**, to 0.34× of
   what was needed, at initialisation.
+
+## Proposed 60 — why does the SEED matter so much?
+The non-convergence that prompted this was a threshold artefact, not a seed property: at a 90%
+task-2 threshold replay missed on 4/5 seeds, and once the threshold was measured under the
+right cap (80%) **every rule reached it on 5/5**. Do not go looking for seeds that "fail".
+
+**But the underlying observation is real and large.** Backprop retained 38.2% on seed 2 and
+78.0% on seed 3 — a 40-point range, bigger than any effect we are trying to measure. It is
+shared across rules, which is why pairing rescues the comparison, but nothing explains it.
+
+The obvious candidate, and it is testable: **which classes get paired onto the same output
+unit.** Under Domain-IL `label_map` sends the i-th class of each task to unit i, so each unit
+carries one task-1 digit and one task-2 digit, paired by the per-seed permutation. If a unit
+carries two similar digits, the task-2 mapping may partly reuse the task-1 feature; if it
+carries two dissimilar ones, they compete.
+
+Questions, in the order they should be answered:
+1. Does pairwise digit similarity across the five units predict retention? Cheap — correlate
+   retention against a similarity measure over the existing seeds, no new training.
+2. If it does: is a bad pairing *slower* to resolve, or does it settle at a worse place? A rate
+   question, so read it off the retention curve, not the endpoint.
+3. Where does the damage land — hidden layer or output? The **NCM probe** answers this directly
+   and already exists (`probes.live_ncm_fn`): NCM high with argmax low means the hidden code
+   survived and the output layer is at fault.
+
+Worth doing because a 40-point nuisance term is larger than the effect under study, and because
+question 3 connects it to the C1/C2 mechanism work already planned.
 
 ## The gap 56/57 do not close
 Exp 12 differed from script 52 in **three** ways, not two: the scenario, the standardised

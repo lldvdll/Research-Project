@@ -198,3 +198,31 @@ def bootstrap_ci(values, ci=68, n_boot=10000, seed=0):
     means = rng.choice(v, size=(n_boot, v.size), replace=True).mean(axis=1)
     lo, hi = np.percentile(means, [(100 - ci) / 2, 100 - (100 - ci) / 2])
     return float(v.mean()), float(lo), float(hi)
+
+
+def paired_diff(treatment, control):
+    """Per-seed difference against a control, as (mean, sem, n_sem). THE DEFAULT COMPARISON.
+
+    Every rule in this project sees the SAME class split and the SAME initialisation at a given
+    seed -- `Protocol.tasks(seed)` and `build(..., seed)` both key off it. So most of the
+    variance between seeds is shared, and comparing group means throws that away.
+
+    Script 53 measured how much this matters. Backprop retained 38.2% on one seed and 78.0% on
+    another, a 40-point range set by which digits the split happened to pair. Compared as group
+    means, replay -- the POSITIVE CONTROL, which is supposed to work -- came out at 0.7 sem and
+    read as a failure. Paired, the same runs give +11.6 +- 2.3, i.e. 5.1 sem, because every seed
+    shows replay ahead. The five-seed budget was never the problem; the statistic was.
+
+    Report the paired difference. Report a group mean only when the two sides genuinely do not
+    share a seed, and say so when you do.
+    """
+    a = np.asarray(treatment, dtype=float)
+    b = np.asarray(control, dtype=float)
+    if a.shape != b.shape:
+        raise ValueError(f"paired_diff needs matched runs, got {a.shape} and {b.shape}")
+    d = a - b
+    d = d[np.isfinite(d)]
+    if d.size < 2:
+        return (float(d[0]) if d.size else float("nan")), float("nan"), float("nan")
+    m, s = float(d.mean()), float(d.std(ddof=1) / np.sqrt(d.size))
+    return m, s, (abs(m) / s if s > 0 else float("inf"))

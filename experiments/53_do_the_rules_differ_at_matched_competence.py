@@ -118,30 +118,43 @@ SETTLE_TOL, EQ_MAX_STEPS = float(z51["settle_tol"]), int(z51["eq_max_steps"])
 PC_STEPS = int(z51["pc_steps"])
 T1_THRESHOLD = float(z51["threshold"])          # the standard the learning rates were matched at
 
-# THE TASK-2 T2_THRESHOLD IS DERIVED, NOT ASSUMED, AND THE FIRST ATTEMPT AT THIS SCRIPT FAILED
-# BECAUSE IT WAS ASSUMED. It was set to 90% -- the same as task 1 -- without checking that task
-# 2 can reach 90% from a network already committed to task 1. Replay missed it on 4 of 5 seeds
-# and EqProp on 3, so most runs were never read at matched competence and the whole comparison
-# was void. Task 2 is a harder problem than task 1 was: it starts from a committed network, and
-# replay spends half its gradient preserving task 1 rather than learning the new task.
+# THE TASK-2 THRESHOLD IS MEASURED, UNDER THE CAP THIS SCRIPT ACTUALLY USES. Two attempts got
+# it wrong in different ways, and the second is a repeat of a mistake script 41 already made.
 #
-# So it is read off script 52, which ran the same rules to a long fixed budget and measured what
-# each actually reaches. The threshold is the WORST rule's ceiling with a margin, because a
-# threshold only one rule can reach silently turns the comparison into "the rules that finished,
-# against the rules that were capped".
-z52 = np.load(array_path(str(ROOT / "experiments" /
-                             "52_do_the_rules_differ_fixed_budget.py")))
-reach = {m: float(z52[f"t2_{m}"][0]) for m in [str(x) for x in z52["methods"]]}
-T2_THRESHOLD = np.floor(min(reach.values()) * 0.95 / 5) * 5 / 100    # round down to a 5% step
+#   1. Set to 90% by assumption, the same as task 1. Replay missed it on 4 of 5 seeds, so most
+#      runs were never read at matched competence and the comparison was void.
+#   2. Derived as 70% from script 52's task-2 "ceilings". But 52 ran a FIXED 630-update budget,
+#      so those numbers say where each rule had GOT TO, not where it could get -- replay's 78%
+#      was its progress, not its limit. A CEILING MEASURED UNDER A BUDGET IS NOT A CEILING.
+#      Script 41 hit the same thing: a short-budget capacity sweep produced a flat region that
+#      looked like a capacity limit and was really the budget binding. Measured under this
+#      script's own 2000-update cap, replay reaches 88.7% and backprop 90.8%.
+#      At 70% the reading came far too early to show any forgetting -- backprop's task-2 block
+#      was 186 updates of 2000 and it had fallen only from 90% to 72%, leaving replay with
+#      almost nothing to prevent and the four rules within 7 points of each other.
+#
+# So a pilot measures it here, under MAX_ITERS. Only the two cheap rules are piloted: replay is
+# the slowest to learn task 2 -- it spends half of every batch on task 1 -- so it is the binding
+# constraint, and piloting the energy-based rules would cost more than the rest of the script.
+def _measure_ceiling(data_):
+    """Highest task-2 accuracy the slowest rule actually reaches, under this script's cap."""
+    tops = []
+    for m in ["backprop", "replay"]:
+        p = replace(base, stop_threshold=[T1_THRESHOLD, None], lr={m: LR[m]})
+        for seed in range(SEEDS):
+            o = run(p, m, seed, data=data_)
+            c = o["curves"]["argmax"] * 100
+            i = int(np.argmin(np.abs(np.asarray(o["steps"]) - o["switches"][0])))
+            tops.append(float(c[i:, 1].max()))
+    return min(tops)
+
 
 if "--smoke" in sys.argv:
-    SEEDS, MAX_ITERS, T1_THRESHOLD, T2_THRESHOLD = 1, 60, 0.5, 0.4
+    SEEDS, MAX_ITERS, T1_THRESHOLD = 1, 60, 0.5
     print("--smoke: tiny budget, results are NOT meaningful\n")
 
-print(f"H = {HIDDEN} (41) | task 1 stops at {T1_THRESHOLD:.0%}, task 2 at {T2_THRESHOLD:.0%}"
-      f" | cap {MAX_ITERS} | {SEEDS} seeds")
-print("  task-2 threshold derived from script 52's measured ceilings: "
-      + ", ".join(f"{m} {v:.0f}%" for m, v in reach.items()))
+print(f"H = {HIDDEN} (41) | task 1 stops at {T1_THRESHOLD:.0%} | cap {MAX_ITERS}"
+      f" | {SEEDS} seeds")
 print("  learning rates from 51: " + ", ".join(f"{m} {LR[m]:g}" for m in METHODS) + "\n")
 
 
@@ -155,12 +168,17 @@ def settle_kw(method):
 
 
 base = replace(PROTOCOL, hidden=HIDDEN, scenario="domain_il",
-               stop_threshold=[T1_THRESHOLD, T2_THRESHOLD], stop_patience=STOP_PATIENCE,
+               stop_patience=STOP_PATIENCE,
                max_iters_per_task=MAX_ITERS, eval_every=EVAL_EVERY, seeds=SEEDS)
 
 # ---------------------------------------------------------------- run
 # Runs have different lengths, so they are kept as per-seed dicts rather than stacked.
 data = load(base)
+_ceiling = 60.0 if SMOKE else _measure_ceiling(data)
+T2_THRESHOLD = float(np.floor((_ceiling - 3.0) / 5.0) * 5.0 / 100.0)
+print(f"  pilot: the slowest rule reaches {_ceiling:.1f}% on task 2 under a {MAX_ITERS} cap"
+      f"  ->  task 2 stops at {T2_THRESHOLD:.0%}\n")
+base = replace(base, stop_threshold=[T1_THRESHOLD, T2_THRESHOLD])
 runs = {m: [] for m in METHODS}
 t0 = time.perf_counter()
 
@@ -213,8 +231,13 @@ for m in METHODS:
 
 bp, rp = summary["backprop"]["kept"][0], summary["replay"]["kept"][0]
 print(f"\n  controls: backprop keeps {bp:.1f}%, replay keeps {rp:.1f}%.")
+drop = summary["backprop"]["at_switch"][0] - bp
 print("  " + ("Replay recovers task 1, so retention IS achievable here."
               if rp > bp + 10 else
+              f"backprop has lost only {drop:.0f} points by this threshold, so there is barely "
+              f"anything for replay\n  to prevent. The reading is TOO EARLY to separate the "
+              f"rules -- raise the task-2 threshold.\n  This is not a failure of the control."
+              if drop < 30 else
               "REPLAY DID NOT RECOVER TASK 1. The positive control failed; nothing else on this "
               "figure can be interpreted."))
 for m in METHODS:

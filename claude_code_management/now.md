@@ -6,15 +6,51 @@ docstring — keep this file short enough to read in one sitting.
 **Running:** 52 (fixed budget) and 53 (accuracy stopping), in parallel. EqProp-bound.
 Started 2026-08-11.
 
-## Next three
-1. Read **59** when it lands — depth × width, the last A-series run and PC's best chance.
-2. **B series is mostly already answered** — see below. It is a write-up, not four experiments.
-3. **60** — why the seed matters so much (see below). A 40-point nuisance term.
+**Running:** nothing. The A series is complete.
 
-## Running
-| script | question | status |
-|---|---|---|
-| 59 | depth {1,2,3,5} × width {32,128}, per-cell LR calibration, paired | running, hours |
+## Next three
+1. **Decide what the thesis argues.** The A series answers the original question negatively and
+   consistently. See "Where this leaves the project" below.
+2. **B series** — mostly already answered; it is a write-up, not four experiments. See below.
+3. **60** — why the seed accounts for a 40-point range, larger than any effect under study.
+
+## Where this leaves the project
+The question the project set out to answer — *do energy-based rules forget less than backprop?*
+— now has a clear answer across 5 experiments, 2 scenarios, 2 measurement points, 4 depths and
+2 widths: **no.** PC is indistinguishable from backprop; EqProp is worse; replay separates
+everywhere, so the problem is solvable and they fail at something achievable.
+
+That is a result, not a dead end, and it is stronger than a vague null because:
+- **The rules genuinely differ.** 54 measured EqProp's output-layer update as nearly orthogonal
+  to backprop's (cos 0.197) and PC's as 0.985-aligned on W1. So credit assignment changes
+  without the retention/acquisition trade-off changing — the interesting question is *why those
+  come apart*, which is what E's alignment and weight-path probes were always for.
+- **Every controlled comparison is gated.** Matched task-1 competence, matched task-2
+  competence, a separating positive control, and paired statistics. Each gate exists because
+  its absence produced a wrong answer earlier in the series.
+- **The scenario, the depth, the width, the measurement point and the output standardisation
+  have each been eliminated** as explanations for the contradicting prior result (exp 12).
+
+## 59 — the final A-series run. Depth and width do NOT rescue PC.
+Depth {1,2,3,5} × width {32,128}, learning rates calibrated **per cell**, both tasks stopped on
+accuracy with the task-2 threshold measured per cell, paired against backprop. All 8 cells
+passed the validity gate (task-2 spread ≤ 1.2 points) and the positive control separated in
+**8/8**.
+
+| PC − backprop | 1 layer | 2 | 3 | 5 |
+|---|---|---|---|---|
+| **32 units** | +1.6 (0.9σ) | +1.8 (1.2σ) | +0.6 (0.4σ) | **−4.6 (2.3σ)** |
+| **128 units** | +0.7 (0.8σ) | +1.6 (1.5σ) | +2.5 (1.4σ) | +0.2 (0.3σ) |
+
+Replay over the same cells: +9.5 to +16.9, separated everywhere.
+
+**PC never beats backprop in any cell.** The only cell where it separates at all is 5×32, where
+it is *worse* — the deepest and narrowest, i.e. the most capacity-constrained. **H=32 was not
+masking an effect**: at 128 units, four times the capacity, PC is +0.7 to +2.5 and never
+separates. `[EMPIRICAL]`
+
+With 52, 53, 56 and 57 this closes the A series: **PC does not reduce forgetting in this task
+family at any depth or width tried, under either scenario, under either measurement point.**
 
 ## The single most important methodological finding
 **Compare paired, per seed.** Every rule sees the same class split and initialisation at a given
@@ -79,10 +115,13 @@ paired-vs-unpaired demonstration — the strongest methodological point the proj
       achievable, as 43 did.
 - [x] **54** are the EBMs really settling → **yes, both. Neither is backprop.** But PC's hidden
       update is 0.985 aligned with backprop's, at every settling amount ≥ 1 step. EqProp 0.316.
-- [x] **55** does PC need depth → **no.** Retention curves for PC and backprop are superimposed
+- [x] **55** first depth pass (superseded by 59) — does PC need depth → **no.** Retention curves for PC and backprop are superimposed
       at depths 1, 2 and 3. Divergence grows toward the output (W4 0.623) while W1 stays
       backprop-like (0.952) — and W1 is the layer whose drift damages task 1.
-- [ ] **B1/B2/B3** metrics, from one set of backprop runs
+- [x] **56/57** Class-IL, both readings -> same verdict as Domain-IL
+- [x] **58** legacy spec -> cannot answer exp 12; backprop never learns task 2 there
+- [x] **59** depth x width -> **PC never beats backprop in 8/8 cells**
+- [ ] **B1/B2/B3** metrics, largely a write-up of evidence already in hand
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison, then **E** why, then **F** does it generalise
 

@@ -76,7 +76,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.protocol import PROTOCOL, load, run, replace, figure_path as _figure_path, array_path as _array_path
-from src.metrics import crossover, half_life, value_when, area_retained, paired_diff
+from src.metrics import metric_grid, report_grid, crossover, half_life, value_when, area_retained, paired_diff
 from src.plotting import plot_learning_curves, plot_retention_curve
 
 # --smoke writes NOTHING. Its outputs would otherwise overwrite the real .npz that later
@@ -276,10 +276,19 @@ for m in METHODS:
                 A[i, k] = o["curves"]["argmax"][j]
     padded[m] = A
 
+# ---- the FULL metric grid ------------------------------------------------
+# Reported in full because the choice of metric changed this project's conclusion once already:
+# on endpoint retention PC was indistinguishable from backprop, on CROSSOVER HEIGHT -- the metric
+# experiment 12 was read on -- it separates in Class-IL. Quoting one number invites quoting the
+# flattering one, so every metric is printed, paired against backprop, every time.
+report_grid({m: metric_grid(grid, padded[m], 0) for m in METHODS},
+            METHODS, control="backprop", primary="crossover")
+
 plot_learning_curves(
     grid, padded, METHODS, figure_path(__file__),
     blocks=[(LO, 0, 0), (0, HI, 1)], ncols=2,
     task_colors=TASK_COLORS, task_labels=["task 1", "task 2"],
+    crossover_after=0,
     xlabel="training step, relative to the task switch",
     legend_kw=dict(loc="upper left", bbox_to_anchor=(1.02, 1), frameon=False),
 )

@@ -6,7 +6,42 @@ docstring — keep this file short enough to read in one sitting.
 **Running:** 52 (fixed budget) and 53 (accuracy stopping), in parallel. EqProp-bound.
 Started 2026-08-11.
 
-**Running:** nothing. The A series is complete.
+**Running:** 59 (crossover × depth × width), 61 (exp 12 verbatim), 52 (re-run, see below).
+
+## ⚠ KNOWN INCONSISTENCY — script 52 must be re-run
+**52's replay is not the same replay as 53/56/57's.** 52 ran before `replay_frac` was changed
+from `None` to `0.5`, so its replay *appended* the buffer and trained on 64 examples per step
+where every other rule got 32. 53, 56 and 57 all ran after the fix. So 52's replay column is
+not comparable with theirs, and 52's own replay-vs-backprop gap is inflated by a data advantage.
+Re-running. **Do not quote 52's replay numbers until it has.**
+
+Nothing else in the A series is affected: 52's EqProp already used `settle_tol` (that change
+landed first), and 55/59 contain no replay.
+
+## What each change means for existing runs
+| change | affects | action |
+|---|---|---|
+| `replay_frac` None → 0.5 | **52 only** — all later runs postdate it | re-run 52 |
+| EqProp `settle_tol` | nothing in the 50s — landed before 52 | none |
+| `plotting._mean_of_all` | figures with ragged runs | **43 done**; 53/57 pending |
+| `crossover_after=` on learning curves | all comparison figures | 52/56 on next run; 53/57 pending |
+| metric grid | every comparison | script **62** re-reports without retraining |
+| `settle_patience` restored | 01–27 and **61** now run again | none |
+
+**53 and 57 have no `--replot` path** — they re-train from scratch, so their figures cannot be
+regenerated cheaply and still lack the crossover annotation. Numbers are unaffected and script
+62 re-reports their full metric grid without retraining. Add `--replot` to both when next
+touched; do not re-run them just for the figure.
+
+## Then
+1. **Code audit** — our `pc_update` / `pc_settle` against Song & Bogacz's published algorithm.
+   The one documented divergence so far: `x_lr_discount` defaults to 1.0 (fixed step) where
+   [R1] use 0.9 (backtracking). Script **63**.
+2. **Extend the toolkit** with the two mechanism metrics, now that there is a PC result to
+   explain: **synaptic path efficiency** ([R31], `metrics.inefficiency` + `probes.weight_path_probe`)
+   and **target alignment** ([R1] Fig 3b, `probes.alignment_probe`). Both are implemented and
+   have never been run. They answer *why* the rules differ in credit assignment (54: EqProp
+   cos 0.197, PC 0.985 on W1) without differing in the forgetting trade-off.
 
 ## Next three
 1. **Decide what the thesis argues.** The A series answers the original question negatively and
@@ -124,6 +159,47 @@ paired-vs-unpaired demonstration — the strongest methodological point the proj
 - [ ] **B1/B2/B3** metrics, largely a write-up of evidence already in hand
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison, then **E** why, then **F** does it generalise
+
+## THE EXPERIMENT-12 MYSTERY IS SOLVED — its positive control fails
+**61 re-ran experiment 12 verbatim** (100 updates per task, its own learning rates, legacy
+per-rule spec, 10 pairings). Crossover height, the metric 12 was read on:
+
+| | crossover | vs backprop | final t1 | final t2 |
+|---|---|---|---|---|
+| backprop | **64.0%** | — | 54.4% | 73.6% |
+| pc | 59.5% | −4.52 (3.5σ) | 9.6% | 84.8% |
+| replay | 48.7% | **−14.14 (5.2σ)** | 32.9% | 79.3% |
+| eqprop | 32.4% | −30.59 (27σ) | 2.2% | 68.0% |
+
+**REPLAY — THE POSITIVE CONTROL — COMES OUT WORSE THAN BACKPROP.** At 100 updates per task
+nothing has converged: backprop is simply the slowest to learn task 2 (73.6%) and so has
+displaced the least of task 1. Every ordering at that budget is dominated by task-2 learning
+speed, not by forgetting. **A setup where the positive control inverts cannot detect a
+forgetting difference at all**, so exp 12's result is not evidence about PC — and no bug in
+`src` is needed to explain it. With a proper budget the same code gives replay +7.32 crossover
+(9.7σ) in script 56.
+
+One thing 61 *does* reproduce is the tension remembered from 12's plots: **PC beats replay on
+crossover (59.5 vs 48.7) while losing badly on final task-1 accuracy (9.6 vs 32.9)** — which is
+exactly why one metric is never enough.
+
+## PC's small advantage is CLASS-IL SPECIFIC, and that is mechanistically coherent
+Paired crossover vs backprop:
+
+| | Domain-IL | Class-IL |
+|---|---|---|
+| fixed budget | −0.01 (0.0σ) | **+1.29 (3.7σ)** |
+| matched competence | +0.49 (2.0σ) | **+3.00 (2.2σ)** |
+| **59, all 8 depth × width cells** | **−1.75 to +0.52, never separated** | not run |
+
+Replay separates in all 8 of 59's cells (+2.24 to +4.42), so those cells are sound.
+
+**The story that ties 54, 55, 56/57 and 59 together:** PC's update diverges from backprop most at
+the OUTPUT layer (54: cos 0.197 for EqProp, 0.814 for PC on W2; 55: 0.623 at W4 by depth 3) and
+barely at all on W1 (0.985→0.952). Output-layer *suppression* is the dominant forgetting
+mechanism in Class-IL (42/43) and **cannot occur in Domain-IL**, where every unit is a target for
+some class. So PC helps a little exactly where the output layer is the problem, and not at all
+where it isn't. `[HYPOTHESIS]` — coherent with everything measured, not yet tested directly.
 
 ## THE RESULT — paired difference in task-1 retention vs backprop, 5 seeds
 Every rule sees the same class split and initialisation at a given seed, so the comparison is

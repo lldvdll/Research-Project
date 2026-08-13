@@ -111,7 +111,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.protocol import PROTOCOL, load, run, replace, figure_path as _figure_path, array_path as _array_path
-from src.metrics import crossover, half_life, value_when, area_retained
+from src.metrics import metric_grid, report_grid, crossover, half_life, value_when, area_retained
 from src.plotting import plot_learning_curves, plot_retention_curve
 
 # --smoke writes NOTHING. Its outputs would otherwise overwrite the real .npz that later
@@ -261,6 +261,14 @@ for m in ["pc", "eqprop"]:
             if k >= rp - 5 else "sits with backprop -- no effect at this scale"
             if k <= bp + 5 else "sits between the controls -- there is an effect to measure")
     print(f"  {m:10s} keeps {k:5.1f}%  {band}")
+
+# ---- the FULL metric grid ------------------------------------------------
+# Reported in full because the choice of metric changed this project's conclusion once already:
+# on endpoint retention PC was indistinguishable from backprop, on CROSSOVER HEIGHT -- the metric
+# experiment 12 was read on -- it separates in Class-IL. Quoting one number invites quoting the
+# flattering one, so every metric is printed, paired against backprop, every time.
+report_grid({m: metric_grid(steps, curves[m], switches[0]) for m in METHODS},
+            METHODS, control="backprop", primary="crossover")
 
 # ---------------------------------------------------------------- figures
 plot_learning_curves(

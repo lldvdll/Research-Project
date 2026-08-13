@@ -162,7 +162,7 @@ def output_unit_stats(predict, x):
 # Both wrap train_step rather than hooking the runner, so a measurement is opt-in per run and
 # the training loop stays the same for every rule. Pass them as run(..., wrap=...).
 
-def alignment_probe(train_step, predict, arch, obj, device="cpu"):
+def alignment_probe(train_step, predict, arch, obj, device="cpu", every=1, ref=None):
     """Wrap train_step to record TARGET ALIGNMENT for each update. [R1] Fig 3b.
 
         d_target  = target - out_before
@@ -174,29 +174,55 @@ def alignment_probe(train_step, predict, arch, obj, device="cpu"):
     away. This is [R1]'s own measure of whether a rule configures itself prospectively, so it
     tests their mechanism claim on our networks rather than restating it.
 
-    Returns (wrapped_train_step, log). `log` is a list, one mean-over-batch value per update,
-    which fills as the run proceeds.
+    `ref=(x_ref, y_ref)` MEASURES THE SAME COSINE ON A FIXED BATCH THAT IS NOT BEING TRAINED.
+    Point it at task-1 data during task 2 and it becomes an INTERFERENCE measure: how much of
+    each update's movement, on data the update was not computed from, goes toward that data's
+    own targets. Positive means the update happens to help task 1 as well; negative means it
+    actively pushes task 1's outputs away, which is forgetting caught per update rather than
+    inferred from an endpoint. That is the version this project needs: it is a rate, so unlike
+    every accuracy metric it does not inherit the training budget.
 
-    COST: two extra forward passes per update. Cheap for backprop and PC; for EqProp `predict`
-    runs a full settling, so expect the run to take noticeably longer. Use it on the script
-    that asks this question, not on every run.
+    `every=k` measures on every k-th update only. Alignment is averaged over many updates, so
+    subsampling costs precision in the mean and nothing else -- and it is what makes the probe
+    affordable for EqProp, where `predict` is a full relaxation rather than a forward pass.
+
+    Returns (wrapped_train_step, log) or, when `ref` is given, (wrapped, log, ref_log). Each
+    log is a list of (update_index, mean-over-batch value), so subsampled runs still say WHEN
+    each measurement was taken and can be aligned to the task switch.
+
+    COST: two extra forward passes per measured update, or four with `ref`. Negligible for
+    backprop and PC. For EqProp each one is a settling, so use `every` there.
     """
     from .model import make_target
 
-    log = []
+    log, ref_log, step = [], [], [0]
+    cos = torch.nn.functional.cosine_similarity
+    if ref is not None:
+        x_ref, y_ref = ref
+        tgt_ref = make_target(y_ref, arch, obj, device=device)
 
-    def wrapped(x, y, active=None):
-        with torch.no_grad():
-            out_before = predict(x, raw=True).detach().clone()
-        train_step(x, y, active=active)
+    def _measure(x, tgt, out_before):
         with torch.no_grad():
             out_after = predict(x, raw=True).detach()
-        tgt = make_target(y, arch, obj, device=device)
-        d_target = tgt - out_before
-        d_learn = out_after - out_before
-        log.append(torch.nn.functional.cosine_similarity(d_target, d_learn, dim=-1).mean().item())
+        return cos(tgt - out_before, out_after - out_before, dim=-1).mean().item()
 
-    return wrapped, log
+    def wrapped(x, y, active=None):
+        i = step[0]
+        step[0] = i + 1
+        take = (i % every == 0)
+        if not take:
+            return train_step(x, y, active=active)
+        with torch.no_grad():
+            out_before = predict(x, raw=True).detach().clone()
+            ref_before = (predict(x_ref, raw=True).detach().clone()
+                          if ref is not None else None)
+        train_step(x, y, active=active)
+        tgt = make_target(y, arch, obj, device=device)
+        log.append((i, _measure(x, tgt, out_before)))
+        if ref is not None:
+            ref_log.append((i, _measure(x_ref, tgt_ref, ref_before)))
+
+    return (wrapped, log, ref_log) if ref is not None else (wrapped, log)
 
 
 def weight_path_probe(train_step, params):

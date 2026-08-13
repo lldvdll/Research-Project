@@ -267,7 +267,11 @@ def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimi
 
 
 # ------------------------------------------------------------------ equilibrium propagation
-def make_eqprop(in_dim=196, hidden=64, out_dim=10, lr=0.005, beta=0.3, dt=0.3, max_steps=500,
+# max_steps=800 matches METHOD_DEFAULTS["eqprop"] and eqprop_settle's own default. It was 500
+# here, so a direct make_eqprop(...) call capped the relaxation lower than the same method built
+# through build_method -- and a settling cap that differs by route is the kind of thing that
+# silently changes a settling result rather than failing.
+def make_eqprop(in_dim=196, hidden=64, out_dim=10, lr=0.005, beta=0.3, dt=0.3, max_steps=800,
                 settle_tol=1e-4, gate_frac=None, optimizer="sgd", seed=0, device="cpu",
                 arch=None, obj=None, handle=None, settle_patience=None, **_):
     # settle_patience selects the PRE-EXPERIMENT-50 stopping rule and is forwarded, not blocked.

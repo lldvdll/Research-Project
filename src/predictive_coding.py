@@ -117,20 +117,31 @@ def pc_update(x, y_labels, p, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, lr=0.05, dt=0.
     mu_out = top @ p.Ws[L - 1] if p.bs[L - 1] is None else top @ p.Ws[L - 1] + p.bs[L - 1]
     errs.append(output_error(mu_out, target, obj, av))       # output error
 
+    # `freeze` names TENSORS, not layers: freezing "W1" holds W1 still and leaves b1 learning.
+    # That is the convention methods._apply_freeze documents and eqprop_update implements, so
+    # one freeze set has to mean the same thing under all four rules -- otherwise a freezing
+    # experiment compares two different interventions rather than two rules. The raw path here
+    # used to `continue` past the whole layer, freezing b1 along with W1.
     if opt is None:                                   # raw local update, lr applied directly
         for i in range(L):
-            if f"W{i + 1}" in freeze:
-                continue
-            p.Ws[i] += lr * (acts[i].t() @ errs[i]) / scale
+            if f"W{i + 1}" not in freeze:
+                p.Ws[i] += lr * (acts[i].t() @ errs[i]) / scale
             if p.bs[i] is not None and f"b{i + 1}" not in freeze:
                 p.bs[i] += lr * errs[i].sum(0) / scale
     else:                                             # identical local gradients, via torch
         opt.zero_grad()
         for i in range(L):
-            frozen = f"W{i + 1}" in freeze
-            p.Ws[i].grad = torch.zeros_like(p.Ws[i]) if frozen else -(acts[i].t() @ errs[i]) / n
+            # `scale`, not `n`. They are equal under obj.reduction="mean", which is every run to
+            # date, but under "sum" batch_scale is 1.0 and dividing by n here would make this
+            # path disagree with the raw one above by a factor of the batch size -- measured at
+            # max|dW| = 0.29 on an 8-example batch. reduction="sum" exists specifically to match
+            # Song & Bogacz's summed loss, so the disagreement would first appear in the
+            # comparison it was added for.
+            wf, bf = f"W{i + 1}" in freeze, f"b{i + 1}" in freeze
+            p.Ws[i].grad = (torch.zeros_like(p.Ws[i]) if wf
+                            else -(acts[i].t() @ errs[i]) / scale)
             if p.bs[i] is not None:
-                p.bs[i].grad = torch.zeros_like(p.bs[i]) if frozen else -errs[i].mean(0)
+                p.bs[i].grad = torch.zeros_like(p.bs[i]) if bf else -errs[i].sum(0) / scale
         opt.step()
     if return_delta:
         return dict(displacement=float(sum(e.abs().mean() for e in errs[:-1]) / max(1, L - 1)))

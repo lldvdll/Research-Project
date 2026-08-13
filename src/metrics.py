@@ -25,16 +25,35 @@ def first_cross(steps, series, thresh, after=0, rising=True):
     return None
 
 
-def crossover(steps, t1, t2, after=0):
+def crossover(steps, t1, t2, after=0, return_reason=False):
     """(step, accuracy) where the t1 and t2 curves cross after `after`, linearly interpolated.
-       High accuracy = both tasks held at once; low = a pure trade of one for the other."""
+       High accuracy = both tasks held at once; low = a pure trade of one for the other.
+
+    NaN is not one thing. `return_reason=True` adds a third element saying which:
+
+        "crossed"        the curves met; the height is a number
+        "t1_stayed_up"   task 1 never fell below task 2 -- forgetting ran SLOWER than learning
+                         for the whole window, since otherwise the untrained task could not
+                         have stayed on top. This is the BEST outcome, and it is censoring:
+                         see CENSORED_IS_BEST and paired_sign, which can rank it.
+        "t2_started_up"  task 2 was already above task 1 at `after`, so there was never a
+                         downward crossing to find. Nothing good is being said here -- it means
+                         the run was not read at a sensible starting point.
+
+    Collapsing those two to the same NaN would let a run that retained everything and a run
+    that was measured wrongly cancel out in the same average.
+    """
     idx = [i for i, s in enumerate(steps) if s > after]
     for a, b in zip(idx[:-1], idx[1:]):
         d1, d2 = t1[a] - t2[a], t1[b] - t2[b]
         if d1 > 0 >= d2:
             w = d1 / (d1 - d2) if (d1 - d2) != 0 else 0.0
-            return steps[a] + w * (steps[b] - steps[a]), t1[a] + w * (t1[b] - t1[a])
-    return None, float("nan")
+            step, height = steps[a] + w * (steps[b] - steps[a]), t1[a] + w * (t1[b] - t1[a])
+            return (step, height, "crossed") if return_reason else (step, height)
+    if not return_reason:
+        return None, float("nan")
+    why = "t2_started_up" if (idx and t1[idx[0]] <= t2[idx[0]]) else "t1_stayed_up"
+    return None, float("nan"), why
 
 
 def value_when(steps, trigger, thresh, series, after=0, patience=1):
@@ -338,6 +357,66 @@ HIGHER_IS_BETTER = {"crossover": True, "final_t1": True, "final_t2": True, "peak
                     "half_life": True, "area_retained": True, "acc": True, "bwt": True,
                     "mean_err_t1": False, "mean_err_t2": False, "forgetting": False}
 
+#: Metrics whose NaN is CENSORING, not a failed measurement.
+#:
+#: crossover is undefined when task 1 never fell below task 2. half_life is undefined when
+#: task 1 never lost half its peak. In both cases the quantity is missing BECAUSE THE RUN DID
+#: BETTER THAN THE METRIC CAN EXPRESS: for the curves not to cross, forgetting has to be slower
+#: than learning for the whole window, since otherwise the task that is not being trained could
+#: not have stayed on top. So a censored run belongs at the TOP of the ranking, not outside it.
+#:
+#: Dropping them is not neutral -- it removes each rule's BEST seeds, and it removes more of
+#: them from the rules that are winning. Script 52: replay's crossover was censored on 2 of 5
+#: seeds, so its reported +2.56 came from its three worst. Use paired_sign for these.
+CENSORED_IS_BEST = {"crossover", "half_life"}
+
+
+def _binom_two_sided(wins, losses):
+    """Exact two-sided sign-test p. No scipy: at these n the sum is a handful of terms."""
+    import math
+    n = wins + losses
+    if n == 0:
+        return float("nan")
+    k = min(wins, losses)
+    p = 2.0 * sum(math.comb(n, i) for i in range(k + 1)) / (2.0 ** n)
+    return min(1.0, p)
+
+
+def paired_sign(treatment, control, higher_is_better=True, censored_is_best=False):
+    """Paired sign test that KEEPS censored runs instead of discarding them.
+
+    Returns (wins, losses, ties, p) where a win is a seed on which `treatment` beat `control`.
+
+    Why this exists alongside paired_diff: paired_diff needs both sides finite, so on a
+    censored metric it silently restricts to the seeds where BOTH rules were bad enough to
+    produce a number. The sign test needs only an ORDERING, and a censored run is orderable --
+    with censored_is_best it ranks above every finite value, which is what "task 1 never fell
+    below task 2" means. It uses every seed, at the cost of using only the sign of each
+    difference and not its size. Report both: paired_diff for the effect size on the seeds that
+    have one, paired_sign for whether the effect holds across all of them.
+    """
+    a, b = np.asarray(treatment, dtype=float), np.asarray(control, dtype=float)
+    if a.shape != b.shape:
+        raise ValueError(f"paired_sign needs matched runs, got {a.shape} and {b.shape}")
+    wins = losses = ties = 0
+    for x, y in zip(a, b):
+        fx, fy = np.isfinite(x), np.isfinite(y)
+        if fx and fy:
+            if x == y:
+                ties += 1
+            elif (x > y) == higher_is_better:
+                wins += 1
+            else:
+                losses += 1
+        elif censored_is_best and fx != fy:
+            wins += 1 if fy else 0            # control has a number, treatment does not -> win
+            losses += 1 if fx else 0
+        elif censored_is_best and not fx and not fy:
+            ties += 1                          # both censored: both at the top, no ordering
+        else:
+            ties += 1                          # not a censored metric: no ordering available
+    return wins, losses, ties, _binom_two_sided(wins, losses)
+
 
 def report_grid(grid_by_method, methods, control="backprop", primary="crossover"):
     """Print the full metric grid, paired against `control`, one block per metric.
@@ -351,17 +430,43 @@ def report_grid(grid_by_method, methods, control="backprop", primary="crossover"
     for k in keys:
         tag = "  <- primary" if k == primary else ""
         arrow = "higher better" if HIGHER_IS_BETTER[k] else "LOWER better"
+        cv = np.asarray(grid_by_method[control][k], dtype=float)
+        n_all = cv.size
+        censorable = k in CENSORED_IS_BEST
         lines.append(f"\n  {k}   ({arrow}){tag}")
         for m in methods:
-            v = grid_by_method[m][k]
-            mu = float(np.nanmean(v))
+            v = np.asarray(grid_by_method[m][k], dtype=float)
+            nv = int(np.isfinite(v).sum())
+            mu = float(np.nanmean(v)) if nv else float("nan")
             if m == control:
-                lines.append(f"    {m:10s} {mu:8.2f}")
+                lines.append(f"    {m:10s} {mu:8.2f}   n={nv}/{n_all}"
+                             + (f"   [{n_all - nv} never crossed]" if censorable and nv < n_all
+                                else ""))
                 continue
             d, se, n = paired_diff(v, grid_by_method[control][k])
+            npair = int((np.isfinite(v) & np.isfinite(cv)).sum())
+            # The group mean is over this rule's finite runs; the paired difference is over the
+            # runs finite on BOTH sides. When those differ the two numbers on this line describe
+            # different sets of seeds, so both counts are printed rather than one implied.
             better = (d > 0) == HIGHER_IS_BETTER[k]
             mark = ("  BETTER" if better else "  worse") if n > 2 else ""
-            lines.append(f"    {m:10s} {mu:8.2f}   vs {control} {d:+7.2f} +-{se:5.2f} "
-                         f"{n:4.1f}sem{mark}")
+            line = (f"    {m:10s} {mu:8.2f}   vs {control} {d:+7.2f} +-{se:5.2f} "
+                    f"{n:4.1f}sem  n={npair}/{n_all}{mark}")
+            if censorable and npair < n_all:
+                # Censored runs cannot enter paired_diff, and they are each rule's BEST seeds,
+                # so the effect size above is computed on a biased subset. The sign test can use
+                # them -- a run that never crossed outranks every run that did -- so it is the
+                # statistic that actually answers the comparison here. See CENSORED_IS_BEST.
+                w, l, t, p = paired_sign(v, cv, HIGHER_IS_BETTER[k], censored_is_best=True)
+                line = (f"    {m:10s} {mu:8.2f}   vs {control} {d:+7.2f} +-{se:5.2f} "
+                        f"{n:4.1f}sem  n={npair}/{n_all}  [effect size on the uncensored "
+                        f"{npair} only]")
+                lines.append(line)
+                lines.append(f"    {'':10s} {'':8s}   sign test over all {n_all}: "
+                             f"{w}W-{l}L-{t}T  p={p:.3f}"
+                             f"{'  BETTER' if w > l and p < 0.05 else ''}"
+                             f"{'  worse' if l > w and p < 0.05 else ''}")
+                continue
+            lines.append(line)
     print("\n".join(lines))
     return keys

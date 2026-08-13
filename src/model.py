@@ -101,9 +101,22 @@ BOGACZ_ARCH = Arch(in_dim=784, hidden=(32, 32), out_dim=10,
                    act="sigmoid", bias=True, init="xavier_normal")
 BOGACZ_OBJ = Objective(loss="mse", target="onehot", mask=False)
 
+# mask=True on the two cross-entropy rules is NOT a new setting. It makes explicit what
+# output_error's `ce` branch used to do implicitly for any objective, so experiments 01-15, 58
+# and 61 reproduce exactly as run -- verified numerically, not assumed.
+#
+# It is written here because it is a CONFOUND, and it belongs where a reader looks for the
+# specification rather than inside a branch condition. Under this spec backprop and replay train
+# with an ORACLE TASK MASK: the absent classes' output units receive no gradient at all, so the
+# output-layer suppression that dominates Class-IL forgetting cannot happen to them. pc and
+# eqprop get no such protection, and eqprop's hinge over +-1 targets does the opposite. Any
+# rule comparison run under LEGACY_SPEC is therefore confounded twice over -- by the differing
+# nonlinearity and loss, and by this mask.
 LEGACY_SPEC = {
-    "backprop": (Arch(act="relu", bias=True, init="kaiming_uniform"), Objective("ce", "onehot")),
-    "replay":   (Arch(act="relu", bias=True, init="kaiming_uniform"), Objective("ce", "onehot")),
+    "backprop": (Arch(act="relu", bias=True, init="kaiming_uniform"),
+                 Objective("ce", "onehot", mask=True)),
+    "replay":   (Arch(act="relu", bias=True, init="kaiming_uniform"),
+                 Objective("ce", "onehot", mask=True)),
     "pc":       (Arch(act="tanh", bias=False), Objective("mse", "onehot")),
     "eqprop":   (Arch(act="tanh", bias=False), Objective("hinge", "pm1")),
 }
@@ -245,7 +258,16 @@ def output_error(out, target, obj, active_vec=None):
     if obj.loss == "mse":
         e = target - out
     elif obj.loss == "ce":
-        if active_vec is not None:
+        # Gated on obj.mask, as mse and hinge are. This previously fired whenever `active_vec`
+        # was passed -- which run_classil does on EVERY call, and active_vector never returns
+        # None -- so a `ce` objective with mask=False still got van de Ven's masked softmax and
+        # absent classes received exactly zero gradient. Under LEGACY_SPEC that was an oracle
+        # task mask held by backprop and replay alone: pc (mse) saw the full error on absent
+        # units and eqprop (hinge, +-1 targets) actively pushed them down. In Class-IL, where
+        # output-layer suppression is the dominant forgetting mechanism (experiments 42/43),
+        # that difference is not a detail -- it is a rule-independent advantage handed to two
+        # of the four rules. See LEGACY_SPEC, which now states it.
+        if obj.mask and active_vec is not None:
             out = out.masked_fill(active_vec.unsqueeze(0) == 0, float("-inf"))
         e = target - torch.softmax(out, dim=1)
         e = torch.nan_to_num(e, nan=0.0, posinf=0.0, neginf=0.0)

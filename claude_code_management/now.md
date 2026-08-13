@@ -202,6 +202,37 @@ reappearing inside the rule comparison.
   That is why Domain-IL is primary: it leaves representation drift, which is what a rule acts on.
 - **Capacity is never a confound downstream.** H=32 is past the knee in both scenarios.
 
+## THE METRIC GRID — every metric, what it targets, what it is blind to
+Reported in FULL on every comparison (`metrics.metric_grid` + `metrics.report_grid`), so a claim
+cannot be made by quoting whichever metric happens to favour it. Each is blind to something and
+the blind spots do not overlap.
+
+| metric | targets | blind to | impl | running |
+|---|---|---|---|---|
+| **crossover height** | the accuracy where the two task curves meet — the joint trade-off point | the asymptote; **undefined if they never cross** | ✅ | ✅ **primary** |
+| final task-1 acc | what survived at the end | *when* the end was — set by budget or threshold | ✅ | ✅ descriptive |
+| final task-2 acc | the guard: is "forgot less" really "learned less"? | task 1 entirely | ✅ | ✅ gate |
+| peak task-1 acc | competence entering task 2 | everything after the switch | ✅ | ✅ gate |
+| half-life | *rate* of forgetting | the asymptote; undefined if it never halves (replay) | ✅ | ✅ |
+| area retained | integrated retention — uses the whole curve, so less noisy | the integral runs to wherever training stopped | ✅ | ✅ |
+| **mean test error during training** — [R1]'s headline | combined: learning fast *and* forgetting little | **cannot separate those two**; a fast learner wins it without forgetting less | ✅ new | ✅ |
+| ACC (Lopez-Paz & Ranzato 2017) | mean final accuracy over tasks | endpoint → the budget | ✅ new | ✅ |
+| BWT (Lopez-Paz & Ranzato 2017) | final task-1 minus task-1 at the switch | endpoint → the budget | ✅ new | ✅ |
+| forgetting (Chaudhry 2018) | peak task-1 minus final task-1 | endpoint → the budget | ✅ new | ✅ |
+| savings / relearning speed (Ebbinghaus; Hetherington) | residual knowledge accuracy cannot see | needs a **third block** to relearn in | ⚠️ ad hoc in 40 | ❌ |
+| NCM — nearest class mean | is the class information still in the hidden layer? | output-layer calibration | ✅ `probes.live_ncm_fn` | ⚠️ 42/43 only |
+| target alignment ([R1] Fig 3b) | per-update interference *direction* | magnitude | ✅ `probes.alignment_probe` | ❌ |
+| inefficiency ([R31]) | weight path ÷ net displacement | **not a forgetting metric** — belongs to "why do rules differ" | ✅ `metrics.inefficiency` | ❌ |
+| *paired difference* | *the comparison statistic, not a metric* | — | ✅ | ✅ everywhere |
+
+**Song & Bogacz's metric is now measured.** [R1] report the *mean test error over training*, not a
+final accuracy — so their claim is made in that number and it has to be tested in it. It is
+included, but never alone: it rewards fast learning and low forgetting together and cannot tell
+them apart, which is precisely the separation this project exists to make.
+
+**Open gaps:** savings needs a 3-block schedule; NCM should run on the rule comparisons, not just
+the intervention ones; alignment and inefficiency are implemented and unused.
+
 ## Metrics — what we report, and why
 The problem has a name: **setup-induced forgetting** (Michel et al. 2023, arXiv:2309.00462).
 Every standard metric is evaluated at the end of training, so its value is set by how long

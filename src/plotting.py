@@ -39,7 +39,8 @@ def _mean_of_all(A):
 
 def plot_learning_curves(steps, curves, methods, out_path, title="",
                          switches=None, blocks=None, ncols=2, task_labels=None,
-                         task_colors=None, xlabel="training step", legend_kw=None):
+                         task_colors=None, xlabel="training step", legend_kw=None,
+                         crossover_after=None):
     """steps: 1D array of eval steps.  curves[m]: array [runs, evals, n_tasks]. NaN-safe.
 
     blocks : list of (start_step, end_step, task_index). Shades the background with each block's
@@ -66,6 +67,26 @@ def plot_learning_curves(steps, curves, methods, out_path, title="",
             ax.plot(steps, _mean_of_all(A[:, :, t]), color=c, lw=2.6, label=labels[t])
         for s in (switches or []):
             ax.axvline(s, color="k", lw=0.8, ls="--")
+        # CROSSOVER HEIGHT drawn on the panel, so panels can be compared at a glance without
+        # reading a table. It is the accuracy at which the two task curves meet -- a geometric
+        # feature of the trade-off that depends on neither the budget nor any threshold, which
+        # is why it is the metric to compare across methods.
+        if crossover_after is not None and n_tasks == 2:
+            from .metrics import crossover as _xover
+            hs = []
+            for r in range(A.shape[0]):
+                ok = np.isfinite(A[r, :, 0]) & np.isfinite(A[r, :, 1])
+                if ok.sum() > 1:
+                    h = _xover(np.asarray(steps)[ok], A[r, ok, 0], A[r, ok, 1],
+                               after=crossover_after)[1]
+                    if h is not None and np.isfinite(h):
+                        hs.append(h)
+            if hs:
+                h = float(np.mean(hs))
+                ax.axhline(h, color="k", ls=":", lw=1.3)
+                ax.annotate(f"crossover {h:.1f}%", xy=(0.99, h), xycoords=("axes fraction", "data"),
+                            xytext=(0, 3), textcoords="offset points",
+                            ha="right", va="bottom", fontsize=8)
         ax.set_title(m)
         ax.set_ylim(-2, 103)
     handles, names = axes[0].get_legend_handles_labels()

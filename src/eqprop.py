@@ -30,6 +30,42 @@ def eqprop_init(in_dim=196, hidden=64, out_dim=10, seed=0, device="cpu", arch=No
     return init_params(arch, seed=seed, device=device).requires_grad_(True)
 
 
+def _settle_by_patience(x, p, arch, obj, target, active_vec, beta, dt, max_steps,
+                        settle_patience, min_delta, init, device, return_steps):
+    """The stopping rule used before experiment 50: stop once per-step movement has failed to
+    improve by `min_delta` for `settle_patience` consecutive steps.
+
+    Kept verbatim so scripts written against it still reproduce. 50 measured its two failure
+    modes -- it fires on a temporary plateau (seed 2 at initialisation needed 529 steps and it
+    stopped at 178) and overshoots by 3-4x once trained. Superseded by the relative-residual
+    test in eqprop_settle; retained so old results can be re-executed and checked."""
+    with torch.enable_grad():
+        x = flatten(x)
+        w = arch.widths
+        if init is None:
+            states = [torch.zeros(x.size(0), w[i + 1], device=device).requires_grad_(True)
+                      for i in range(arch.n_weights)]
+        else:
+            states = [s.clone().requires_grad_(True) for s in init]
+        best, since, used = float("inf"), 0, 0
+        for step in range(max_steps):
+            used = step + 1
+            grads = list(torch.autograd.grad(eqprop_energy(x, states, p, arch), states))
+            if target is not None and beta:
+                grads[-1] = grads[-1] - beta * output_error(states[-1], target, obj, active_vec)
+            move = (dt * sum(g.pow(2).sum() for g in grads).sqrt()).item()
+            for s, g in zip(states, grads):
+                s.data -= dt * g
+            if move < best - min_delta:
+                best, since = move, 0
+            else:
+                since += 1
+            if since >= settle_patience:
+                break
+    out = [s.detach() for s in states]
+    return (out, used, used >= max_steps) if return_steps else out
+
+
 def eqprop_energy(x, states, p, arch):
     """states = [s_1, ..., s_L]; s_L is the output layer."""
     E = sum(0.5 * (s ** 2).sum() for s in states)
@@ -43,6 +79,7 @@ def eqprop_energy(x, states, p, arch):
 
 def eqprop_settle(x, p, arch, obj=None, target=None, active_vec=None, beta=0.0, dt=0.3,
                   max_steps=800, settle_tol=1e-4, init=None,
+                  settle_patience=None, min_delta=1e-4,
                   device="cpu", return_steps=False):
     """Relax all layers until the state stops moving: until one step displaces it by less than
     `settle_tol` of its own norm. The standard relative-residual stopping rule.
@@ -71,7 +108,16 @@ def eqprop_settle(x, p, arch, obj=None, target=None, active_vec=None, beta=0.0, 
     exactly at the boundary where the choice is made.
 
     `return_steps` reports whether it converged or hit max_steps -- log it as a validity gate.
+
+    BACKWARD COMPATIBILITY. Passing `settle_patience` selects the OLD rule instead, unchanged,
+    so experiments 01-27 and the experiment-12 reproduction still run exactly as written. It is
+    kept because superseding a rule is not a reason to make old scripts unrunnable -- a result
+    that cannot be re-executed cannot be checked. Do not use it in new work: experiment 50
+    measured it truncating the relaxation to a third of what was needed at initialisation.
     """
+    if settle_patience is not None:
+        return _settle_by_patience(x, p, arch, obj, target, active_vec, beta, dt, max_steps,
+                                   settle_patience, min_delta, init, device, return_steps)
     with torch.enable_grad():
         x = flatten(x)
         w = arch.widths
@@ -97,7 +143,7 @@ def eqprop_settle(x, p, arch, obj=None, target=None, active_vec=None, beta=0.0, 
 
 
 def eqprop_update(x, y_labels, p, opt, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, beta=0.3, dt=0.3,
-                  max_steps=800, settle_tol=1e-4, active=None, gate_frac=None,
+                  max_steps=800, settle_tol=1e-4, settle_patience=None, active=None, gate_frac=None,
                   device="cpu", return_delta=False, freeze=()):
     """One EqProp weight update. `gate_frac` (advisor point 4) updates only the hidden nodes
        that move MOST under the nudge, in the TOP hidden layer, and freezes the rest."""
@@ -107,10 +153,10 @@ def eqprop_update(x, y_labels, p, opt, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, beta=
     av = active_vector(active, arch, device=device)
 
     free = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                         settle_tol=settle_tol, device=device)
+                         settle_tol=settle_tol, settle_patience=settle_patience, device=device)
     nudged = eqprop_settle(x, p, arch, obj=obj, target=target, active_vec=av, beta=beta,
                            dt=dt, max_steps=max_steps, settle_tol=settle_tol,
-                           init=free, device=device)
+                           settle_patience=settle_patience, init=free, device=device)
 
     tensors = p.tensors()
     g_f = torch.autograd.grad(eqprop_energy(x, free, p, arch), tensors)
@@ -146,16 +192,16 @@ def eqprop_update(x, y_labels, p, opt, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, beta=
 
 
 def eqprop_predict(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=800, settle_tol=1e-4,
-                   device="cpu", raw=False):
-    states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                           settle_tol=settle_tol, device=device)
+                   settle_patience=None, device="cpu", raw=False):
+    states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps, settle_tol=settle_tol,
+                           settle_patience=settle_patience, device=device)
     return states[-1] if raw else states[-1].argmax(1)
 
 
 def eqprop_features(x, p, arch=UNIFIED_ARCH, dt=0.3, max_steps=800, settle_tol=1e-4,
-                    device="cpu"):
-    states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                           settle_tol=settle_tol, device=device)
+                    settle_patience=None, device="cpu"):
+    states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps, settle_tol=settle_tol,
+                           settle_patience=settle_patience, device=device)
     return arch.f(states[arch.n_hidden - 1])
 
 

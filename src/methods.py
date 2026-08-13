@@ -270,16 +270,11 @@ def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimi
 def make_eqprop(in_dim=196, hidden=64, out_dim=10, lr=0.005, beta=0.3, dt=0.3, max_steps=500,
                 settle_tol=1e-4, gate_frac=None, optimizer="sgd", seed=0, device="cpu",
                 arch=None, obj=None, handle=None, settle_patience=None, **_):
-    # settle_patience is named only so that passing it FAILS instead of being swallowed by **_.
-    # Experiments 01-27 pass it, and silently ignoring it would run them under a different
-    # settling rule than they specify while still producing a plausible-looking figure.
-    if settle_patience is not None:
-        raise TypeError(
-            "settle_patience was replaced by settle_tol. Experiment 50 measured the patience "
-            "rule stopping the relaxation a third of the way to equilibrium at initialisation, "
-            "and overshooting 3-4x once trained. Pass settle_tol instead (1e-4 is calibrated "
-            "for dt=0.3 at H=32; see src/eqprop.py:eqprop_settle)."
-        )
+    # settle_patience selects the PRE-EXPERIMENT-50 stopping rule and is forwarded, not blocked.
+    # Experiments 01-27 and the experiment-12 reproduction pass it, and a superseded rule is
+    # still the rule those results were produced under -- removing it would make them
+    # unrunnable, and a result that cannot be re-executed cannot be checked. New work should
+    # leave it None and take settle_tol; see src/eqprop.py:eqprop_settle for why.
     arch, obj = _spec(arch, obj)
     arch = replace(arch, in_dim=in_dim, hidden=hidden, out_dim=out_dim)
     p = init_params(arch, seed=seed, device=device).requires_grad_(True)
@@ -289,19 +284,22 @@ def make_eqprop(in_dim=196, hidden=64, out_dim=10, lr=0.005, beta=0.3, dt=0.3, m
     def train_step(x, y, active=None):
         d = eqprop_update(x, y, p, opt, arch=arch, obj=obj, beta=beta, dt=dt,
                           max_steps=max_steps, settle_tol=settle_tol,
+                          settle_patience=settle_patience,
                           active=active, gate_frac=gate_frac, device=device,
                           return_delta=True, freeze=freeze)
         diag.update(d)
 
     def predict(x, raw=False):
         states = eqprop_settle(x, p, arch, dt=dt, max_steps=max_steps,
-                               settle_tol=settle_tol, device=device)
+                               settle_tol=settle_tol, settle_patience=settle_patience,
+                               device=device)
         return states[-1] if raw else states[-1].argmax(1)
 
     def features(x):
         from .eqprop import eqprop_features
         return eqprop_features(x, p, arch, dt=dt, max_steps=max_steps,
-                               settle_tol=settle_tol, device=device)
+                               settle_tol=settle_tol, settle_patience=settle_patience,
+                               device=device)
 
     _publish(handle, p, arch, obj, features, diag=diag, freeze=freeze)
     return train_step, predict

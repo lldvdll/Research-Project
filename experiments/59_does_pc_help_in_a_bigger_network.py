@@ -75,7 +75,7 @@ import numpy as np
 
 from src.protocol import PROTOCOL, load, run, replace, figure_path as _figure_path, \
     array_path as _array_path
-from src.metrics import paired_diff
+from src.metrics import paired_diff, crossover
 from src.plotting import plot_retention_curve
 
 SMOKE = "--smoke" in sys.argv
@@ -178,15 +178,16 @@ REPLOT = "--replot" in sys.argv and Path(array_path(__file__)).exists()
 
 if REPLOT:
     z = np.load(array_path(__file__), allow_pickle=True)
-    kept = {tuple(k): z[f"kept_{k[0]}x{k[1]}_{m}"] for k in z["cells"].tolist() for m in METHODS}
-    t2end = {tuple(k): z[f"t2_{k[0]}x{k[1]}_{m}"] for k in z["cells"].tolist() for m in METHODS}
+    kept = {tuple(k) + (m,): z[f"kept_{k[0]}x{k[1]}_{m}"] for k in z["cells"].tolist() for m in METHODS}
+    xover = {tuple(k) + (m,): z[f"xh_{k[0]}x{k[1]}_{m}"] for k in z["cells"].tolist() for m in METHODS}
+    t2end = {tuple(k) + (m,): z[f"t2_{k[0]}x{k[1]}_{m}"] for k in z["cells"].tolist() for m in METHODS}
     lrs_all = z["lrs"].item()
     thr = z["thresholds"].item()
     segs = {}
     print("--replot: redrawing from saved arrays, no training\n")
 else:
     data = load(replace(PROTOCOL, hidden=32, scenario="domain_il"))
-    kept, t2end, segs, lrs_all, thr = {}, {}, {}, {}, {}
+    kept, t2end, segs, lrs_all, thr, xover = {}, {}, {}, {}, {}, {}
     t0 = time.perf_counter()
 
     for (d, w) in CELLS:
@@ -205,7 +206,7 @@ else:
 
         for m in METHODS:
             p = replace(b, stop_threshold=[T1_THRESHOLD, T2], lr={m: lrs[m]})
-            ks, t2s, sg = [], [], []
+            ks, t2s, sg, xs = [], [], [], []
             for s in range(SEEDS):
                 o = run(p, m, s, data=data, **settle_kw(m))
                 c = o["curves"]["argmax"]
@@ -213,7 +214,17 @@ else:
                 ks.append(c[-1, 0] * 100)
                 t2s.append(c[-1, 1] * 100)
                 sg.append(c[i:, :])
+                # CROSSOVER HEIGHT: the accuracy where the two curves meet. A geometric feature
+                # of the retention curve -- the point where it crosses y=x -- so it depends on
+                # neither the budget nor the threshold, and it is invariant to a uniform time
+                # rescaling. Endpoint retention is a sample of that curve at whichever threshold
+                # happened to be chosen, which is why it is both noisier and less comparable.
+                # It is also the metric experiment 12 was read on.
+                r = crossover(o["steps"], c[:, 0] * 100, c[:, 1] * 100,
+                              after=o["switches"][0])
+                xs.append(r[1] if r[1] is not None else np.nan)
             kept[(d, w, m)], t2end[(d, w, m)], segs[(d, w, m)] = ks, t2s, sg
+            xover[(d, w, m)] = xs
             print(f"      {m:9s} task 1 kept {np.mean(ks):5.1f}%   task 2 {np.mean(t2s):5.1f}%"
                   f"   [{time.perf_counter()-t0:5.0f}s]")
 
@@ -229,21 +240,32 @@ for (d, w) in done:
     print(f"    {d}x{w:<4d} " + ", ".join(f"{m} {v:.0f}%" for m, v in t2.items())
           + f"   spread {gap:4.1f}  " + ("ok" if valid[(d, w)] else "INVALID, not a comparison"))
 
-print(f"\n  PAIRED difference in task-1 retention against backprop, per seed\n")
-print(f"  {'cell':>8s} " + " ".join(f"{m:>22s}" for m in METHODS if m != "backprop"))
-res = {}
-for (d, w) in done:
-    row = []
-    for m in METHODS:
-        if m == "backprop":
-            continue
-        dd, s, n = paired_diff(kept[(d, w, m)], kept[(d, w, "backprop")])
-        res[(d, w, m)] = (dd, s, n)
-        flag = "*" if n > 2 else " "
-        row.append(f"{dd:+6.1f} +-{s:4.1f} {n:4.1f}sem{flag}")
-    print(f"  {d}x{w:<4d}  " + " ".join(f"{r:>22s}" for r in row)
-          + ("" if valid[(d, w)] else "   <- cell invalid"))
-print("   * = separated at 2 sem")
+# CROSSOVER HEIGHT IS THE PRIMARY METRIC, and endpoint retention is descriptive only.
+# Retention at the stopping point is a SAMPLE of the retention curve, taken wherever the task-2
+# threshold happened to land -- change the threshold and the number changes. Crossover height is
+# a geometric feature of that same curve, the point where it crosses y = x, so no threshold and
+# no budget enters it and it is invariant to a uniform rescaling of time. It is also the metric
+# experiment 12 was read on, so it is the one that has to be compared against it.
+#
+# The difference is not academic. Across scripts 52/53/56/57 the paired retention difference put
+# PC at 0.3-1.5 sem and read as no effect, while paired CROSSOVER put PC at +1.29 (3.7 sem) and
+# +3.00 (2.2 sem) in Class-IL. The metric was hiding a real, small effect.
+res, res_kept = {}, {}
+for label, src, store in [("CROSSOVER HEIGHT (primary)", xover, res),
+                          ("endpoint retention (descriptive)", kept, res_kept)]:
+    print(f"\n  PAIRED {label}, against backprop, per seed\n")
+    print(f"  {'cell':>8s} " + " ".join(f"{m:>22s}" for m in METHODS if m != "backprop"))
+    for (d, w) in done:
+        row = []
+        for m in METHODS:
+            if m == "backprop":
+                continue
+            dd, sd, n = paired_diff(src[(d, w, m)], src[(d, w, "backprop")])
+            store[(d, w, m)] = (dd, sd, n)
+            row.append(f"{dd:+6.2f} +-{sd:5.2f} {n:4.1f}sem" + ("*" if n > 2 else " "))
+        print(f"  {d}x{w:<4d}  " + " ".join(f"{r:>22s}" for r in row)
+              + ("" if valid[(d, w)] else "   <- cell invalid"))
+    print("   * = separated at 2 sem")
 
 ok_cells = [c for c in done if valid[c]]
 rep_ok = [c for c in ok_cells if res[(c[0], c[1], "replay")][2] > 2]
@@ -265,7 +287,7 @@ else:
 
 # ---------------------------------------------------------------- figures
 if segs:
-    for (d, w) in done:
+    for (d, w) in [c for c in done if c in {(min(DEPTHS), min(WIDTHS)), (max(DEPTHS), max(WIDTHS))}]:
         plot_retention_curve(
             {m: segs[(d, w, m)] for m in METHODS}, METHODS,
             figure_path(__file__, f"retention_{d}x{w}"), colors=COLORS,
@@ -290,9 +312,9 @@ for a, w in zip(ax[0], WIDTHS):
     a.set_xlabel("hidden layers")
     a.set_xticks(DEPTHS)
     a.grid(alpha=0.25)
-ax[0][0].set_ylabel("task 1 kept, minus backprop (points)")
+ax[0][0].set_ylabel("crossover height, minus backprop (points)")
 ax[0][0].legend(fontsize=9)
-fig.suptitle("Above zero = forgets less than backprop, at matched task-2 competence. "
+fig.suptitle("Crossover height above backprop = a better task-1/task-2 trade-off. "
              "Paired, per seed.", fontsize=10)
 fig.tight_layout()
 fig.savefig(figure_path(__file__), dpi=120, bbox_inches="tight")
@@ -301,5 +323,6 @@ print(f"\nsaved {figure_path(__file__)}")
 np.savez(array_path(__file__), cells=np.asarray(done), methods=np.asarray(METHODS),
          lrs=lrs_all, thresholds=thr,
          **{f"kept_{d}x{w}_{m}": np.asarray(kept[(d, w, m)]) for (d, w) in done for m in METHODS},
-         **{f"t2_{d}x{w}_{m}": np.asarray(t2end[(d, w, m)]) for (d, w) in done for m in METHODS})
+         **{f"t2_{d}x{w}_{m}": np.asarray(t2end[(d, w, m)]) for (d, w) in done for m in METHODS},
+         **{f"xh_{d}x{w}_{m}": np.asarray(xover[(d, w, m)]) for (d, w) in done for m in METHODS})
 print(f"saved {array_path(__file__)}")

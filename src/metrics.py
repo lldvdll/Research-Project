@@ -226,3 +226,142 @@ def paired_diff(treatment, control):
         return (float(d[0]) if d.size else float("nan")), float("nan"), float("nan")
     m, s = float(d.mean()), float(d.std(ddof=1) / np.sqrt(d.size))
     return m, s, (abs(m) / s if s > 0 else float("inf"))
+
+
+def mean_test_error(steps, curve, after=None, before=None):
+    """Mean test ERROR across the whole run -- Song & Bogacz's headline metric [R1].
+
+    They do not report a final accuracy; they report the average test error over training. That
+    is a different question from "how much survived at the end", and it rewards two things at
+    once: learning the new task quickly AND not destroying the old one. A rule can win it by
+    being fast even if it forgets normally, and lose it by being slow even if it forgets less.
+
+    Reported because it is the number [R1]'s claim is made in. Not reported ALONE, for the same
+    reason: it cannot distinguish those two ways of winning, which is exactly what this project
+    is trying to separate.
+
+    curve : [evals, n_tasks] accuracy in 0-1. Returns mean error over the window, per task.
+    """
+    s = np.asarray(steps, dtype=float)
+    c = np.asarray(curve, dtype=float)
+    m = np.ones(len(s), dtype=bool)
+    if after is not None:
+        m &= s >= after
+    if before is not None:
+        m &= s <= before
+    if not m.any():
+        return np.full(c.shape[-1], np.nan)
+    return np.nanmean(1.0 - c[m], axis=0)
+
+
+def acc_bwt_forgetting(steps, curve, switch):
+    """The three standard continual-learning endpoint metrics, for a TWO-task sequence.
+
+        ACC         mean final accuracy over both tasks                Lopez-Paz & Ranzato 2017
+        BWT         final task-1 accuracy minus its accuracy at the    Lopez-Paz & Ranzato 2017
+                    switch; negative means task 2 damaged task 1
+        forgetting  peak task-1 accuracy minus its final accuracy      Chaudhry et al. 2018
+
+    All three are read AT THE END, so all three inherit the budget: train task 2 for longer and
+    every one of them gets worse, with no change to the learning rule. Michel et al. 2023 call
+    this setup-induced forgetting. They are reported for comparability with the literature and
+    so that their degeneracy is visible -- in 2x5 Class-IL every rule drives task 1 to ~0, and
+    all three collapse onto the same uninformative number.
+    """
+    s = np.asarray(steps, dtype=float)
+    c = np.asarray(curve, dtype=float)
+    i_sw = int(np.argmin(np.abs(s - switch)))
+    at_switch = c[i_sw, 0]
+    peak = np.nanmax(c[:i_sw + 1, 0])
+    final = c[-1]
+    return dict(acc=float(np.nanmean(final)),
+                bwt=float(final[0] - at_switch),
+                forgetting=float(peak - final[0]))
+
+
+def metric_grid(steps, curves, switch):
+    """Every metric this project uses, computed PER RUN so paired statistics are available.
+
+    curves : [runs, evals, n_tasks] accuracy in 0-1.  Returns {metric: array[runs]}, in
+    percentage points where the quantity is an accuracy.
+
+    The grid is reported in full on every comparison, rather than one headline number, because
+    each metric is blind to something and the blind spots do not overlap:
+
+      crossover     the accuracy where the two curves meet. No budget, no threshold, invariant
+                    to a uniform rescaling of time. Blind to the asymptote, and UNDEFINED if the
+                    curves never cross.
+      final_t1      what survived at the end. Blind to nothing except the thing that matters
+                    most -- WHEN the end was, which is set by the budget or the threshold.
+      final_t2      the check that final_t1 is not "learned less" wearing "forgot less".
+      half_life     how fast task 1 falls. A rate, so budget-independent, but it depends on the
+                    pre-switch peak and says nothing about where the curve settles.
+      area_retained integrated retention. Less noisy than an endpoint because it uses the whole
+                    curve, but the integral runs to whenever training stopped.
+      mean_err_*    Song & Bogacz's metric. Rewards fast learning and low forgetting together
+                    and cannot tell them apart.
+      acc/bwt/
+      forgetting    the standard trio. All endpoint metrics; all degenerate here.
+    """
+    A = np.asarray(curves, dtype=float)
+    s = np.asarray(steps, dtype=float)
+    out = {k: [] for k in ["crossover", "final_t1", "final_t2", "peak_t1", "half_life",
+                           "area_retained", "mean_err_t1", "mean_err_t2",
+                           "acc", "bwt", "forgetting"]}
+    for r in range(A.shape[0]):
+        c = A[r]
+        ok = np.isfinite(c[:, 0]) & np.isfinite(c[:, 1])
+        sr, cr = s[ok], c[ok] * 100.0
+        i_sw = int(np.argmin(np.abs(sr - switch)))
+        peak = float(np.nanmax(cr[:i_sw + 1, 0]))
+        xh = crossover(sr, cr[:, 0], cr[:, 1], after=switch)[1]
+        hl = half_life(sr, cr[:, 0], after=switch, peak=peak)
+        std = acc_bwt_forgetting(sr, cr / 100.0, switch)
+        err = mean_test_error(sr, cr / 100.0, after=switch)
+        out["crossover"].append(xh if xh is not None else np.nan)
+        out["final_t1"].append(cr[-1, 0])
+        out["final_t2"].append(cr[-1, 1])
+        out["peak_t1"].append(peak)
+        out["half_life"].append(hl if hl is not None else np.nan)
+        out["area_retained"].append(area_retained(sr, cr[:, 0], after=switch, peak=peak) * 100)
+        out["mean_err_t1"].append(err[0] * 100)
+        out["mean_err_t2"].append(err[1] * 100)
+        out["acc"].append(std["acc"] * 100)
+        out["bwt"].append(std["bwt"] * 100)
+        out["forgetting"].append(std["forgetting"] * 100)
+    return {k: np.asarray(v, dtype=float) for k, v in out.items()}
+
+
+#: Metrics where a HIGHER value is better. The rest (mean_err_*, forgetting) invert, and the
+#: paired report uses this so "better" always points the same way on the page.
+HIGHER_IS_BETTER = {"crossover": True, "final_t1": True, "final_t2": True, "peak_t1": True,
+                    "half_life": True, "area_retained": True, "acc": True, "bwt": True,
+                    "mean_err_t1": False, "mean_err_t2": False, "forgetting": False}
+
+
+def report_grid(grid_by_method, methods, control="backprop", primary="crossover"):
+    """Print the full metric grid, paired against `control`, one block per metric.
+
+    grid_by_method : {method: {metric: array[runs]}} from metric_grid.
+    Every metric is shown for every method so a claim cannot be made by quoting the one that
+    happens to favour it. `primary` is flagged; it is the metric the project reports on.
+    """
+    keys = [k for k in HIGHER_IS_BETTER if k in grid_by_method[methods[0]]]
+    lines = []
+    for k in keys:
+        tag = "  <- primary" if k == primary else ""
+        arrow = "higher better" if HIGHER_IS_BETTER[k] else "LOWER better"
+        lines.append(f"\n  {k}   ({arrow}){tag}")
+        for m in methods:
+            v = grid_by_method[m][k]
+            mu = float(np.nanmean(v))
+            if m == control:
+                lines.append(f"    {m:10s} {mu:8.2f}")
+                continue
+            d, se, n = paired_diff(v, grid_by_method[control][k])
+            better = (d > 0) == HIGHER_IS_BETTER[k]
+            mark = ("  BETTER" if better else "  worse") if n > 2 else ""
+            lines.append(f"    {m:10s} {mu:8.2f}   vs {control} {d:+7.2f} +-{se:5.2f} "
+                         f"{n:4.1f}sem{mark}")
+    print("\n".join(lines))
+    return keys

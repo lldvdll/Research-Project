@@ -203,6 +203,47 @@ similarity and task-1 retention.
 
 ---
 
+## Q7 — What happens when the tasks alternate repeatedly instead of switching once?
+
+**CLAIM 7. Under repeated alternation all three rules converge on a joint solution, at the same
+rate and to the same place. Under [R1]'s own schedule and their own headline metric they are
+indistinguishable.**
+
+20 alternating blocks × 150 updates, Domain-IL, 5 seeds. EqProp excluded on cost.
+
+| | crossover, cycle 1 → cycle 10 | [R1] mean test error, whole run | successive same-task W1 distance, last ÷ first |
+|---|---|---|---|
+| backprop | 53.9% → **81.3%** | 23.7% | 0.23 |
+| replay | 28.6% → 79.3% *(n=29/100)* | 23.7% | 0.28 |
+| pc | 54.2% → **81.7%** | **23.6%** | **0.17** |
+
+- **It converges; it does not ping-pong or wander.** The (task 1, task 2) trajectory spirals
+  inward with monotonically tightening arcs from (25,25) to ≈(85,85), and the weight distance
+  between successive same-task states falls to 0.17–0.28 of its first-cycle value. Both readouts
+  agree, and they are independent — one is accuracy, one is weight space.
+- **Crossover rises steeply then plateaus**: ~29% at block 0 to ~75% by block 3, flat at ~81%
+  thereafter. Repeated exposure buys most of its benefit in the first three cycles.
+- **No rule separates.** Backprop 81.3 vs PC 81.7 on crossover (n=85 and 87 of 100 cells);
+  [R1]'s mean test error 23.7 / 23.7 / 23.6. This is the project's most direct test of their
+  claim, in the metric their claim is made in, under the schedule they use.
+- **PC settles tightest in weight space** (0.17 vs backprop 0.23), consistent with Claim 4's
+  route-efficiency result, and with no accuracy consequence.
+- **Half-life is not rescued by alternation.** Defined on ~1 of 100 block × seed cells: once the
+  network nears the joint solution the unattended task barely decays inside a block, so it never
+  halves. Claim 1's exclusion of half-life for Domain-IL stands.
+- **Replay's crossover is censored on 71 of 100 cells** — it holds both tasks up, so the curves
+  rarely meet. Its apparent +50.7 improvement is over its non-censored blocks only and is not
+  comparable with the other two.
+
+**Experiments:** `68`.
+**Plots:** `68_..._spiral.png` — **the figure to show.** Task 1 against task 2 accuracy, colour =
+time, one panel per rule, per-seed runs faint. Read the *arc width*: tightening = converging,
+constant = ping-ponging. `68_....png` — crossover, half-life, [R1] mean error and the same-task
+weight distance against block index; the half-life panel is empty by construction and says so.
+`68_..._accuracy.png` — all 20 blocks shaded by which task is training.
+
+---
+
 # Supporting
 
 **S1. PC settles, and its inference step rule is equivalent to Song & Bogacz's.**

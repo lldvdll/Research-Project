@@ -25,8 +25,11 @@ WHAT IS MEASURED, PER BLOCK, SO EVERY QUANTITY IS A TIME SERIES
                       block task 1 falls through task 2; in a task-1 block the reverse, so the
                       arguments are swapped and the same geometric quantity is recovered.
     half-life         updates for the UNATTENDED task to fall to half its value at block start.
-                      Defined per block, which the single-switch runs cannot do -- there the
-                      metric is censored on 4 of 5 seeds in Domain-IL.
+                      MEASURED AND FOUND UNUSABLE HERE TOO: defined on ~1 of 100 block x seed
+                      cells. Once the network approaches the joint solution the unattended task
+                      barely decays inside a block, so it never halves. Alternating does not
+                      rescue the metric; it is reported so that is on the record rather than
+                      assumed either way.
     mean test error   [R1]'s headline number, per block and cumulative. Reported throughout
                       because their claim is made in it -- and it rewards fast learning and low
                       forgetting together, so it is never read alone.
@@ -277,7 +280,13 @@ axes[0][0].set_ylabel("crossover height (%)"); axes[0][0].set_xlabel("block")
 axes[0][0].set_title("crossover height per block", fontsize=10)
 axes[0][1].set_ylabel("half-life of the unattended task (updates)")
 axes[0][1].set_xlabel("block")
-axes[0][1].set_title("half-life per block — definable here, unlike a single switch", fontsize=10)
+axes[0][1].set_title("half-life per block — STILL UNDEFINED (see counts)", fontsize=10)
+axes[0][1].annotate(
+    "Alternating does NOT rescue half-life.\nOnce the network approaches the joint\n"
+    "solution the unattended task barely\ndecays inside a block, so it never halves.\n"
+    "Defined on ~1 of 100 block x seed cells.",
+    xy=(0.5, 0.5), xycoords="axes fraction", ha="center", va="center", fontsize=9,
+    color="dimgray")
 axes[1][0].set_ylabel("[R1] mean test error (%)"); axes[1][0].set_xlabel("block")
 axes[1][0].set_title("[R1]'s headline metric per block", fontsize=10)
 axes[1][1].set_ylabel(f"L1 distance, successive same-task {ILLUS_LAYER}")

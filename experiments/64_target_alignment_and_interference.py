@@ -223,6 +223,117 @@ else:
 report_grid({m: metric_grid(steps, curves[m], sw) for m in METHODS},
             METHODS, control="backprop", primary="crossover")
 
+# ================================================================ THE ILLUSTRATION
+# What the cosine actually is, drawn on real updates before the aggregate is shown.
+#
+# THE PROJECTION HERE IS EXACT, not lossy. d_target and d_learn are two vectors in the 5-D
+# output space, and two vectors always span a plane. Drawing that plane -- d_target along x,
+# the component of d_learn orthogonal to it along y -- reproduces the true angle between them.
+# So unlike a PCA picture, the angle you measure with a protractor on this figure IS the number
+# in the aggregate panel. Only the 5-D context is lost, not the quantity.
+ILLUS_SEED, ILLUS_AT = 0, 3          # measure this many updates after the switch
+print(f"\n  drawing the mechanism: one update {ILLUS_AT} steps into task 2, seed {ILLUS_SEED}")
+from src.model import make_target as _mt
+
+proto_i = base
+tasks_i = proto_i.tasks(ILLUS_SEED)
+lmap_i = proto_i.label_map(tasks_i)
+xr, yr = ref_batch(load(base) if REPLOT else data, tasks_i, lmap_i, REF_N)
+snaps = {}
+for m in METHODS:
+    proto = replace(base, lr={m: LR[m]})
+    handle = {}
+    ts, pr = build(proto, m, ILLUS_SEED, handle=handle, **settle_kw(m))
+    grab = {}
+
+    def hook(ti, step, _g=grab):
+        _g["switched"] = True
+
+    # train task 1, then take ONE recorded update into task 2 and keep the raw vectors
+    state = {"n": 0, "done": False}
+
+    def wrapped(x, y, active=None, _h=handle, _p=pr, _s=state, _g=grab):
+        if _g.get("switched") and not _s["done"]:
+            _s["n"] += 1
+            if _s["n"] == ILLUS_AT:
+                with torch.no_grad():
+                    ob = _p(x, raw=True).detach().clone()
+                    rb = _p(xr, raw=True).detach().clone()
+                ts(x, y, active=active)
+                with torch.no_grad():
+                    oa = _p(x, raw=True).detach().clone()
+                    ra = _p(xr, raw=True).detach().clone()
+                _g["on"] = (_mt(y, _h["arch"], _h["obj"], device=proto.device) - ob, oa - ob)
+                _g["off"] = (_mt(yr, _h["arch"], _h["obj"], device=proto.device) - rb, ra - rb)
+                _s["done"] = True
+                return
+        ts(x, y, active=active)
+
+    run_classil(wrapped, pr, tasks_i, data.train, data.class_idx,
+                report_eval=data.report_eval, stop_eval=data.stop_eval,
+                max_iters_per_task=[ITERS[0], ILLUS_AT + 2], batch=proto.batch,
+                eval_every=10 ** 9, device=proto.device, stop_threshold=None,
+                data_seed=ILLUS_SEED, label_map=lmap_i, on_task_end=hook)
+    snaps[m] = grab
+
+figI, axesI = plt.subplots(2, len(METHODS), figsize=(3.9 * len(METHODS), 7.6))
+for col, m in enumerate(METHODS):
+    for row, (key, what) in enumerate([("on", "TASK 2 data -- being trained on"),
+                                       ("off", "TASK 1 data -- NOT being trained on")]):
+        ax = axesI[row][col]
+        dt, dl = (v.mean(0).cpu().numpy() for v in snaps[m][key])
+        e1 = dt / (np.linalg.norm(dt) + 1e-12)
+        perp = dl - (dl @ e1) * e1
+        e2 = perp / (np.linalg.norm(perp) + 1e-12)
+        nt, nl = float(np.linalg.norm(dt)), float(np.linalg.norm(dl))
+        c = float(dt @ dl / (nt * nl + 1e-12))
+        # BOTH ARROWS ARE DRAWN AT UNIT LENGTH. One update moves the output a small fraction of
+        # the way to the target, so at true scale d_learn is a dot beside d_target and the angle
+        # -- the entire quantity -- cannot be seen. A cosine is scale-invariant, so normalising
+        # discards nothing that is being measured. The true magnitudes are printed instead, and
+        # their ratio is worth reading on its own: it is how far this update closed the gap.
+        tx, ty = 1.0, 0.0
+        lx, ly = (dl @ e1) / (nl + 1e-12), (dl @ e2) / (nl + 1e-12)
+        ax.annotate("", xy=(tx, ty), xytext=(0, 0),
+                    arrowprops=dict(arrowstyle="-|>", lw=2.4, color="tab:blue"))
+        ax.annotate("", xy=(lx, ly), xytext=(0, 0),
+                    arrowprops=dict(arrowstyle="-|>", lw=2.4, color=COLORS[m]))
+        ang = np.arctan2(ly, lx)
+        th = np.linspace(0, ang, 80)
+        ax.plot(0.3 * np.cos(th), 0.3 * np.sin(th), color="k", lw=1.1)
+        ax.annotate(f"{np.degrees(ang):+.0f}°", xy=(0.36 * np.cos(ang / 2),
+                                                         0.36 * np.sin(ang / 2)),
+                    fontsize=9, ha="center", va="center")
+        ax.annotate(f"cos = {c:+.3f}", xy=(0.03, 0.05), xycoords="axes fraction",
+                    fontsize=11, weight="bold")
+        ax.annotate(f"|d_learn| / |d_target| = {nl / (nt + 1e-12):.3f}\n"
+                    f"(arrows drawn unit length)",
+                    xy=(0.03, 0.90), xycoords="axes fraction", fontsize=7.5, color="dimgray")
+        ax.annotate("d_target", xy=(tx, ty), xytext=(-2, 6), textcoords="offset points",
+                    fontsize=8, color="tab:blue", ha="right")
+        ax.annotate("d_learn", xy=(lx, ly), xytext=(6, 6 if ly >= 0 else -12),
+                    textcoords="offset points", fontsize=8, color=COLORS[m])
+        ax.axhline(0, color="gray", lw=0.6); ax.axvline(0, color="gray", lw=0.6)
+        ax.set_xlim(-1.15, 1.35); ax.set_ylim(-1.25, 1.25)
+        ax.set_aspect("equal")
+        ax.set_xticks([]); ax.set_yticks([])
+        if row == 0:
+            ax.set_title(m, fontsize=11)
+        if col == 0:
+            ax.set_ylabel(what, fontsize=9)
+figI.suptitle(
+    "WHAT THE COSINE IS: one weight update, "
+    f"{ILLUS_AT} steps into task 2, seed {ILLUS_SEED}, batch-averaged output vectors.\n"
+    "TOP ROW is [R1]'s target alignment -- the data the update was computed from. BOTTOM ROW is "
+    "the SAME update seen by task 1, which it was not computed from: negative there means the "
+    "update pushed task 1's outputs away from their own targets.\n"
+    "The plane is spanned exactly by the two vectors, so the drawn angle IS the reported "
+    "cosine -- unlike a PCA picture, there is no projection loss. Arrows are unit length; the "
+    "true magnitude ratio is printed per panel.", fontsize=9.5)
+figI.tight_layout()
+figI.savefig(figure_path(__file__, "mechanism"), dpi=130, bbox_inches="tight")
+print(f"saved {figure_path(__file__, 'mechanism')}")
+
 # ---------------------------------------------------------------- figures
 fig, axes = plt.subplots(1, 2, figsize=(12.5, 4.6), sharex=True)
 for ax, (D, lab) in zip(axes, [(align, "target alignment  (on the batch being trained)"),

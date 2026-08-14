@@ -225,6 +225,38 @@ def alignment_probe(train_step, predict, arch, obj, device="cpu", every=1, ref=N
     return (wrapped, log, ref_log) if ref is not None else (wrapped, log)
 
 
+def weight_trace_probe(train_step, params, keys=("W1", "W2"), every=1):
+    """Wrap train_step to record the weight TRAJECTORY, not just its length.
+
+    weight_path_probe accumulates sum|dw| and throws the route away, which is all the scalar
+    needs. This keeps the route, so the thing being measured can be DRAWN: the wandering path
+    against the straight line between its endpoints. A ratio nobody can point at is not
+    evidence, and 'inefficiency = 1.7' means nothing until someone has seen the picture it
+    summarises.
+
+    Returns (wrapped, trace) where trace is {name: list of flat float32 copies}, one per
+    recorded update, in order.
+
+    COST is MEMORY, not time: one copy of each named tensor per recorded update. W1 at 196x32
+    is 25 kB, so 1500 updates is ~38 MB per layer. Use `every` and one seed -- this is an
+    illustration, and the statistics come from weight_path_probe over the full set of runs.
+    """
+    trace = {k: [] for k in keys}
+    step = [0]
+
+    def wrapped(x, y, active=None):
+        i = step[0]
+        step[0] = i + 1
+        train_step(x, y, active=active)
+        if i % every == 0:
+            named = params.named()
+            for k in keys:
+                if named.get(k) is not None:
+                    trace[k].append(named[k].detach().reshape(-1).clone().float().cpu().numpy())
+
+    return wrapped, trace
+
+
 def weight_path_probe(train_step, params):
     """Wrap train_step to accumulate the L1 PATH LENGTH of every weight. [R31] Li & van Rossum.
 

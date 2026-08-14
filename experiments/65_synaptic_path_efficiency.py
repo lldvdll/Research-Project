@@ -228,6 +228,99 @@ print("  worth a properly powered run, not whether the relationship holds. Scrip
 
 report_grid(grid, METHODS, control="backprop", primary="crossover")
 
+# ================================================================ THE ILLUSTRATION
+# One figure showing WHAT IS BEING MEASURED, before the figure showing the result. The scalar
+# above is a ratio of two lengths; this draws both of them, on real weights, for one seed.
+#
+# HONESTY ABOUT THE PROJECTION: the path lives in 196x32 dimensions and is drawn in 2. The
+# projection is PCA fitted on ALL rules' task-2 trajectories together, so the rules share one
+# set of axes and can be compared; the explained variance is printed on the panel. Every NUMBER
+# annotated -- path length, net displacement, their ratio -- is computed in the FULL space, not
+# in the projection, so the picture can mislead about shape but not about the quantity.
+ILLUS_SEED, ILLUS_EVERY, ILLUS_LAYER = 0, 5, "W1"
+print(f"\n  drawing the mechanism: {ILLUS_LAYER} trajectory, seed {ILLUS_SEED}, "
+      f"every {ILLUS_EVERY} updates")
+from src.probes import weight_trace_probe
+
+data_i = load(base)
+traces, marks = {}, {}
+for m in METHODS:
+    proto = replace(base, lr={m: LR[m]})
+    tasks = proto.tasks(ILLUS_SEED)
+    lmap = proto.label_map(tasks)
+    handle = {}
+    ts, pr = build(proto, m, ILLUS_SEED, handle=handle, **settle_kw(m))
+    wrapped, tr = weight_trace_probe(ts, handle["params"], keys=(ILLUS_LAYER,),
+                                     every=ILLUS_EVERY)
+    at_switch = {}
+    run_classil(wrapped, pr, tasks, data_i.train, data_i.class_idx,
+                report_eval=data_i.report_eval, stop_eval=data_i.stop_eval,
+                max_iters_per_task=ITERS, batch=proto.batch, eval_every=10 ** 9,
+                device=proto.device, stop_threshold=None, data_seed=ILLUS_SEED,
+                label_map=lmap,
+                on_task_end=lambda ti, step, _t=tr, _a=at_switch: _a.setdefault(
+                    ti, len(_t[ILLUS_LAYER])))
+    traces[m] = np.stack(tr[ILLUS_LAYER])
+    marks[m] = at_switch.get(0, 0)
+
+# task 2 only, to match the scalar reported above
+segs = {m: traces[m][marks[m]:] for m in METHODS}
+allpts = np.concatenate([segs[m] - segs[m][0] for m in METHODS], axis=0)
+mu = allpts.mean(0)
+U, S, Vt = np.linalg.svd(allpts - mu, full_matrices=False)
+basis = Vt[:2]
+evr = float((S[:2] ** 2).sum() / (S ** 2).sum())
+
+figI, axesI = plt.subplots(1, len(METHODS), figsize=(4.3 * len(METHODS), 4.6))
+# ONE set of axis limits for every panel. A shared projection is not a shared picture: with
+# per-panel autoscaling, a rule that moved half as far fills its panel just as completely and
+# the eye reads the two as equivalent. Limits are fixed from all rules together, so panel area
+# means the same thing everywhere.
+proj = {m: (segs[m] - segs[m][0] - mu) @ basis.T for m in METHODS}
+allP = np.concatenate(list(proj.values()), axis=0)
+pad = 0.12 * max(allP.ptp(0).max(), 1e-12)
+lim = [allP[:, 0].min() - pad, allP[:, 0].max() + pad,
+       allP[:, 1].min() - pad, allP[:, 1].max() + pad]
+half = max(lim[1] - lim[0], lim[3] - lim[2]) / 2          # equal aspect without distorting
+cx, cy = (lim[0] + lim[1]) / 2, (lim[2] + lim[3]) / 2
+for ax, m in zip(np.atleast_1d(axesI), METHODS):
+    P = proj[m]
+    # numbers computed in the FULL space
+    full_path = float(np.abs(np.diff(segs[m], axis=0)).sum())
+    full_net = float(np.abs(segs[m][-1] - segs[m][0]).sum())
+    ratio = full_path / full_net if full_net > 0 else float("nan")
+    ax.fill(np.concatenate([P[:, 0], [P[0, 0]]]),
+            np.concatenate([P[:, 1], [P[0, 1]]]),
+            color=COLORS[m], alpha=0.18, lw=0)
+    ax.plot(P[:, 0], P[:, 1], color=COLORS[m], lw=1.5, label="path actually taken")
+    ax.plot([P[0, 0], P[-1, 0]], [P[0, 1], P[-1, 1]], color="k", lw=1.8, ls="--",
+            label="net displacement")
+    ax.plot(P[0, 0], P[0, 1], "o", color="k", ms=7)
+    ax.plot(P[-1, 0], P[-1, 1], "s", color="k", ms=7)
+    ax.annotate("at the switch", xy=(P[0, 0], P[0, 1]), xytext=(6, -12),
+                textcoords="offset points", fontsize=8)
+    ax.annotate("end of task 2", xy=(P[-1, 0], P[-1, 1]), xytext=(6, 6),
+                textcoords="offset points", fontsize=8)
+    ax.set_title(f"{m}\nL1 path {full_path:.1f} / net {full_net:.1f} = "
+                 f"{ratio:.2f}x", fontsize=10)
+    ax.set_xlabel("PC 1 of the weight change"); ax.set_ylabel("PC 2")
+    ax.set_xlim(cx - half, cx + half); ax.set_ylim(cy - half, cy + half)
+    ax.set_aspect("equal")
+    ax.grid(alpha=0.25)
+np.atleast_1d(axesI)[0].legend(fontsize=8, loc="best")
+figI.suptitle(
+    f"WHAT IS BEING MEASURED: {ILLUS_LAYER}'s route through weight space during task 2, "
+    f"seed {ILLUS_SEED}. All panels share one projection AND one set of axes.\n"
+    f"Shaded = area enclosed between the route and its own chord -- the wandering the ratio "
+    f"charges for. Endpoints alone fix the dashed line; only the route changes the numerator.\n"
+    f"CAVEAT: the annotated ratio is [R31]'s L1 (sum of |dw|, their metabolic cost) computed in "
+    f"the full {segs[METHODS[0]].shape[1]}-dim space; the drawing is Euclidean in a 2-D PCA "
+    f"holding {evr:.0%} of the variance. Trust the number, read the picture for shape.",
+    fontsize=9.5)
+figI.tight_layout()
+figI.savefig(figure_path(__file__, "mechanism"), dpi=130, bbox_inches="tight")
+print(f"saved {figure_path(__file__, 'mechanism')}")
+
 # ---------------------------------------------------------------- figures
 fig, axes = plt.subplots(1, len(LAYERS) + 1, figsize=(5.0 * (len(LAYERS) + 1), 4.4))
 for ax, L in zip(axes, LAYERS):

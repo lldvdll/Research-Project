@@ -224,7 +224,27 @@ for m in METHODS:
 gp, gb = np.nanmean(gaps["pc"]), np.nanmean(gaps["backprop"])
 dp = paired_diff(gaps["pc"], gaps["backprop"])
 print("\n  READING (pre-committed in the docstring):")
-if dp[2] > 2 and dp[0] < 0:
+
+# VALIDITY GATE, BEFORE ANY CONCLUSION. `kept` is read at the moment task 2 first holds the
+# threshold, so it is NaN for any run that never got there -- and the masked conditions top out
+# near 55% by construction (43's note), while replay sees only half a batch of new data per step
+# and learns task 2 slowest. If cells are missing, the comparison silently becomes "the
+# conditions that finished, against the conditions that did not", which is exactly what voided
+# script 53. Without this gate an all-NaN grid produced `nan vs nan` and still printed a verdict.
+n_pairs = int(np.sum(np.isfinite(gaps["pc"]) & np.isfinite(gaps["backprop"])))
+short = {(m, c): reached[(m, c)] for m in METHODS for c in CONDITIONS
+         if reached[(m, c)] < SEEDS}
+if n_pairs < 3 or short:
+    print(f"    NOT INTERPRETABLE. Paired seeds available: {n_pairs}/{SEEDS}.")
+    if short:
+        print("    Cells that did not reach the task-2 threshold on every seed:")
+        for (m, c), n in sorted(short.items()):
+            print(f"      {m:10s} {c:16s} {n}/{SEEDS}")
+    print(f"    The reading is taken at the moment task 2 first holds {T2_THRESHOLD:.0%}, so a")
+    print("    run that never got there has no value to contribute. Lower the threshold to what")
+    print("    the masked conditions can actually reach, or raise the cap -- do NOT compare the")
+    print("    cells that finished against the ones that did not.")
+elif dp[2] > 2 and dp[0] < 0:
     print(f"    PC has LESS to gain from the oracle mask than backprop ({gp:.1f} vs {gb:.1f},")
     print(f"    {dp[0]:+.1f} +- {dp[1]:.1f}, {dp[2]:.1f} sem), so it was suppressing less to begin")
     print("    with. The Class-IL advantage IS reduced output suppression, and its absence in")

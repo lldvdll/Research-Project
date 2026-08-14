@@ -3,7 +3,8 @@
 Dashboard. Detail lives in `current_state.md`, `knowledge_base.md`, and each script's docstring.
 **Keep this short.** If a section grows past a screen, it belongs somewhere else.
 
-**Running:** 64 (target alignment + interference), 65 (synaptic path efficiency). EqProp-bound.
+**Running:** 66 (Class-IL vs Domain-IL weight routes), 67 (Class-IL decomposition, four rules).
+EqProp-bound. **Next:** concept drift (68) — needs a per-task `label_map` in `run_classil`.
 
 ---
 

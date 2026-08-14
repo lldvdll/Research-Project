@@ -50,6 +50,10 @@ PC minus backprop, crossover height:
 | Class-IL | **+1.29** (3.7σ, 5W–0L) | **+3.00** (2.2σ, 4W–1L) |
 | *replay, same cells* | +2.56 / +7.32 | +2.75 / +11.67 |
 
+**Replicated at 24 seeds** (`69`): Class-IL crossover **+1.65 ± 0.25 (6.6σ)**, against +1.29
+(3.7σ) at 5 seeds — same effect, four times the power. Domain-IL at 24 seeds (`60`): −0.28 ± 0.19
+(1.5σ), still no effect.
+
 **Impact of the metric choice.** Crossover is the accuracy at which the two task curves intersect
 — a geometric feature of the trade-off, with no budget or threshold in its definition and
 invariant to uniformly rescaling time. Consequence for this result: **the sign does not change
@@ -243,6 +247,23 @@ the rules respond to the split — PC tracks backprop at +9.5 vs +9.7 points/sd 
 cancels (11.5×); replay is half as sensitive at +4.0 so little does (1.3×). Unpaired at 5 seeds,
 the **positive control** reads 0.7σ and looks like a failure.
 
+**The confound is specific to the output-unit pairing, and Class-IL does not have one.** With 10
+classes and separate output units there is no pairing, and the split does not predict retention
+(`69`, 24 seeds): backprop r = +0.237 (p=0.26), pc r = +0.266 (p=0.21) — both null. Only replay
+correlates (−0.463, p=0.025). Class-IL retention also spans only **0.4–14.4%** against Domain-IL's
+23.0–71.0%, so there is far less variance for a nuisance term to explain. *(The cross-task and
+within-task similarity measures returned exactly negated correlations — with a 5/5 split they are
+one degree of freedom, not two.)*
+
+**Pairing still pays in Class-IL**, because the initialisation is shared even where the split is
+not a confound:
+
+| Class-IL (`69`, 24 seeds) | unpaired | paired | sem ratio |
+|---|---|---|---|
+| pc − backprop, crossover | +1.65 ± 1.12 (1.5σ) | **+1.65 ± 0.25 (6.6σ)** | 4.5× |
+| pc − backprop, retention | −1.10 ± 0.94 (1.2σ) | −1.10 ± 0.31 (3.6σ) | 3.0× |
+| replay − backprop, crossover | +8.66 ± 1.11 (7.8σ) | +8.66 ± 0.53 (16.2σ) | 2.1× |
+
 **Plots.** `60_....png` — *why evidence:* left column is the pairing (sloped), right column the
 control (flat); the contrast is the result, not either panel alone.
 `60_..._digits.png` — *why evidence:* one row per seed ordered by similarity, the two digits
@@ -303,7 +324,6 @@ convergence directly; a closed loop would have shown ping-ponging and does not a
 |---|---|
 | `66` | does the weight-space route differ between Class-IL and Domain-IL? *(running)* |
 | `67` | does the Class-IL suppression decomposition hold for all four rules? *(queued)* |
-| `69` | is Class-IL confounded by the split as Domain-IL is? *(running)* |
 | — | concept drift ([R1] Fig 4f–g), where their claimed advantage is largest |
 | — | depth in Class-IL, the one scenario where PC shows an effect |
 | — | magnitude-aware interference, `(d_learn · d_target) / \|d_target\|²` |

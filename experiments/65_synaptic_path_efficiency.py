@@ -237,8 +237,11 @@ report_grid(grid, METHODS, control="backprop", primary="crossover")
 # set of axes and can be compared; the explained variance is printed on the panel. Every NUMBER
 # annotated -- path length, net displacement, their ratio -- is computed in the FULL space, not
 # in the projection, so the picture can mislead about shape but not about the quantity.
-ILLUS_SEED, ILLUS_EVERY, ILLUS_LAYER = 0, 5, "W1"
-print(f"\n  drawing the mechanism: {ILLUS_LAYER} trajectory, seed {ILLUS_SEED}, "
+ILLUS_SEED, ILLUS_EVERY = 0, 5
+# BOTH layers, because the result is a DISAGREEMENT between them: PC is more efficient than
+# backprop on W2 and slightly worse on W1. A figure showing only W1 would illustrate the
+# quantity while hiding the finding.
+print(f"\n  drawing the mechanism: {' and '.join(LAYERS)} trajectories, seed {ILLUS_SEED}, "
       f"every {ILLUS_EVERY} updates")
 from src.probes import weight_trace_probe
 
@@ -250,7 +253,7 @@ for m in METHODS:
     lmap = proto.label_map(tasks)
     handle = {}
     ts, pr = build(proto, m, ILLUS_SEED, handle=handle, **settle_kw(m))
-    wrapped, tr = weight_trace_probe(ts, handle["params"], keys=(ILLUS_LAYER,),
+    wrapped, tr = weight_trace_probe(ts, handle["params"], keys=tuple(LAYERS),
                                      every=ILLUS_EVERY)
     at_switch = {}
     run_classil(wrapped, pr, tasks, data_i.train, data_i.class_idx,
@@ -259,64 +262,114 @@ for m in METHODS:
                 device=proto.device, stop_threshold=None, data_seed=ILLUS_SEED,
                 label_map=lmap,
                 on_task_end=lambda ti, step, _t=tr, _a=at_switch: _a.setdefault(
-                    ti, len(_t[ILLUS_LAYER])))
-    traces[m] = np.stack(tr[ILLUS_LAYER])
+                    ti, len(_t[LAYERS[0]])))
+    traces[m] = {L: np.stack(tr[L]) for L in LAYERS}
     marks[m] = at_switch.get(0, 0)
 
-# task 2 only, to match the scalar reported above
-segs = {m: traces[m][marks[m]:] for m in METHODS}
-allpts = np.concatenate([segs[m] - segs[m][0] for m in METHODS], axis=0)
-mu = allpts.mean(0)
-U, S, Vt = np.linalg.svd(allpts - mu, full_matrices=False)
-basis = Vt[:2]
-evr = float((S[:2] ** 2).sum() / (S ** 2).sum())
+# BOTH BLOCKS, as two separate paths: init -> switch, then switch -> end. The scalar reported
+# above is task 2 only, but drawing task 2 alone hides where it started from and how far the
+# weights had already travelled to learn task 1 -- and whether the two blocks have the same
+# character at all. Each block gets its own chord and its own ratio.
+#
+# The PCA is fitted on the WHOLE trajectory anchored at INITIALISATION, so both blocks live in
+# one projection and the switch point is a real location on the picture rather than an origin
+# imposed by the plotting. Each LAYER gets its own PCA: they have different dimensions and
+# wildly different scales, and one shared projection would be dominated by W1 while W2
+# collapsed to a dot.
+full, mus, bases, evrs = {}, {}, {}, {}
+for L in LAYERS:
+    full[L] = {m: traces[m][L] - traces[m][L][0] for m in METHODS}
+    allpts = np.concatenate([full[L][m] for m in METHODS], axis=0)
+    mus[L] = allpts.mean(0)
+    _, S, Vt = np.linalg.svd(allpts - mus[L], full_matrices=False)
+    bases[L] = Vt[:2]
+    evrs[L] = float((S[:2] ** 2).sum() / (S ** 2).sum())
 
-figI, axesI = plt.subplots(1, len(METHODS), figsize=(4.3 * len(METHODS), 4.6))
+
+def _path_net(a):
+    """L1 path length and L1 net displacement of one block, in the FULL space."""
+    return float(np.abs(np.diff(a, axis=0)).sum()), float(np.abs(a[-1] - a[0]).sum())
+
+figI, axesI = plt.subplots(len(LAYERS), len(METHODS),
+                           figsize=(4.0 * len(METHODS), 4.2 * len(LAYERS)), squeeze=False)
 # ONE set of axis limits for every panel. A shared projection is not a shared picture: with
 # per-panel autoscaling, a rule that moved half as far fills its panel just as completely and
 # the eye reads the two as equivalent. Limits are fixed from all rules together, so panel area
 # means the same thing everywhere.
-proj = {m: (segs[m] - segs[m][0] - mu) @ basis.T for m in METHODS}
-allP = np.concatenate(list(proj.values()), axis=0)
-pad = 0.12 * max(allP.ptp(0).max(), 1e-12)
-lim = [allP[:, 0].min() - pad, allP[:, 0].max() + pad,
-       allP[:, 1].min() - pad, allP[:, 1].max() + pad]
-half = max(lim[1] - lim[0], lim[3] - lim[2]) / 2          # equal aspect without distorting
-cx, cy = (lim[0] + lim[1]) / 2, (lim[2] + lim[3]) / 2
-for ax, m in zip(np.atleast_1d(axesI), METHODS):
-    P = proj[m]
-    # numbers computed in the FULL space
-    full_path = float(np.abs(np.diff(segs[m], axis=0)).sum())
-    full_net = float(np.abs(segs[m][-1] - segs[m][0]).sum())
-    ratio = full_path / full_net if full_net > 0 else float("nan")
-    ax.fill(np.concatenate([P[:, 0], [P[0, 0]]]),
-            np.concatenate([P[:, 1], [P[0, 1]]]),
-            color=COLORS[m], alpha=0.18, lw=0)
-    ax.plot(P[:, 0], P[:, 1], color=COLORS[m], lw=1.5, label="path actually taken")
-    ax.plot([P[0, 0], P[-1, 0]], [P[0, 1], P[-1, 1]], color="k", lw=1.8, ls="--",
-            label="net displacement")
-    ax.plot(P[0, 0], P[0, 1], "o", color="k", ms=7)
-    ax.plot(P[-1, 0], P[-1, 1], "s", color="k", ms=7)
-    ax.annotate("at the switch", xy=(P[0, 0], P[0, 1]), xytext=(6, -12),
-                textcoords="offset points", fontsize=8)
-    ax.annotate("end of task 2", xy=(P[-1, 0], P[-1, 1]), xytext=(6, 6),
-                textcoords="offset points", fontsize=8)
-    ax.set_title(f"{m}\nL1 path {full_path:.1f} / net {full_net:.1f} = "
-                 f"{ratio:.2f}x", fontsize=10)
-    ax.set_xlabel("PC 1 of the weight change"); ax.set_ylabel("PC 2")
-    ax.set_xlim(cx - half, cx + half); ax.set_ylim(cy - half, cy + half)
-    ax.set_aspect("equal")
-    ax.grid(alpha=0.25)
-np.atleast_1d(axesI)[0].legend(fontsize=8, loc="best")
+for row, L in enumerate(LAYERS):
+    proj = {m: (full[L][m] - mus[L]) @ bases[L].T for m in METHODS}
+    # EACH PANEL IS SCALED SO ITS OWN init->end DISPLACEMENT HAS UNIT LENGTH. Without this,
+    # EqProp's W2 excursion is several times the others' and squeezes three of the four panels
+    # to a dot -- the figure then shows that EqProp moves more, which is true but is not the
+    # quantity. The quantity is a RATIO of two lengths and is scale-invariant, so rescaling each
+    # panel discards nothing being measured and makes the shape -- which IS the ratio -- legible
+    # in all four. Absolute sizes are printed in each panel's annotation instead.
+    for m in METHODS:
+        P = proj[m]
+        d = float(np.linalg.norm(P[-1] - P[0]))
+        proj[m] = (P - P[0]) / (d if d > 0 else 1.0)
+    allP = np.concatenate(list(proj.values()), axis=0)
+    # np.ptp(a, ...), not a.ptp(...): numpy 2 removed the ndarray method.
+    pad = 0.12 * max(np.ptp(allP, axis=0).max(), 1e-12)
+    half = max(np.ptp(allP[:, 0]), np.ptp(allP[:, 1])) / 2 + pad   # equal aspect, no distortion
+    cx = (allP[:, 0].min() + allP[:, 0].max()) / 2
+    cy = (allP[:, 1].min() + allP[:, 1].max()) / 2
+    for col, m in enumerate(METHODS):
+        ax = axesI[row][col]
+        P, k, A = proj[m], marks[m], full[L][m]
+        # THE ROUTE, in two blocks
+        for lab, Pb, alpha in (("task 1", P[:k + 1], 0.40), ("task 2", P[k:], 1.0)):
+            if len(Pb) < 2:
+                continue
+            ax.fill(np.concatenate([Pb[:, 0], [Pb[0, 0]]]),
+                    np.concatenate([Pb[:, 1], [Pb[0, 1]]]),
+                    color=COLORS[m], alpha=0.09 * (1 + alpha), lw=0)
+            ax.plot(Pb[:, 0], Pb[:, 1], color=COLORS[m], lw=1.7, alpha=alpha,
+                    label=f"route, {lab}")
+        # THREE NET DISPLACEMENTS. The third is the point: task 2 partly UNDOES task 1, so the
+        # overall net (init -> end) is not the sum of the two blocks, and the gap between them
+        # is retraced ground -- movement spent going somewhere and then coming back.
+        p1, n1 = _path_net(A[:k + 1]) if k >= 1 else (0.0, 0.0)
+        p2, n2 = _path_net(A[k:]) if len(A) - k >= 2 else (0.0, 0.0)
+        pf, nf = _path_net(A)
+        for (i, j), ls, c, lab in ((( 0, k), ":", "tab:blue", "net, init->switch"),
+                                   ((k, -1), "--", "k", "net, switch->end"),
+                                   (( 0, -1), "-", "tab:purple", "net, init->end")):
+            ax.plot([P[i, 0], P[j, 0]], [P[i, 1], P[j, 1]], color=c, lw=1.9, ls=ls,
+                    alpha=0.9, label=lab, zorder=4)
+        ax.plot(P[0, 0], P[0, 1], "o", color="k", ms=7, label="init")
+        ax.plot(P[k, 0], P[k, 1], "*", color="k", ms=14, label="task switch")
+        ax.plot(P[-1, 0], P[-1, 1], "s", color="k", ms=7, label="end")
+        r1 = p1 / n1 if n1 > 0 else float("nan")
+        r2 = p2 / n2 if n2 > 0 else float("nan")
+        rf = pf / nf if nf > 0 else float("nan")
+        ax.set_title(f"{m if row == 0 else ''}\n{L}   path/net:  "
+                     f"t1 {r1:.2f}x   t2 {r2:.2f}x   FULL {rf:.2f}x", fontsize=9.5)
+        # how much of task 1's displacement did task 2 undo? n1 + n2 - nf is the L1 distance
+        # travelled and then given back; 0 means the two blocks moved in unrelated directions.
+        ax.annotate(f"net: {n1:.0f} + {n2:.0f} = {n1 + n2:.0f}\nbut init->end = {nf:.0f}\n"
+                    f"retraced {max(n1 + n2 - nf, 0):.0f}",
+                    xy=(0.02, 0.02), xycoords="axes fraction", fontsize=7.5, va="bottom",
+                    color="dimgray")
+        ax.set_xlim(cx - half, cx + half); ax.set_ylim(cy - half, cy + half)
+        ax.set_aspect("equal")
+        ax.set_xticks([]); ax.set_yticks([])
+        ax.grid(alpha=0.25)
+    axesI[row][0].set_ylabel(f"{L}   (2-D PCA, {evrs[L]:.0%} of variance,\n"
+                             f"each panel scaled to unit init->end)", fontsize=9)
+axesI[0][0].legend(fontsize=7.5, loc="best")
 figI.suptitle(
-    f"WHAT IS BEING MEASURED: {ILLUS_LAYER}'s route through weight space during task 2, "
-    f"seed {ILLUS_SEED}. All panels share one projection AND one set of axes.\n"
-    f"Shaded = area enclosed between the route and its own chord -- the wandering the ratio "
-    f"charges for. Endpoints alone fix the dashed line; only the route changes the numerator.\n"
-    f"CAVEAT: the annotated ratio is [R31]'s L1 (sum of |dw|, their metabolic cost) computed in "
-    f"the full {segs[METHODS[0]].shape[1]}-dim space; the drawing is Euclidean in a 2-D PCA "
-    f"holding {evr:.0%} of the variance. Trust the number, read the picture for shape.",
-    fontsize=9.5)
+    f"WHAT IS BEING MEASURED: each layer's route through weight space, seed {ILLUS_SEED}. "
+    f"The wiggly line is the route actually taken -- faint over task 1, solid over task 2.\n"
+    f"THREE net displacements are drawn on the same axes: init->switch (blue dotted), "
+    f"switch->end (black dashed), and init->end (purple solid). Shaded = area between a route "
+    f"and its chord, the wandering the ratio charges for.\n"
+    f"The purple line is the point: task 2 partly UNDOES task 1, so the overall net is shorter "
+    f"than the two blocks summed, and the difference is ground retraced -- movement spent going "
+    f"somewhere and then coming back.\n"
+    f"CAVEAT: the annotated ratios are [R31]'s L1 (sum of |dw|, their metabolic cost) computed "
+    f"in the FULL weight space; the drawing is Euclidean in 2-D PCA holding the stated variance. "
+    f"Trust the numbers, read the picture for shape.", fontsize=9.5)
 figI.tight_layout()
 figI.savefig(figure_path(__file__, "mechanism"), dpi=130, bbox_inches="tight")
 print(f"saved {figure_path(__file__, 'mechanism')}")

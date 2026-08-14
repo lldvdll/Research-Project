@@ -68,8 +68,27 @@ where does their advantage come from?"
   +0.89, but `r(pairing, retention)` is 0.90–0.97 and `r(pairing, inefficiency)` 0.50–0.75
   across all four rules, so the pairing is a common cause. Needs 60's 24-seed treatment with
   the pairing partialled out before anything can be said.
+- **[R1]'S OWN MECHANISM METRIC DOES NOT TRACK FORGETTING (64).** Target alignment during task 2:
+  backprop +0.277, **pc +0.280** (+0.003, i.e. 1% relative — significant at 2.6σ only because a
+  per-update measure has a tiny SEM; the effect size is negligible), replay +0.181, eqprop +0.250.
+  **PC is not more target-aligned than backprop here, so [R1]'s mechanism does not reproduce at
+  this scale.**
+- **And the metric inverts at the extreme.** Interference on task-1 data *during* task 2:
+  backprop −0.030, replay −0.000, pc −0.025, **eqprop +0.039** — EqProp's updates move task 1
+  *toward* its targets on average, and EqProp forgets the **most** (0W–5L). The retention
+  ordering replay > backprop > eqprop is not the interference ordering. `[EMPIRICAL]`
+- **Why, probably: alignment is direction-only and blind to magnitude.** A rule can point
+  helpfully and still do more damage by moving further per update. 64's aggregate records only
+  cosines, not `|d_learn|`. **Gap — record the magnitude.**
 - **Both EBMs genuinely settle.** PC needs ≤18 steps, runs 50, sits 3e-04 from equilibrium
   (50, 63). EqProp `settle_tol=1e-4`.
+- **Forgetting is visible as RETRACED WEIGHT DISTANCE (65's mechanism figure).** Over a whole
+  run the two task blocks displace W1 by 47 and 43 while init→end is only 52 — **38 units are
+  travelled and given back**. So the full-run ratio (backprop W1 2.86x) is far worse than either
+  block alone (1.77x, 1.53x). Replay retraces least (27 of 82) — the positive control behaving
+  correctly. **PC's W2 route runs almost straight from init through the switch to the end**
+  (full-run 1.40x against backprop's 3.05x, 2 of 13 retraced against 4 of 9): at the output
+  layer PC's second task continues in the same direction where backprop's reverses.
 
 ### Metrics — the methodological core
 - **Endpoint metrics inherit the budget** (setup-induced forgetting, Michel et al. 2023). In 2×5
@@ -115,8 +134,10 @@ where does their advantage come from?"
 - [x] **61** exp 12 verbatim → its positive control inverts. Mystery closed.
 - [x] **62** metric grid over all saved runs (re-analysis, trains nothing).
 - [x] **63** PC's inference step rule → equivalent to [R1]'s. Caveat closed.
-- [ ] **64** target alignment + interference — running
+- [x] **64** target alignment → PC not more aligned; the metric anti-tracks retention
 - [x] **65** synaptic path efficiency → PC efficient at the OUTPUT layer, EqProp wanders
+- [ ] **66** Class-IL vs Domain-IL weight routes — running
+- [ ] **67** Class-IL decomposition, all four rules
 - [ ] **B1/B2/B3** metrics — largely a write-up of evidence already in hand
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison → **E** why → **F** does it generalise

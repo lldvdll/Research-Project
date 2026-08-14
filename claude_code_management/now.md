@@ -3,57 +3,140 @@
 Dashboard. One line per fact. Detail lives in `current_state.md` and in each script's
 docstring — keep this file short enough to read in one sitting.
 
-**Running:** 52 (fixed budget) and 53 (accuracy stopping), in parallel. EqProp-bound.
-Started 2026-08-11.
+**Running:** 64 (target alignment + interference) and 65 (synaptic path efficiency), both
+EqProp-bound. Started 2026-08-13.
 
-**Running:** 59 (crossover × depth × width), 61 (exp 12 verbatim), 52 (re-run, see below).
-
-## ⚠ KNOWN INCONSISTENCY — script 52 must be re-run
-**52's replay is not the same replay as 53/56/57's.** 52 ran before `replay_frac` was changed
-from `None` to `0.5`, so its replay *appended* the buffer and trained on 64 examples per step
-where every other rule got 32. 53, 56 and 57 all ran after the fix. So 52's replay column is
-not comparable with theirs, and 52's own replay-vs-backprop gap is inflated by a data advantage.
-Re-running. **Do not quote 52's replay numbers until it has.**
-
-Nothing else in the A series is affected: 52's EqProp already used `settle_tol` (that change
-landed first), and 55/59 contain no replay.
+**52's re-run resolved the ⚠ inconsistency.** The `replay_frac` None→0.5 fix changed every
+metric by ≤0.4 points and flipped no verdict (crossover +2.67→+2.56, retention +26.2→+26.6).
+The double-batch confound was real in principle and nil in magnitude. **52 is comparable with
+53/56/57.** Replay's advantage was never the extra data.
 
 ## What each change means for existing runs
 | change | affects | action |
 |---|---|---|
-| `replay_frac` None → 0.5 | **52 only** — all later runs postdate it | re-run 52 |
+| `replay_frac` None → 0.5 | 52 only | **done — no material change** |
 | EqProp `settle_tol` | nothing in the 50s — landed before 52 | none |
 | `plotting._mean_of_all` | figures with ragged runs | **43 done**; 53/57 pending |
-| `crossover_after=` on learning curves | all comparison figures | 52/56 on next run; 53/57 pending |
+| `crossover_after=` on learning curves | all comparison figures | 52/56/60 done; 53/57 pending |
 | metric grid | every comparison | script **62** re-reports without retraining |
 | `settle_patience` restored | 01–27 and **61** now run again | none |
+| **A1 ce-mask gate** | legacy-spec runs only | **none — 61 re-run reproduces exactly** |
+| **A5 censoring report** | every crossover / half-life line | re-report via 62; no number changes |
 
 **53 and 57 have no `--replot` path** — they re-train from scratch, so their figures cannot be
 regenerated cheaply and still lack the crossover annotation. Numbers are unaffected and script
 62 re-reports their full metric grid without retraining. Add `--replot` to both when next
 touched; do not re-run them just for the figure.
 
+## THE CODE AUDIT — 2026-08-13, all 12 modules, five fixes
+Committed as `9e485aa`. PC's protocol path is **bit-identical** afterwards (regression-checked
+against 60's saved seed-0 curve); 61 re-run reproduces −4.52 (3.5 sem) exactly.
+
+- **A1 — `ce` applied a hard task mask regardless of `obj.mask`.** `output_error`'s `ce` branch
+  masked the softmax whenever `active_vec` was passed, and `run_classil` passes it on every
+  call while `active_vector` never returns None. So under `LEGACY_SPEC` **backprop and replay
+  trained with an ORACLE TASK MASK** — absent classes got exactly zero gradient — while PC
+  (mse) saw the full error and EqProp (hinge, ±1) actively pushed them down. Measured: ‖e‖ on
+  task-1 units during task 2 = 0.0 / 5.97 / 10.0. In Class-IL, where output suppression is the
+  dominant mechanism, that is a rule-independent advantage handed to two of four rules.
+  **A second reason exp 12 is not evidence**, independent of its inverted control. Now gated on
+  `obj.mask`; `LEGACY_SPEC` states `mask=True` explicitly so old scripts reproduce byte-for-byte.
+  The A series never touched it — mse, `mask=False` throughout.
+- **A2** — `pc_update`'s optimiser path divided by `n` where the raw path divided by
+  `batch_scale`. Identical under `mean`; 0.29 apart under `sum`, the reduction that exists to
+  match [R1].
+- **A3** — `pc_update` froze `b1` along with `W1`; the other three rules freeze per named
+  tensor. One freeze set now means one thing under all four rules.
+- **A4** — `make_eqprop` defaulted `max_steps=500` against `METHOD_DEFAULTS`' 800.
+- **A5 — censoring, and it hits the primary metric.** `report_grid` printed a group mean over
+  all finite runs beside a paired difference over pairs finite on *both* sides, with no n. See
+  the censoring section below.
+- **A6** — `crossover(return_reason=True)` separates "t1 stayed up" from "t2 started up".
+
+## CENSORING — a null crossover is a RESULT, not missing data
+If the curves never cross, task 1 stayed above task 2 for the whole window, which can only
+happen if **forgetting ran slower than learning throughout**. That is the best outcome
+available, and dropping it removes each rule's *best* seeds — more of them from the rule that
+is winning. Replay is censored on **11/24** seeds in 60 and 3/5 in 52/53; PC and EqProp never.
+
+`metrics.paired_sign` ranks censored runs at the top and uses every seed. Replay vs backprop on
+crossover: **24W–0L, p<0.001** in 60, where the parametric number used 13 of 24. So crossover
+stays quantitative *as a comparison* under censoring; what it loses is the height.
+**Floor: at 5 seeds a clean sweep gives p=0.0625, so censorable metrics need ≥6 seeds.**
+
+Class-IL is not censored — 56/57 are 5/5 finite for every rule, so PC's +1.29 and +3.00 stand
+as computed. But 56 is 5W–0L across seeds and **57 is only 4W–1L (p=0.375)**, so the
+matched-competence version is the weaker of the two.
+
+## 60 — THE SEED SPREAD IS EXPLAINED, AND IT IS FORGETTING, NOT LEARNING
+24 seeds, Domain-IL, 52's settings. Backprop retains **23.0–71.0%** — a 48-point range.
+
+| backprop | r vs pairing similarity | p | range |
+|---|---|---|---|
+| **retaining** task 1 | **+0.787** | <0.001 | 23.0–71.0% |
+| learning task 2 (final) | +0.164 | 0.45 | 82.2–95.4% |
+| learning task 1 (peak) | +0.155 | 0.47 | 84.8–96.6% |
+| *speed* to 80% on task 2 | −0.354 | 0.088 | reached **24/24** |
+
+Which two digits **share an output unit** predicts retention: +0.787 (backprop), +0.779 (pc),
++0.630 (replay). The control — same digits, same split, pairing ignored — gives −0.25 to +0.06,
+all p>0.23, and **+0.7 points/sd against the pairing's +9.7**, so it is null in effect size and
+not merely range-restricted. ~62% of the seed variance. `[EMPIRICAL]`
+
+**The pairing is a pure interference term, not a learnability term.** Nothing ever failed to
+learn; the speed correlation has the opposite sign to "dissimilar pairs are harder" and is not
+significant. So the network learns both tasks equally well whatever the pairing, and only their
+*coexistence* differs — which is what keeps the effect unconfounded with capacity.
+
+**PC matches backprop's dependence on the data, not just its mean**: slope +9.5 vs +9.7 pts/sd.
+A much stronger null than "not separated at 5 seeds". Replay is half as sensitive (+4.0), as a
+buffer should be.
+
 ## Then
-1. **Code audit** — our `pc_update` / `pc_settle` against Song & Bogacz's published algorithm.
-   The one documented divergence so far: `x_lr_discount` defaults to 1.0 (fixed step) where
-   [R1] use 0.9 (backtracking). Script **63**.
-2. **Extend the toolkit** with the two mechanism metrics, now that there is a PC result to
-   explain: **synaptic path efficiency** ([R31], `metrics.inefficiency` + `probes.weight_path_probe`)
-   and **target alignment** ([R1] Fig 3b, `probes.alignment_probe`). Both are implemented and
-   have never been run. They answer *why* the rules differ in credit assignment (54: EqProp
-   cos 0.197, PC 0.985 on W1) without differing in the forgetting trade-off.
+1. **63** — PC backtracking (`x_lr_discount=0.9` as [R1] use) vs our fixed step. Script 50
+   verified PC fully settles (≤18 steps needed, 50 used) and backtracking changes the *path* to
+   the fixed point, not the fixed point — so it should not matter. **The live risk runs the
+   other way:** if [R1]'s fixed step count leaves *them* partially settled, their operating
+   point is not the equilibrium and "prospective configuration" is a partially-relaxed state.
+2. **Class-IL is where the gaps are.** Depth is tested in Domain-IL (59, 8/8 cells) and
+   **untested in Class-IL**, which is the only place PC shows anything. Likewise 42/43's
+   suppression-vs-drift decomposition ran **backprop only** — PC's Class-IL forgetting has
+   never been decomposed the same way, and that is the measurement the [HYPOTHESIS] below needs.
+3. **Two untested schedule axes, both cheap** (`protocol.run` takes `tasks=`): an
+   alternating/repeated schedule ([R1] Fig 4d) and **concept drift** ([R1] Fig 4f–g, where
+   their largest advantage is claimed — not cycle length).
 
 ## Next three
 1. **Decide what the thesis argues.** The A series answers the original question negatively and
    consistently. See "Where this leaves the project" below.
 2. **B series** — mostly already answered; it is a write-up, not four experiments. See below.
-3. **60** — why the seed accounts for a 40-point range, larger than any effect under study.
+3. **64/65** — the two mechanism metrics, running.
 
-## Where this leaves the project
+## Where this leaves the project — THE FRAMING, agreed 2026-08-13
+**The thesis is about the character of forgetting and how to measure it. The four learning
+rules are the instrument, not the subject.** They earn their place because they produce
+genuinely different credit assignment (54: cos 0.197 EqProp, 0.985 PC on W1) while producing
+the *same* forgetting — which is exactly what makes "different rule" and "different forgetting"
+separable at all. On that framing the PC null is a controlled demonstration, not a
+disappointment.
+
+**Say "under a controlled protocol PC shows no retention advantage", never "S&B do not
+replicate".** We have not run their setup in this series — the reproduction is old 30–34, it
+failed, and it is closed. Our protocol differs from theirs in schedule, resolution, activation,
+depth, batch size and loss reduction. A failed replication invites "you did it wrong"; a
+controlled comparison invites "then where does their advantage come from?", which is the
+question we can actually answer.
+
 The question the project set out to answer — *do energy-based rules forget less than backprop?*
 — now has a clear answer across 5 experiments, 2 scenarios, 2 measurement points, 4 depths and
-2 widths: **no.** PC is indistinguishable from backprop; EqProp is worse; replay separates
-everywhere, so the problem is solvable and they fail at something achievable.
+2 widths: **no.** PC is indistinguishable from backprop; EqProp is worse — and **worse on every
+seed**, 0W–5L on crossover in 53, 56 and 57, which is a positive finding rather than a null.
+Replay separates everywhere, so the problem is solvable and they fail at something achievable.
+
+**[HYPOTHESIS] — the trade-off is set by the relative magnitudes of the two tasks' output
+contributions.** Untested, and testable with machinery that exists: `probes.output_unit_stats`
+already returns per-unit mean raw scores, and 64's interference probe measures per-update
+movement on task-1 data during task 2. A readout question, not new machinery.
 
 That is a result, not a dead end, and it is stronger than a vague null because:
 - **The rules genuinely differ.** 54 measured EqProp's output-layer update as nearly orthogonal
@@ -285,7 +368,7 @@ the blind spots do not overlap.
 
 | metric | targets | blind to | impl | running |
 |---|---|---|---|---|
-| **crossover height** | the accuracy where the two task curves meet — the joint trade-off point | the asymptote; **undefined if they never cross** | ✅ | ✅ **primary** |
+| **crossover height** | the accuracy where the two task curves meet — the joint trade-off point | the asymptote; **undefined if they never cross — but see censoring, that is a result** | ✅ | ✅ **primary** |
 | final task-1 acc | what survived at the end | *when* the end was — set by budget or threshold | ✅ | ✅ descriptive |
 | final task-2 acc | the guard: is "forgot less" really "learned less"? | task 1 entirely | ✅ | ✅ gate |
 | peak task-1 acc | competence entering task 2 | everything after the switch | ✅ | ✅ gate |
@@ -306,8 +389,27 @@ final accuracy — so their claim is made in that number and it has to be tested
 included, but never alone: it rewards fast learning and low forgetting together and cannot tell
 them apart, which is precisely the separation this project exists to make.
 
+**A METRIC'S USABILITY IS SCENARIO-DEPENDENT, and it is the same structural fact both times.**
+Re-reported across all runs on 2026-08-13 with censoring counts:
+
+| | Domain-IL | Class-IL |
+|---|---|---|
+| crossover, replay | censored 3/5 (52), 3/5 (53), **11/24** (60) | **5/5 defined** (56, 57) |
+| half-life, backprop | **2/5** (52), **1/5** (53) — unusable | 5/5 (56), 5/5 (57) |
+| half-life, replay | 0/5 | 0/5 |
+
+In Domain-IL forgetting is routinely *slower than the metric's own reference event* — task 1
+often neither halves nor falls below task 2 — so both metrics censor. In Class-IL task 1
+collapses and both are defined. **Half-life should not be quoted for Domain-IL at all**; it is
+computed on 1–2 seeds there. This is not two problems, it is one: the reference event is chosen
+from the Class-IL picture of forgetting and does not occur in Domain-IL.
+
+Also visible now in 53's line: replay's crossover *group mean* (72.34) is below backprop's
+(72.57) while the *paired* difference is +2.75 — because the group mean is over replay's 3
+uncensored, i.e. worst, seeds. Exactly the defect A5 fixed.
+
 **Open gaps:** savings needs a 3-block schedule; NCM should run on the rule comparisons, not just
-the intervention ones; alignment and inefficiency are implemented and unused.
+the intervention ones; alignment and inefficiency are running now (64, 65).
 
 ## Metrics — what we report, and why
 The problem has a name: **setup-induced forgetting** (Michel et al. 2023, arXiv:2309.00462).

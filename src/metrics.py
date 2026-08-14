@@ -448,8 +448,14 @@ def report_grid(grid_by_method, methods, control="backprop", primary="crossover"
             # The group mean is over this rule's finite runs; the paired difference is over the
             # runs finite on BOTH sides. When those differ the two numbers on this line describe
             # different sets of seeds, so both counts are printed rather than one implied.
+            # d == 0 is not a direction. `(d > 0) == HIGHER_IS_BETTER` reads an exact tie as
+            # "worse", and paired_diff returns n_sem = inf when every paired difference is
+            # identically zero -- so two runs that agree bit-for-bit were flagged as a
+            # significant loss. Seen in script 63, where the two variants are the same run.
             better = (d > 0) == HIGHER_IS_BETTER[k]
-            mark = ("  BETTER" if better else "  worse") if n > 2 else ""
+            mark = ("  BETTER" if better else "  worse") if (n > 2 and d != 0) else ""
+            if d == 0 and npair:
+                mark = "  identical"
             line = (f"    {m:10s} {mu:8.2f}   vs {control} {d:+7.2f} +-{se:5.2f} "
                     f"{n:4.1f}sem  n={npair}/{n_all}{mark}")
             if censorable and npair < n_all:

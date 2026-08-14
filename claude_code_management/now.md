@@ -78,9 +78,14 @@ where does their advantage come from?"
   backprop −0.030, replay −0.000, pc −0.025, **eqprop +0.039** — EqProp's updates move task 1
   *toward* its targets on average, and EqProp forgets the **most** (0W–5L). The retention
   ordering replay > backprop > eqprop is not the interference ordering. `[EMPIRICAL]`
-- **Why, probably: alignment is direction-only and blind to magnitude.** A rule can point
-  helpfully and still do more damage by moving further per update. 64's aggregate records only
-  cosines, not `|d_learn|`. **Gap — record the magnitude.**
+- **Why: alignment is direction-only and blind to magnitude.** 64's mechanism figure gives
+  |d_learn|/|d_target| on task-1 data as 0.127 (backprop), 0.172 (replay), 0.201 (pc),
+  **0.834 (eqprop)** — EqProp's step is 4–6× larger, at 90° (cos −0.001), so it does no
+  *directional* harm while displacing task 1 the furthest. **Damage is cosine × magnitude, and
+  the cosine alone cannot rank it.** One seed, one update — explains the inversion, does not
+  measure it.
+- **Gap: report `(d_learn · d_target) / |d_target|²`** — the fraction of the remaining gap
+  closed, negative when it widens. Magnitude-aware, dimensionless, rankable. Needs a 64 re-run.
 - **Both EBMs genuinely settle.** PC needs ≤18 steps, runs 50, sits 3e-04 from equilibrium
   (50, 63). EqProp `settle_tol=1e-4`.
 - **Forgetting is visible as RETRACED WEIGHT DISTANCE (65's mechanism figure).** Over a whole

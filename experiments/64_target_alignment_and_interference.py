@@ -238,7 +238,10 @@ from src.model import make_target as _mt
 proto_i = base
 tasks_i = proto_i.tasks(ILLUS_SEED)
 lmap_i = proto_i.label_map(tasks_i)
-xr, yr = ref_batch(load(base) if REPLOT else data, tasks_i, lmap_i, REF_N)
+# `data` is bound only in the training branch, so --replot must load it here. check_names
+# cannot catch this: the name IS assigned at module level, just conditionally.
+data_i = load(base) if REPLOT else data
+xr, yr = ref_batch(data_i, tasks_i, lmap_i, REF_N)
 snaps = {}
 for m in METHODS:
     proto = replace(base, lr={m: LR[m]})
@@ -269,8 +272,8 @@ for m in METHODS:
                 return
         ts(x, y, active=active)
 
-    run_classil(wrapped, pr, tasks_i, data.train, data.class_idx,
-                report_eval=data.report_eval, stop_eval=data.stop_eval,
+    run_classil(wrapped, pr, tasks_i, data_i.train, data_i.class_idx,
+                report_eval=data_i.report_eval, stop_eval=data_i.stop_eval,
                 max_iters_per_task=[ITERS[0], ILLUS_AT + 2], batch=proto.batch,
                 eval_every=10 ** 9, device=proto.device, stop_threshold=None,
                 data_seed=ILLUS_SEED, label_map=lmap_i, on_task_end=hook)

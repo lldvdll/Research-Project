@@ -147,7 +147,13 @@ than the two blocks summed, and the difference is retraced ground.
     targets on average (+0.039, the best of the four) and EqProp forgets the most. The retention
     ordering is not the interference ordering.
   - **Alignment is a direction measure and is blind to magnitude.** A rule can point helpfully
-    and still do more damage per update by moving further.
+    and still do more damage per update by moving further. Consistent with the step sizes seen
+    on task-1 data in `64_..._mechanism.png`: |d_learn|/|d_target| is 0.127 (backprop), 0.172
+    (replay), 0.201 (pc) and **0.834 (eqprop)** — EqProp's update is 4–6× larger, and its angle
+    is 90° (cos −0.001), so it does no *directional* harm while displacing task 1 the furthest.
+    *One seed, one update: this explains the aggregate inversion, it does not measure it.*
+    The magnitude-aware quantity — `(d_learn · d_target) / |d_target|²`, the fraction of the
+    remaining gap closed, negative when the gap widens — is **not yet recorded per seed.**
 - **Forgetting is visible directly as retraced weight distance.** Over a whole run backprop's W1
   blocks displace 47 and 43 while init→end is 52: **38 units are travelled and given back**, so
   the full-run ratio (2.86x) is far worse than either block (1.77x, 1.53x). Replay retraces least

@@ -55,6 +55,19 @@ where does their advantage come from?"
   reconfigures the end and leaves the part that matters alone. Predicts the Domain-IL null.
 - **EqProp's update is nearly orthogonal to backprop's** (cos 0.197–0.316 on W1, 54) and still
   gained no retention. Different credit assignment is not by itself sufficient.
+- **PC is more efficient than backprop at the OUTPUT layer and slightly worse at the input**
+  (65, median L1 path ÷ net displacement per synapse, task 2): W2 **1.703 vs 3.279**
+  (−1.58, 6.6σ) — 31% shorter path while displacing 22% further — and W1 2.781 vs 2.508
+  (+0.27, 9.8σ). **It improves the layer that does not matter for forgetting and is fractionally
+  clumsier in the one that does**, which is the same story 55 tells by a different route.
+- **EqProp travels 48% further to arrive 35% short** (65): W1 path 182.1 vs backprop's 123.2,
+  net displacement 28.3 vs 43.8; inefficiency 4.56 vs 2.51 (13.0σ) on W1 and 8.85 vs 3.28
+  (12.1σ) on W2. First quantitative evidence that its credit assignment is **worse**, not just
+  different.
+- ~~Inefficiency predicts forgetting within a rule~~ — **confounded**. r looks like +0.81 to
+  +0.89, but `r(pairing, retention)` is 0.90–0.97 and `r(pairing, inefficiency)` 0.50–0.75
+  across all four rules, so the pairing is a common cause. Needs 60's 24-seed treatment with
+  the pairing partialled out before anything can be said.
 - **Both EBMs genuinely settle.** PC needs ≤18 steps, runs 50, sits 3e-04 from equilibrium
   (50, 63). EqProp `settle_tol=1e-4`.
 
@@ -103,7 +116,7 @@ where does their advantage come from?"
 - [x] **62** metric grid over all saved runs (re-analysis, trains nothing).
 - [x] **63** PC's inference step rule → equivalent to [R1]'s. Caveat closed.
 - [ ] **64** target alignment + interference — running
-- [ ] **65** synaptic path efficiency — running
+- [x] **65** synaptic path efficiency → PC efficient at the OUTPUT layer, EqProp wanders
 - [ ] **B1/B2/B3** metrics — largely a write-up of evidence already in hand
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison → **E** why → **F** does it generalise

@@ -304,11 +304,13 @@ for col, m in enumerate(METHODS):
         ax.annotate(f"{np.degrees(ang):+.0f}°", xy=(0.36 * np.cos(ang / 2),
                                                          0.36 * np.sin(ang / 2)),
                     fontsize=9, ha="center", va="center")
-        ax.annotate(f"cos = {c:+.3f}", xy=(0.03, 0.05), xycoords="axes fraction",
+        # both annotations at the BOTTOM LEFT: d_learn swings into the upper half whenever the
+        # cosine is positive, and in the interference row it lands exactly on a top-left caption
+        ax.annotate(f"cos = {c:+.3f}", xy=(0.03, 0.11), xycoords="axes fraction",
                     fontsize=11, weight="bold")
-        ax.annotate(f"|d_learn| / |d_target| = {nl / (nt + 1e-12):.3f}\n"
-                    f"(arrows drawn unit length)",
-                    xy=(0.03, 0.90), xycoords="axes fraction", fontsize=7.5, color="dimgray")
+        ax.annotate(f"|d_learn| / |d_target| = {nl / (nt + 1e-12):.3f}   "
+                    f"(arrows unit length)",
+                    xy=(0.03, 0.04), xycoords="axes fraction", fontsize=7.5, color="dimgray")
         ax.annotate("d_target", xy=(tx, ty), xytext=(-2, 6), textcoords="offset points",
                     fontsize=8, color="tab:blue", ha="right")
         ax.annotate("d_learn", xy=(lx, ly), xytext=(6, 6 if ly >= 0 else -12),

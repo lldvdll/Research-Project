@@ -92,13 +92,35 @@ significant. So the network learns both tasks equally well whatever the pairing,
 A much stronger null than "not separated at 5 seeds". Replay is half as sensitive (+4.0), as a
 buffer should be.
 
+## 63 — THE LAST DOCUMENTED DIVERGENCE FROM [R1] IS CLOSED
+PC's inference step rule: ours (fixed step) vs theirs (`x_lr_discount=0.9`, shrink the step when
+the energy fails to fall). Measured at three levels, because a null at the outcome level means
+nothing if the intervention never did anything at the state level.
+
+| | at init | after task 1 |
+|---|---|---|
+| same fixed point? relative gap | 9.4e-05 | 5.3e-06 |
+| distance from settled at k=1 | 2.8e-01 | 4.7e-02 |
+| **at k=50, the protocol's setting** | **3.2e-04** | **1.9e-05** |
+| at k=200 | 0.0 | ~0 |
+
+`cos(ΔW_fixed, ΔW_backtracking) = 1.000000` at **every** step count tried (1–200). Over the full
+metric grid on 5 paired Domain-IL runs the largest disagreement is **1.39e-03 accuracy points**.
+
+**Equivalent to within float noise, as it should be:** backtracking changes the route to the
+fixed point, not the fixed point, and the weight update is computed from the settled state. This
+also independently confirms script 50's calibration — 50 steps leaves PC 3e-04 from equilibrium
+at its worst. Note the relaxation gets *easier* once trained (4.7e-02 vs 2.8e-01 at k=1), as 50
+found. `[SETTLED]`
+
+**What stays open is the other direction.** If [R1]'s own fixed step count leaves *their*
+relaxation short of equilibrium, their operating point is not the equilibrium and "prospective
+configuration" would be a partially-relaxed state rather than a settled one — a different
+algorithm wearing the same name. 63's panel 1 is the instrument for that; we do not have their
+configuration.
+
 ## Then
-1. **63** — PC backtracking (`x_lr_discount=0.9` as [R1] use) vs our fixed step. Script 50
-   verified PC fully settles (≤18 steps needed, 50 used) and backtracking changes the *path* to
-   the fixed point, not the fixed point — so it should not matter. **The live risk runs the
-   other way:** if [R1]'s fixed step count leaves *them* partially settled, their operating
-   point is not the equilibrium and "prospective configuration" is a partially-relaxed state.
-2. **Class-IL is where the gaps are.** Depth is tested in Domain-IL (59, 8/8 cells) and
+1. **Class-IL is where the gaps are.** Depth is tested in Domain-IL (59, 8/8 cells) and
    **untested in Class-IL**, which is the only place PC shows anything. Likewise 42/43's
    suppression-vs-drift decomposition ran **backprop only** — PC's Class-IL forgetting has
    never been decomposed the same way, and that is the measurement the [HYPOTHESIS] below needs.

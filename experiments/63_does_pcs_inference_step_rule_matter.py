@@ -210,21 +210,27 @@ grid = {n: metric_grid(steps, curves[n], sw) for n in names}
 report_grid(grid, names, control=names[0], primary="crossover")
 
 d = paired_diff(grid[names[1]]["crossover"], grid[names[0]]["crossover"])
-identical = np.allclose(curves[names[0]], curves[names[1]], equal_nan=True)
+# The SIZE of the largest disagreement across the whole metric grid, in accuracy points. A
+# sem ratio cannot be the test here: when two runs agree exactly the paired difference has zero
+# mean AND zero spread, and n_sem comes back as inf -- which any "is it > 2 sem" check reads as
+# overwhelming significance. That is the same trap report_grid had. Judge this one on effect
+# size against float32 resolution, which is what the question actually is.
+worst = max(abs(float(np.nanmean(grid[names[1]][k]) - np.nanmean(grid[names[0]][k])))
+            for k in grid[names[0]])
+curve_gap = float(np.nanmax(np.abs(curves[names[0]] - curves[names[1]])) * 100)
 print("\n  READING (pre-committed in the docstring):")
-if identical:
-    print("    The two runs are BIT-IDENTICAL. The step rule is bookkeeping at this")
-    print("    configuration: PC is fully settled either way, so the weight update -- which is")
-    print("    computed from the settled state -- cannot see which route it took.")
+print(f"    largest disagreement over the whole metric grid : {worst:.2e} accuracy points")
+print(f"    largest disagreement at any point on any curve  : {curve_gap:.2e} accuracy points")
+if worst < 0.05:
+    print("    The two rules are EQUIVALENT to within float noise. PC is fully settled either")
+    print("    way (panel 1), so the weight update -- computed from the settled state -- cannot")
+    print("    see which route it took there (panel 2, cos = 1.000000 at every step count).")
     print("    The one documented divergence from [R1] is CLOSED. Stop citing it as a caveat.")
-elif abs(d[2]) < 2:
-    print(f"    Runs differ but the outcome does not: crossover {d[0]:+.2f} +- {d[1]:.2f} "
-          f"({d[2]:.1f} sem).")
-    print("    Read this with panel 1: if both converge, the difference is numerical noise in")
-    print("    the route and not a property of the algorithm.")
+    print("    What remains open is the OTHER direction: whether [R1]'s own fixed step count")
+    print("    leaves THEIR relaxation short of equilibrium. Panel 1 gives the tool for that")
+    print("    -- distance from the settled state per step -- but not their configuration.")
 else:
-    print(f"    THE STEP RULE CHANGES THE RESULT: crossover {d[0]:+.2f} +- {d[1]:.2f} "
-          f"({d[2]:.1f} sem).")
+    print(f"    THE STEP RULE CHANGES THE RESULT: crossover {d[0]:+.2f} +- {d[1]:.2f}.")
     print("    Then it is an experimental variable, not a detail, and every PC number in the")
     print("    project is conditional on the fixed-step choice.")
 

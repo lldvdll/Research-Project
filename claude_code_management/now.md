@@ -3,8 +3,10 @@
 Dashboard. Detail lives in `current_state.md`, `knowledge_base.md`, and each script's docstring.
 **Keep this short.** If a section grows past a screen, it belongs somewhere else.
 
-**Running:** 66 (Class-IL vs Domain-IL weight routes), 67 (Class-IL decomposition, four rules).
-EqProp-bound. **Next:** concept drift (68) — needs a per-task `label_map` in `run_classil`.
+**Running:** 67 (Class-IL decomposition, four rules). EqProp-bound.
+**Next:** concept drift — needs a per-task `label_map` in `run_classil`, diff not yet approved.
+**Write-up:** `findings.md` (10 claims, verified against arrays) → `presentation_plan2.md`
+(14 slides, one per section, 3 bullets + 3 data items each, script per slide).
 
 ---
 
@@ -88,13 +90,30 @@ where does their advantage come from?"
   closed, negative when it widens. Magnitude-aware, dimensionless, rankable. Needs a 64 re-run.
 - **Both EBMs genuinely settle.** PC needs ≤18 steps, runs 50, sits 3e-04 from equilibrium
   (50, 63). EqProp `settle_tol=1e-4`.
-- **Forgetting is visible as RETRACED WEIGHT DISTANCE (65's mechanism figure).** Over a whole
-  run the two task blocks displace W1 by 47 and 43 while init→end is only 52 — **38 units are
-  travelled and given back**. So the full-run ratio (backprop W1 2.86x) is far worse than either
-  block alone (1.77x, 1.53x). Replay retraces least (27 of 82) — the positive control behaving
-  correctly. **PC's W2 route runs almost straight from init through the switch to the end**
-  (full-run 1.40x against backprop's 3.05x, 2 of 13 retraced against 4 of 9): at the output
-  layer PC's second task continues in the same direction where backprop's reverses.
+- **Weight distance IS retraced across the switch (65's mechanism figure).** Over a whole run the
+  two task blocks displace W1 by 47 and 43 while init→end is only 52 — **38 units are travelled
+  and given back**, so the full-run ratio (backprop W1 2.86x) is far worse than either block alone
+  (1.77x, 1.53x). **PC's W2 route runs almost straight through the switch** (full-run 1.40x against
+  backprop's 3.05x): at the output layer PC's second task continues where backprop's reverses.
+- ~~Retraced distance is forgetting in weight-space units~~ — **REFUTED by 66**, which was built
+  on that assumption. Domain-IL W2, retraced against final task-1: pc **9.0%**/48.5,
+  eqprop 28.1%/43.1, replay 37.1%/**77.6**, backprop 44.3%/51.0. Three rules retrace *less* than
+  backprop and two of them retain *less*. It does not rank the rules the way accuracy does.
+- **PC'S OUTPUT-LAYER ADVANTAGE IS LARGEST WHERE IT BUYS NOTHING (66).** PC − backprop at W2,
+  full-run path/net: Domain-IL **−3.509 ± 0.115**, Class-IL −1.910 ± 0.122 (difference 9.5σ);
+  fraction retraced −0.353 ± 0.010 vs −0.147 ± 0.015 (11.5σ). Crossover in those same cells is
+  −0.01 (0.0σ) and **+1.29 (3.7σ)**. 66 pre-committed to the opposite — the advantage should be
+  *larger* in Class-IL if it were the cause. **So the 55/65 output-layer story is not established
+  as the mechanism behind PC's Class-IL gain.** 67 tests it directly.
+- **The scenario changes BOTH layers' routes, not just W2 (66)** — full-run path/net falls in
+  Class-IL at W1 too (backprop 4.96→4.45, 6.9σ; pc 5.60→4.84, 14.9σ). The pre-committed "W2 only"
+  reading, which would have confirmed suppression-vs-drift from the weight side, **did not occur**.
+- **[HYPOTHESIS]** W1's full-run ratio inverts the retention ordering *exactly* — replay < backprop
+  < pc < eqprop on directness, replay > backprop > pc > eqprop on retention — independently in both
+  scenarios. n = 4 rules. It is the hidden layer that tracks, not the output layer. Worth a test.
+- **Caveat on 66's cross-scenario W2 numbers:** W2 is 32×5 vs 32×10, so raw cross-scenario values
+  are not shape-matched. The claim above is a difference of two *within*-scenario paired
+  differences, each shape-matched. W1 is 196×32 in both.
 
 ### Metrics — the methodological core
 - **Endpoint metrics inherit the budget** (setup-induced forgetting, Michel et al. 2023). In 2×5
@@ -142,22 +161,22 @@ where does their advantage come from?"
 - [x] **63** PC's inference step rule → equivalent to [R1]'s. Caveat closed.
 - [x] **64** target alignment → PC not more aligned; the metric anti-tracks retention
 - [x] **65** synaptic path efficiency → PC efficient at the OUTPUT layer, EqProp wanders
-- [ ] **66** Class-IL vs Domain-IL weight routes — running
-- [ ] **67** Class-IL decomposition, all four rules
+- [x] **66** Class-IL vs Domain-IL weight routes → both layers differ; PC's W2 edge **halved** in
+      Class-IL, the opposite of the pre-committed reading. Also reproduced 52/56 **bit-identically**.
+- [ ] **67** Class-IL decomposition, all four rules — running
 - [ ] **B1/B2/B3** metrics — largely a write-up of evidence already in hand
 - [ ] **C2** six-cell factorial, **C1** NCM figure
 - [ ] **D** controlled comparison → **E** why → **F** does it generalise
 
 ## Next
-1. **Class-IL is where the gaps are.** Depth is tested in Domain-IL (59) and **untested in
-   Class-IL**, the only place PC shows anything. And 42/43's suppression-vs-drift decomposition
-   ran **backprop only** — PC's Class-IL forgetting has never been decomposed the same way.
-2. **Two untested schedule axes, both cheap** (`protocol.run` takes `tasks=`): an alternating
-   schedule ([R1] Fig 4d) and **concept drift** ([R1] Fig 4f–g, where their largest advantage is
-   claimed — not cycle length).
-3. **[HYPOTHESIS]** the trade-off is set by the relative magnitudes of the two tasks' output
-   contributions. `probes.output_unit_stats` already returns per-unit raw scores; 64's
-   interference probe is adjacent. A readout question, not new machinery.
+1. **Class-IL is where the gaps are.** 67 (running) closes the decomposition half — 42/43 ran
+   backprop only. **Depth in Class-IL is still untested**, and Class-IL is the only place PC shows
+   anything; 59 tested depth in Domain-IL, where there was nothing to find.
+2. **Concept drift** ([R1] Fig 4f–g), where their largest advantage is claimed. Needs a per-task
+   `label_map` in `run_classil`; diff proposed, **not approved**. The alternating schedule
+   ([R1] Fig 4d) is done — 68, no separation.
+3. **Magnitude-aware interference** `(d_learn · d_target) / |d_target|²` — 64 records cosines only,
+   and C8 shows direction alone mis-ranks the rules. Needs a 64 re-run.
 
 ---
 

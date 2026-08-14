@@ -28,8 +28,8 @@ notes.*
    while replay separates in 8 of 8.
 6. **The scenario changes the answer** because Class-IL forgetting is output-layer suppression — a
    mechanism a learning rule can act on — and Domain-IL structurally cannot suppress.
-7. **The rules do compute measurably different updates**, and the difference is located at the
-   output layer, which is not the layer whose drift damages task 1.
+7. **The rules do compute measurably different updates**, but the difference sits at the output
+   layer and is *largest in the scenario where it buys nothing*.
 8. **[R1]'s own mechanism metric does not track forgetting**: the rule with the least damaging
    update *direction* forgets the most, because direction is blind to step size.
 9. **Which two digits share an output unit explains ~62% of the seed variance** in Domain-IL
@@ -167,9 +167,11 @@ lies on backprop (grey) in all eight while replay (brown) sits clearly above.
   competence.
 - **Domain-IL cannot suppress** — every output unit is a target for some class. What remains is
   representation drift.
-- **PC's updates diverge from backprop's most at the output layer** (C7), so it differs where
-  Class-IL does its damage and matches backprop where Domain-IL does. The scenario pattern in C1
-  follows from *where* the rule differs.
+- **PC's updates diverge from backprop's most at the output layer** (C7) — which is where Class-IL
+  does its damage and where Domain-IL cannot. That makes the scenario pattern in C1 *consistent*
+  with the rule differing at W2, but not more than consistent: `66` finds the W2 difference is
+  **larger in Domain-IL, where PC gains nothing** (C7). It is therefore not established as the
+  cause. `67` tests it directly.
 
 **Plots.** `43_...png` third panel — argmax against NCM per condition; *why evidence:* points far
 above the diagonal mean the hidden code survived and the output layer alone failed, which is the
@@ -177,25 +179,59 @@ suppression signature.
 
 *Pending:* `67` decomposes Class-IL forgetting for all four rules rather than backprop alone.
 
-## 7. The rules differ, at the output layer
+## 7. The rules differ at the output layer, and that difference is not what helps
 
 - cos(ΔW) against backprop: PC **0.985** on W1, **0.814** on W2 (`54`); 0.952 → 0.623 from first
   to last layer at depth 3 (`55`).
-- PC's output-layer route is **31% shorter while displacing 22% further** (median L1 path ÷ net
+- PC's output-layer route is **31% shorter while displacing 22% further** (L1 path ÷ net
   displacement: W2 1.703 vs 3.279, 6.6σ) and marginally *worse* on W1 (2.781 vs 2.508) → `65`.
 - W1 is the layer whose drift damages task 1 (`42`, `43`). **PC improves the layer that does not
   govern forgetting and is fractionally clumsier in the one that does.**
-- Over a whole run backprop's W1 displaces 47 then 43 while init→end is only 52: **38 units are
-  travelled and given back.** PC's W2 runs almost straight through the switch (full-run 1.40x vs
-  backprop's 3.05x) — its second task continues where backprop's reverses.
 
-**Plots.** `65_..._mechanism.png` — *why evidence:* it draws the quantity rather than summarising
-it. Each panel is one layer's route through weight space with three net displacements
-(init→switch, switch→end, init→end). The purple chord being shorter than the two blocks summed
-*is* the retracing, visible directly.
+**The output-layer advantage is largest where it buys nothing** (`66`, whole-run path ÷ net
+displacement, and the fraction of all displacement given back):
 
-*Pending:* `66` tests whether the route differs between scenarios, which would confirm the
-suppression/drift split from the weight side independently of the NCM probe.
+| PC − backprop, W2 | Domain-IL | Class-IL | difference |
+|---|---|---|---|
+| full-run path/net | **−3.509 ± 0.115** | −1.910 ± 0.122 | +1.599 (9.5σ) |
+| fraction retraced | **−0.353 ± 0.010** | −0.147 ± 0.015 | +0.206 (11.5σ) |
+| *crossover vs backprop* | *−0.01 (0.0σ)* | *+1.29 (3.7σ)* | |
+
+PC's W2 route is **twice as far ahead of backprop in Domain-IL as in Class-IL** — and Domain-IL is
+where PC gains nothing. `66` pre-committed to the opposite: if the advantage were what produces the
+Class-IL result, it should be *larger* there. It is half the size.
+
+**Retracing is not forgetting** — which is what `66` was built assuming. Domain-IL, W2:
+
+| | fraction retraced | final task-1 |
+|---|---|---|
+| pc | **9.0%** | 48.5 |
+| eqprop | 28.1% | 43.1 |
+| replay | 37.1% | **77.6** |
+| backprop | 44.3% | 51.0 |
+
+Three rules give back less displacement than backprop and two of them retain less. Distance
+retraced in weight space does not rank the rules the way accuracy does.
+
+Two further readings, stated as they came out:
+
+- **Both layers change with scenario, not just W2.** Full-run path/net falls in Class-IL for every
+  rule at W1 too (backprop 4.96 → 4.45, 6.9σ; pc 5.60 → 4.84, 14.9σ). The pre-committed "W2 only"
+  outcome — which would have confirmed the suppression/drift split from the weight side — did not
+  occur. The weight route does not localise the scenario difference to the output layer.
+- *Hypothesis, not a claim:* **W1**'s full-run ratio inverts the retention ordering exactly —
+  replay < backprop < pc < eqprop on route directness, replay > backprop > pc > eqprop on retention
+  — independently in both scenarios. n = 4 rules, so this is a direction to test, not a result.
+
+**Caveat.** W2 is 32×5 in Domain-IL and 32×10 in Class-IL, so raw cross-scenario W2 numbers are not
+shape-matched. The claim above is a *difference of two within-scenario paired differences*, each
+shape-matched, so it is unaffected. W1 is 196×32 in both.
+
+**Plots.** `65_..._mechanism.png`, `66_..._mechanism.png` — *why evidence:* they draw the quantity
+rather than summarising it. Each panel is one layer's route through weight space with three net
+displacements (init→switch, switch→end, init→end); the purple chord being shorter than the two
+blocks summed *is* the retracing, visible directly. `66`'s version adds a row per scenario, so
+PC's near-straight Domain-IL W2 route and its ordinary Class-IL one sit side by side.
 
 ## 8. Target alignment does not track forgetting
 
@@ -300,6 +336,10 @@ convergence directly; a closed loop would have shown ping-ponging and does not a
   (gap 5e-06 to 9e-05), `cos(ΔW) = 1.000000` at every step count 1–200, largest metric-grid
   disagreement **1.4e-03 accuracy points**. → `50`, `63`.
 - **Capacity is not a confound** — H=32 is past the knee (`41`) and H=128 changes nothing (`59`).
+- **The pipeline is deterministic across scripts.** `66` re-ran both scenarios from a separately
+  written script and reproduced `52` and `56` **bit-identically** — max |difference| = 0 over all
+  8 rule × scenario cells (5 seeds × 147 evaluations × 2 tasks). Numbers repeated in two places in
+  this document come from two independent executions, not one cached array.
 - **The earlier experiment-12 result is not supported.** Re-run verbatim (`61`): crossover
   backprop 64.0, pc 59.5, **replay 48.7 (−14.14, 5.2σ)** — the positive control inverts, because
   at 100 updates per task nothing has converged and the ordering is set by task-2 learning speed.
@@ -322,8 +362,7 @@ convergence directly; a closed loop would have shown ping-ponging and does not a
 
 | | question |
 |---|---|
-| `66` | does the weight-space route differ between Class-IL and Domain-IL? *(running)* |
-| `67` | does the Class-IL suppression decomposition hold for all four rules? *(queued)* |
+| `67` | does the Class-IL suppression decomposition hold for all four rules? *(running)* |
 | — | concept drift ([R1] Fig 4f–g), where their claimed advantage is largest |
 | — | depth in Class-IL, the one scenario where PC shows an effect |
 | — | magnitude-aware interference, `(d_learn · d_target) / \|d_target\|²` |

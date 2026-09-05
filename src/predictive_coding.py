@@ -34,12 +34,20 @@ def pc_init(in_dim=196, hidden=64, out_dim=10, seed=0, device="cpu", arch=None):
 
 
 def pc_settle(x0, p, arch, obj, target, active_vec=None, dt=0.1, steps=50, trace=False,
-              x_lr_discount=1.0, x_lr_amplifier=1.0):
+              x_lr_discount=1.0, x_lr_amplifier=1.0, stop_delta=None, stop_patience=3):
     """Relax every hidden layer with the output clamped. steps=0 returns the feedforward state.
 
     NOTE: steps=0 is NOT backprop -- every e_l is zero by construction, so W1 does not move
     at all. The small-step limit approaches backprop; zero steps does not. Verified in
     tests/test_numpy_mirror.py.
+
+    stop_delta/stop_patience : when stop_delta is set, `steps` becomes a CAP, not a fixed cost --
+    the loop breaks as soon as the displacement's step-to-step change (|disp[t]-disp[t-1]|,
+    disp being the same mean-abs-displacement the trace records) stays below stop_delta for
+    stop_patience consecutive steps. Displacement itself does not go to zero at equilibrium --
+    that IS prospective configuration -- so the criterion is on its rate of change, not its
+    value. Default None (unset) reproduces every existing caller's behaviour exactly: no early
+    exit, no extra computation.
     """
     x0 = flatten(x0)
     L = arch.n_weights
@@ -60,6 +68,8 @@ def pc_settle(x0, p, arch, obj, target, active_vec=None, dt=0.1, steps=50, trace
     amp_t = torch.tensor(float(x_lr_amplifier), device=dev)
     disc_t = torch.tensor(float(x_lr_discount), device=dev)
     disp, last_E = [], None
+    need_disp = trace or (stop_delta is not None)
+    last_d, below = None, 0
     for _ in range(steps):
         # top-down: output error first, then propagate the correction downward
         top = arch.f(xs[-1])
@@ -94,22 +104,48 @@ def pc_settle(x0, p, arch, obj, target, active_vec=None, dt=0.1, steps=50, trace
         for l in range(1, L - 1):
             a = arch.f(xs[l - 1])
             mus[l] = a @ p.Ws[l] if p.bs[l] is None else a @ p.Ws[l] + p.bs[l]
-        if trace:
-            disp.append(float(sum((x - m).abs().mean() for x, m in zip(xs, mus)) / len(xs)))
+        if need_disp:
+            d = float(sum((x - m).abs().mean() for x, m in zip(xs, mus)) / len(xs))
+            if trace:
+                disp.append(d)
+            if stop_delta is not None:
+                if last_d is not None and abs(d - last_d) < stop_delta:
+                    below += 1
+                    if below >= stop_patience:
+                        last_d = d
+                        break
+                else:
+                    below = 0
+                last_d = d
     return (xs, mus, disp) if trace else (xs, mus)
 
 
 def pc_update(x, y_labels, p, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, lr=0.05, dt=0.1,
               steps=50, active=None, device="cpu", return_delta=False, freeze=(),
-              opt=None, x_lr_discount=1.0, x_lr_amplifier=1.0):
-    """One predictive-coding weight update for a batch. Updates p in place."""
+              opt=None, x_lr_discount=1.0, x_lr_amplifier=1.0, stop_delta=None, stop_patience=3):
+    """One predictive-coding weight update for a batch. Updates p in place.
+
+    stop_delta/stop_patience : forwarded to pc_settle -- when stop_delta is set, `steps` becomes
+    a CAP and settling stops itself once displacement stops changing (see pc_settle). Recovering
+    the actual step count needs pc_settle's trace, so it is forced on internally ONLY when
+    stop_delta is set; the untouched default path (stop_delta=None) pays nothing extra and is
+    byte-for-byte the same call as before. The count is reported as settle_steps under
+    return_delta=True.
+    """
     x0 = flatten(x)
     n, L = x0.size(0), arch.n_weights
     scale = batch_scale(obj, n)
     target = make_target(y_labels, arch, obj, device=device)
     av = active_vector(active, arch, device=device)
-    xs, mus = pc_settle(x0, p, arch, obj, target, av, dt=dt, steps=steps,
-                        x_lr_discount=x_lr_discount, x_lr_amplifier=x_lr_amplifier)
+    want_trace = stop_delta is not None
+    settled = pc_settle(x0, p, arch, obj, target, av, dt=dt, steps=steps, trace=want_trace,
+                        x_lr_discount=x_lr_discount, x_lr_amplifier=x_lr_amplifier,
+                        stop_delta=stop_delta, stop_patience=stop_patience)
+    if want_trace:
+        xs, mus, disp = settled
+        settle_steps = len(disp)
+    else:
+        xs, mus = settled
 
     acts = [x0] + [arch.f(x) for x in xs]                    # presynaptic activity per weight
     errs = [xs[l] - mus[l] for l in range(L - 1)]            # hidden errors
@@ -144,7 +180,10 @@ def pc_update(x, y_labels, p, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, lr=0.05, dt=0.
                 p.bs[i].grad = torch.zeros_like(p.bs[i]) if bf else -errs[i].sum(0) / scale
         opt.step()
     if return_delta:
-        return dict(displacement=float(sum(e.abs().mean() for e in errs[:-1]) / max(1, L - 1)))
+        out = dict(displacement=float(sum(e.abs().mean() for e in errs[:-1]) / max(1, L - 1)))
+        if want_trace:
+            out["settle_steps"] = settle_steps
+        return out
 
 
 def pc_predict(x, p, arch=UNIFIED_ARCH, raw=False):

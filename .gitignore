@@ -5,3 +5,4 @@ desktop.ini
 .venv
 .claude/settings.local.json
 CLAUDE.local.md
+*_SMOKE*

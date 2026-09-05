@@ -237,7 +237,7 @@ def make_replay(train_data=None, class_idx=None, in_dim=196, hidden=64, out_dim=
 # ------------------------------------------------------------------ predictive coding
 def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimizer="sgd",
             seed=0, device="cpu", arch=None, obj=None, handle=None,
-            x_lr_discount=1.0, x_lr_amplifier=1.0, **_):
+            x_lr_discount=1.0, x_lr_amplifier=1.0, stop_delta=None, stop_patience=3, **_):
     """steps=0 disables relaxation entirely -> the 'PC without prospective configuration'
        control that should collapse onto backprop (experiment 23).
 
@@ -245,7 +245,12 @@ def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimi
        Defaults 1.0/1.0 are a plain fixed step; Song & Bogacz use 0.9/1.0, i.e. shrink the step
        whenever the energy fails to fall. They were previously not reachable through this
        builder at all, so the one documented divergence from [R1] could not be run. Script 63
-       measures whether it changes anything beyond the route to the same fixed point."""
+       measures whether it changes anything beyond the route to the same fixed point.
+
+       stop_delta/stop_patience : forwarded to pc_update/pc_settle. When stop_delta is set,
+       `steps` becomes a CAP -- settling stops itself once displacement stops changing -- and the
+       actual step count taken is published to handle["diag"]["settle_steps"] after every
+       train_step call. Default None reproduces every existing caller's behaviour exactly."""
     arch, obj = _spec(arch, obj)
     arch = replace(arch, in_dim=in_dim, hidden=hidden, out_dim=out_dim)
     p = init_params(arch, seed=seed, device=device)
@@ -261,8 +266,11 @@ def make_pc(in_dim=196, hidden=64, out_dim=10, lr=0.05, dt=0.1, steps=50, optimi
     def train_step(x, y, active=None):
         d = pc_update(x, y, p, arch=arch, obj=obj, lr=lr, dt=dt, steps=steps, active=active,
                       device=device, return_delta=True, freeze=freeze, opt=opt,
-                      x_lr_discount=x_lr_discount, x_lr_amplifier=x_lr_amplifier)
+                      x_lr_discount=x_lr_discount, x_lr_amplifier=x_lr_amplifier,
+                      stop_delta=stop_delta, stop_patience=stop_patience)
         diag["displacement"] = d["displacement"]
+        if "settle_steps" in d:
+            diag["settle_steps"] = d["settle_steps"]
 
     def predict(x, raw=False):
         return pc_predict(x, p, arch, raw=raw)

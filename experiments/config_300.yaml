@@ -1,0 +1,75 @@
+# ============================================================================
+# 300-series experiment configuration (report series 2, decade 300 onward)
+#
+# Every field below is an explicit choice for this series. Nothing is inherited from
+# src/protocol.py's Protocol defaults -- scripts load this file and pass every value through by
+# name. If a 300-series script needs to deviate from one of these on purpose, it overrides that
+# one field locally and says so in its own docstring (see src/protocol.py's convention);
+# everything else stays as written here.
+#
+# Plot colours, linestyles and other presentation choices are NOT in this file -- they belong
+# with the script that draws the figure, not with the experiment parameters.
+# ============================================================================
+
+data:
+  img_size: 14                    # MNIST downsampled -> 196 inputs
+  n_tasks: 2
+  classes_per_task: 5             # 2x5 split
+  fashion: false
+  scenarios:
+    - class_il                    # 10 output units (5 old + 5 new)
+    - domain_il                   # 5 output units, shared across both tasks
+
+architecture:
+  # H = 32, chosen by script 100 (capacity sweep) on capacity grounds, not inherited from any
+  # earlier/other experiment. Re-check experiments/100_capacity_vs_width.py's saved "chosen"
+  # value before trusting this number if that script is ever re-run.
+  hidden: 32
+  n_layers: 1                     # depth is a later phase, not an axis of this comparison
+  activation: tanh
+  bias: true
+  init: scaled_normal
+
+output_layer:
+  loss: mse
+  target: onehot
+  mask: false                     # masking is a per-experiment intervention, not a default here
+  reduction: mean
+
+training:
+  optimizer: sgd                  # plain SGD everywhere
+  batch_size: 32
+  learning_rate:
+    # Grid-searched per rule under this (report-series-2) protocol. First established in
+    # 102_forgetting_demonstrated.py; reused unchanged since (112, 130, 131, 200, 210, 220, 230).
+    backprop: 0.01
+    pc: 0.02
+    # replay and eqprop are deliberately NOT set here: neither has been grid-searched under this
+    # protocol. eqprop is currently shelved; replay is a standing control (CLAUDE.md) not yet
+    # re-run in report series 2. Do not add a value without doing that search first.
+  stop_threshold: 0.90             # matched-competence stopping accuracy, BOTH tasks
+  stop_patience: 3                 # consecutive evals above threshold before a task is "reached"
+  max_iters_per_task: 5000         # cap only -- how often it's hit must always be reported
+  seeds: 10                        # per (method, scenario) cell
+  # Canonical starting seed for this series, from 2026-09-02 onward. Seeds 0-9 (300, 301) hit an
+  # outlier at seed 9 (302: intrinsic digit-set difficulty, not init/order -- see
+  # claude_code_management/300_series_log.md). 310/311 reran on seeds 10-19 and found no
+  # comparable outlier, so 10-19 is now standard for every 300-series script going forward.
+  seed_start: 10
+
+evaluation:
+  # 300/class per disjoint eval set (stop_eval, report_eval), not the safety ceiling (~446/class,
+  # set by digit 5's 892 total test images). Raised from 100 -> 300: at 90% accuracy the SEM on a
+  # 5-class task average drops from ~1.3pp (n=500) to ~0.8pp (n=1500) -- checked 2026-09-02, the
+  # source of the final-point scatter noticed in the first real 300 run.
+  eval_per_class: 300
+  eval_every: 10                   # steps between STOP-CHECKS (matched-competence criterion) -- unchanged
+  # How often the reported curve is logged, independent of eval_every. src/runner.py's
+  # run_classil grew this parameter on 2026-09-02 for the 300 series' unclipped trajectory plot;
+  # every earlier script (100-230) leaves it unset, which reproduces their original behaviour
+  # exactly (log_every defaults to eval_every when not passed). Tried 1 (too wiggly), then 5
+  # (still too wiggly to track a single seed's line); 10 -- equal to eval_every, so no finer than
+  # the original cadence -- is the setting actually in use.
+  log_every: 10
+  device: cpu
+

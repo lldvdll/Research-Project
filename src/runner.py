@@ -91,7 +91,7 @@ def run_joint(train_step, predict, classes, train_data, class_idx, eval_x, eval_
 
 def run_classil(train_step, predict, tasks, train_data, class_idx,
                 report_eval, stop_eval=None, readouts=None,
-                max_iters_per_task=400, batch=32, eval_every=1, device="cpu",
+                max_iters_per_task=400, batch=32, eval_every=1, log_every=None, device="cpu",
                 stop_threshold=None, stop_patience=3, tail_iters=0, data_seed=None,
                 on_task_end=None, label_map=None):
     """Sequential Class-IL training with per-task accuracy logging.
@@ -100,6 +100,10 @@ def run_classil(train_step, predict, tasks, train_data, class_idx,
     stop_eval   : (x, y) used for the early-stopping decision. Defaults to report_eval,
                   which is mildly optimistic -- pass a disjoint set.
     readouts    : {name: fn(x) -> labels}. Defaults to {"argmax": predict}.
+    log_every   : how often the reported curves are logged, independent of the stop-check
+                  cadence. None (default) makes it equal to eval_every -- unchanged behaviour
+                  for every existing caller. Pass log_every=1 to plot every update while still
+                  checking the stop criterion on the coarser eval_every cadence.
     max_iters_per_task, stop_threshold : int/float, or a LIST with one entry per task. Use a
                   list to train task 1 to a competence threshold and then give task 2 a fixed
                   budget, in a SINGLE call -- which keeps every task as a column in `curves`.
@@ -133,6 +137,7 @@ def run_classil(train_step, predict, tasks, train_data, class_idx,
     steps_log, switches, reached = [], [], []
     curves = {k: [] for k in readouts}
     step = 0
+    log_every = eval_every if log_every is None else log_every
 
     for ti, task in enumerate(tasks):
         loader = _loader(train_data, class_idx, task, batch,
@@ -153,11 +158,12 @@ def run_classil(train_step, predict, tasks, train_data, class_idx,
             step += 1
             if countdown is not None:
                 countdown -= 1
-            if step % eval_every == 0:
+            if step % log_every == 0:
                 steps_log.append(step)
                 for name, fn in readouts.items():
                     a = _acc(fn(report_x), report_y, classes, label_map)
                     curves[name].append([float(np.mean([a[pos[c]] for c in t])) for t in tasks])
+            if step % eval_every == 0:
                 if thr is not None and countdown is None:
                     a_stop = _acc(predict(stop_x), stop_y, classes, label_map)
                     cur = float(np.mean([a_stop[pos[c]] for c in task]))

@@ -58,7 +58,13 @@ def plot_learning_curves(steps, curves, methods, out_path, title="",
     colours = task_colors or TASK_COLORS
     for ax, m in zip(axes, methods):
         A = np.asarray(curves[m], dtype=float) * 100.0                 # [runs, evals, tasks]
+        finite_steps = np.asarray(steps)[np.isfinite(A).any(axis=(0, 2))]
         for (lo, hi, ti) in (blocks or []):
+            # Clip to where THIS panel's curve actually has data. Under accuracy stopping,
+            # different methods (or the padded grid) can run past where a given curve ends --
+            # shading the un-plotted tail looked like a bug, and visually it was one.
+            if finite_steps.size:
+                lo, hi = max(lo, finite_steps.min()), min(hi, finite_steps.max())
             ax.axvspan(lo, hi, color=colours[ti % len(colours)], alpha=0.10, lw=0, zorder=0)
         for t in range(n_tasks):
             c = colours[t % len(colours)]
@@ -99,7 +105,7 @@ def plot_learning_curves(steps, curves, methods, out_path, title="",
     for ax in axes[len(axes) - ncols:]:
         ax.set_xlabel(xlabel)
     for i in range(0, len(axes), ncols):
-        axes[i].set_ylabel("accuracy on task's classes (%)")
+        axes[i].set_ylabel("accuracy (%)")
     fig.suptitle(title)
     fig.tight_layout()
     fig.savefig(out_path, dpi=120, bbox_inches="tight")

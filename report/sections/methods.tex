@@ -1,0 +1,78 @@
+\section{Methods}
+
+\subsection{Continual Learning}
+\wordcount{250}
+\begin{itemize}
+    \item Two incremental-learning scenarios are used: Domain-IL, where later tasks share the same output units (e.g.\ relearning road signs in a new country), and Class-IL, where each task adds disjoint output units (e.g.\ learning new animals abroad while still knowing the old ones).
+    \item Both scenarios use the same 2-task, 5-class-per-task Split-MNIST protocol, at $14\times14$ resolution, so that the output layer's structure is the only difference between them.
+    \item Replay acts as the positive control throughout, establishing that the forgetting problem is solvable in principle under this setup.
+\end{itemize}
+
+\subsection{Energy-Based Models (and Backpropagation)}
+\wordcount{400}
+\begin{itemize}
+    \item Predictive coding networks maintain explicit error nodes alongside value nodes, so that error signals are exchanged locally between adjacent nodes rather than backpropagated as a single global signal.
+    \item Under prospective configuration, inputs and outputs are clamped and hidden activity is allowed to relax to the state that minimises total prediction error before any weight update is applied.
+    \item Backpropagation is run on an identical architecture and objective and serves as the negative control, differing from predictive coding only in how credit is assigned.
+\end{itemize}
+
+\subsection{Controls}
+\wordcount{250}
+\begin{itemize}
+    \item Hidden width, architecture, loss, target coding, and learning rate are held identical across rules wherever a fair comparison depends on it; see \cref{sec:results} for which of these are settled and which remain open.
+    \item No number from work predating the current experiment series is treated as evidence; every citable claim in this report is re-derived under the present protocol.
+    \item Backpropagation and replay are the two controls bracketing the comparison; predictive coding is the rule under test.
+\end{itemize}
+
+\subsection{Metrics}
+
+\subsubsection{Endpoint}
+\wordcount{150}
+\begin{itemize}
+    \item The simplest forgetting readout: task-1 accuracy at the end of task-2 training.
+    \item It is confounded by the training budget, since every method trends toward the same floor given enough updates, so endpoint alone cannot separate rules reliably.
+\end{itemize}
+
+\subsubsection{S\&B}
+\wordcount{150}
+\begin{itemize}
+    \item Song and Bogacz's own combined test-error measure, reported here for comparability with their published claims.
+    \item It conflates learning speed with forgetting and cannot separate the two on its own.
+\end{itemize}
+
+\subsubsection{Crossover}
+\wordcount{200}
+\begin{itemize}
+    \item The task-1 accuracy at the point where its curve is overtaken by task-2's, measured after the switch.
+    \item Invariant to uniform time rescaling, and, empirically, the most stable of the candidate metrics under changes to the stopping rule.
+\end{itemize}
+
+\subsubsection{Curve over Diagonal Area}
+\wordcount{150}
+\begin{itemize}
+    \item The integral of the task-1-vs-task-2 trajectory above the line where the two are equal.
+    \item A trade-off efficiency measure: how much task-1 accuracy is preserved per unit of task-2 accuracy gained.
+\end{itemize}
+
+\subsection{Interpretability}
+
+\subsubsection{Path Efficiency}
+\wordcount{200}
+\begin{itemize}
+    \item Synaptic path length, the accumulated $\sum|\Delta w|$ over training, is compared against the net displacement $|w(T)-w(0)|$ to give a per-weight inefficiency ratio.
+    \item A ratio of 1.0 is a straight-line update; a larger ratio means the weight wandered.
+\end{itemize}
+
+\subsubsection{Target Alignment}
+\wordcount{200}
+\begin{itemize}
+    \item Song and Bogacz's own proposed mechanism, measured in output space: the cosine similarity between the direction from the current output toward the target, and the direction an update actually moves the output.
+    \item Their claim is that predictive coding is more aligned than backpropagation, and that this alignment is what protects task 1.
+\end{itemize}
+
+\subsubsection{NCM / Probing}
+\wordcount{250}
+\begin{itemize}
+    \item Nearest-class-mean classification applied directly to hidden-layer features, discarding the output layer entirely.
+    \item Separates a genuine representation failure (both the ordinary readout and the probe are low) from a calibration or readout failure (the ordinary readout is low but the probe is high).
+\end{itemize}

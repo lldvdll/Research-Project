@@ -1,0 +1,114 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{Is the Configuration Valid for Drawing Conclusions?}
+
+\subsubsection{Network Capacity}
+\wordcount{200}
+\begin{itemize}
+    \item Hidden width 32 is the smallest width that reaches the joint (no-forgetting) accuracy ceiling in both scenarios, and is used throughout the rest of this report.
+    \item The joint ceiling itself, not 100\%, is the benchmark retention is read against.
+    \item This ceiling measurement is not yet fully converged at long training budgets; treat it as a lower bound pending a longer rerun.
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\singlefigure]{figures/100_capacity_vs_width.png}
+    \caption{\label{fig:capacity} Placeholder caption: joint-training accuracy vs.\ hidden width, both scenarios.}
+\end{figure}
+
+\subsubsection{Problem Complexity}
+\wordcount{200}
+\begin{itemize}
+    \item A frozen, randomly-initialised hidden layer with only the output layer trained falls short of the trained ceiling on average, confirming the hidden layer is doing real work in this task.
+    \item \gap{the current summary statistic (range across draws) is a placeholder; needs mean/SD or a proper test against the trained ceiling before this is a citable comparison}
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\singlefigure]{figures/101_problem_complexity.png}
+    \caption{\label{fig:complexity} Placeholder caption: frozen random-$W_1$ accuracy distribution vs.\ trained ceiling.}
+\end{figure}
+
+\subsubsection{Early Stopping Criteria}
+\wordcount{250}
+\begin{itemize}
+    \item A fixed training budget lets metric values swing substantially, since different methods spend a fixed number of updates at very different points in learning.
+    \item An accuracy-based stopping threshold is intended to remove this confound by comparing methods once each has demonstrably learned the task to the same standard.
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\singlefigure]{figures/110_metric_sensitivity_to_budget_bar.png}
+    \caption{\label{fig:budget} Placeholder caption: metric sensitivity to training budget, backprop only.}
+\end{figure}
+
+\subsection{Metrics}
+\wordcount{500}
+\begin{itemize}
+    \item Of five candidate metrics, crossover is the only one whose predictive-coding-minus-backprop comparison does not change sign as the stopping threshold moves.
+    \item This is what fixes crossover as the primary metric for every comparison later in this report.
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\singlefigure]{figures/112_which_metric_survives.png}
+    \caption{\label{fig:metricsurvives} Placeholder caption: PC$-$backprop difference, five metrics, across stopping thresholds.}
+\end{figure}
+
+\subsection{Results}
+\wordcount{500}
+\begin{itemize}
+    \item \gap{the headline predictive-coding-vs-backprop comparison, read at the settled operating point and metric above; not yet drawn as its own figure}
+    \item Class-IL and Domain-IL are expected to tell different stories here and should be reported separately rather than pooled.
+\end{itemize}
+
+\subsection{Scenarios}
+\wordcount{300}
+\begin{itemize}
+    \item Domain-IL and Class-IL differ only in the output layer's structure, which isolates where any rule difference actually comes from.
+    \item \gap{a fresh, in-series four-rule comparison across both scenarios has not yet been run under the current protocol}
+\end{itemize}
+
+\subsection{Where is Forgetting?}
+\wordcount{800}
+\begin{itemize}
+    \item Masking the loss so that absent-class output units receive no gradient recovers retention, and does so regardless of which loss or target coding is used underneath.
+    \item Freezing the output layer's weights outright recovers almost nothing, which is a different lever from masking: freezing blocks legitimate new-task learning as well as the destructive part, and the two roughly cancel.
+    \item The hidden code retains far more class-1 information than the output layer reports, most starkly in Class-IL (ordinary readout 0\%, probe $\sim$80\%) but present in Domain-IL too.
+\end{itemize}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\singlefigure]{figures/120_output_maths_and_masking.png}
+    \caption{\label{fig:outputmaths} Placeholder caption: crossover under three output specifications, masked vs.\ unmasked.}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\singlefigure]{figures/130_freeze_factorial.png}
+    \caption{\label{fig:freeze} Placeholder caption: crossover under trunk/output-layer freezing, both rules, both scenarios.}
+\end{figure}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\singlefigure]{figures/131_ncm_vs_argmax.png}
+    \caption{\label{fig:ncm} Placeholder caption: ordinary readout vs.\ nearest-class-mean probe, task-1 accuracy over time.}
+\end{figure}
+
+\subsection{Depth}
+\wordcount{300}
+\begin{itemize}
+    \item \gap{planned as an extension of the freeze/mask/NCM factorial above rather than a standalone experiment; not yet run}
+\end{itemize}
+
+\subsection{Data}
+\wordcount{400}
+\begin{itemize}
+    \item \gap{earlier exploratory work suggested which specific classes share an output unit strongly affects Domain-IL retention; needs a fresh in-series rerun before it is citable}
+\end{itemize}
+
+\subsection{Path Efficiency}
+\wordcount{400}
+\begin{itemize}
+    \item \gap{earlier exploratory work suggested predictive coding is more efficient at the output layer and slightly less efficient at the input layer than backprop; needs a fresh in-series rerun}
+\end{itemize}
+
+\subsection{Target Alignment}
+\wordcount{350}
+\begin{itemize}
+    \item \gap{earlier exploratory work found predictive coding was not more target-aligned than backprop, and that the metric did not track retention; needs a fresh in-series rerun before this can be reported as a claim}
+\end{itemize}

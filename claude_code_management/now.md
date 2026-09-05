@@ -3,18 +3,68 @@
 Dashboard. Detail lives in `current_state.md`, `knowledge_base.md`, and each script's docstring.
 **Keep this short.** If a section grows past a screen, it belongs somewhere else.
 
-**Running:** 67 (Class-IL decomposition, four rules). EqProp-bound.
-**Next:** concept drift — needs a per-task `label_map` in `run_classil`, diff not yet approved.
-**Write-up:** `findings.md` (10 claims, verified against arrays) → `presentation_plan2.md`
-(14 slides, one per section, 3 bullets + 3 data items each, script per slide).
+**Running:** report series 2 (100+), see below. 67 (Class-IL decomposition) status unchecked.
+**Next:** exp100 (capacity, 10 seeds) — protocol tabled, awaiting agreement before the script runs.
+**Write-up:** report structure below supersedes `presentation_plan.md`/`findings.md` as the
+target; those stay as source material.
+
+---
+
+## Report series 2 (100+) — stipulations, 2026-08-23
+
+Presentation is done; this series produces the report's Results section. Rules, crystallised so a
+compaction doesn't lose them:
+
+- **Fresh runs only.** No experiment 40–76 is re-cited as evidence for a new claim; a new number
+  needs a new run under this series's protocol.
+- **Protocol agreed per experiment, before the script is written** — a control-parameter table,
+  signed off, then the script.
+- **10 seeds** by default (was 5).
+- **backprop alone, or backprop vs PC**, by default. No EqProp, no replay, unless stated for that
+  experiment.
+- **Numbering starts at 100, stepping by 10 per topic** (decided 2026-08-23, revised same day):
+  each new question/section claims the next decade (100s = capacity/complexity, 110s = does the
+  stopping criterion change the metrics, ...), leaving room to insert e.g. 101, 102 into an
+  already-used decade without renumbering anything downstream.
+- **No script without approval of that experiment's protocol first.**
+- **Scenario is chosen per experiment** — Domain-IL, Class-IL, or both; if both, state whether the
+  results are one plot or two.
+- **No rabbit holes.** Deviate from the plan only for a code bug or a wrongly-parameterised setup
+  — not for a "since we're here" tangent.
+- **No plot titles.** Axis labels concise — one word plus units where possible.
+- **Every script re-plots from a flag** (e.g. `--replot`) without retraining.
+- **Process per experiment:** script generated → run process and parameters described concisely →
+  user agrees → run. Disagreement iterates the same script, not a new one.
+
+Report structure (methods → results, hour figures are report-writing estimates, not compute
+budget): continual learning, EBMs+backprop, controls, metrics, interpretability (methods) →
+capacity, stopping criteria, metrics, scenarios, where forgetting lives, depth, data, path
+efficiency, target alignment (results). Supervisor-flagged core observations to land: metrics
+change the story but crossover is robust; PC uplift is Class-IL only; forgetting sits in the
+output layer for Class-IL and the hidden layer for Domain-IL; depth doesn't matter; PC's path is
+more efficient; Domain-IL has a data/pair-correlation dependency; target alignment doesn't
+indicate anything; EqProp is never good and is inefficient; exp-12-scenario output-maths question
+still open.
 
 ---
 
 ## What the thesis argues
-**The character of forgetting and how to measure it. The four learning rules are the instrument,
-not the subject.** They earn their place by producing genuinely different credit assignment
-(cos 0.197 EqProp, 0.985 PC on W1) while producing the *same* forgetting — which is what makes
-"different rule" and "different forgetting" separable at all.
+**Reframed 2026-08-17, from a literature review — see `literature_review.md`.**
+
+**Forgetting is solved by adding a memory mechanism, not by a smarter credit-assignment rule.**
+Song & Bogacz (2024) claim one specific rule (prospective configuration) alone reduces forgetting,
+via target alignment, in one scenario (5 shared output units). Under a controlled, paired,
+multi-metric protocol, that claim mostly does not survive — including in their own scenario (C1,
+C5, C10) and under a direct test of their own credited mechanism (C7, C8). Independent literature
+on PC and EqProp agrees: every genuine positive "EBM reduces forgetting" result found (Ororbia's
+sparsity, BayesPCN's weight uncertainty, EP + Sleep Replay Consolidation) adds a memory mechanism
+on top of the rule; none show the bare rule sufficient alone. **Replay is not a boring control —
+it is the same pattern, independently confirmed a third way, in this project's own data.**
+
+The four rules still earn their place as the instrument: they produce genuinely different credit
+assignment (cos 0.197 EqProp, 0.985 PC on W1) while mostly producing the *same* forgetting — which
+is what makes "different rule" and "different forgetting" separable at all, and what makes replay's
+success a finding about mechanisms rather than an artefact of one rule being cleverer.
 
 **Say "under a controlled protocol PC shows no retention advantage", never "S&B do not
 replicate".** We never ran their setup in this series; the reproduction is old 30–34, failed,

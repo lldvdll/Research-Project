@@ -321,6 +321,13 @@ def make_eqprop_gated(gate_frac=0.3, **kw):
     return make_eqprop(gate_frac=gate_frac, **kw)
 
 
+# Deferred to here (after make_optimizer/_apply_freeze/_publish/_spec are already defined):
+# ewc.py/kwta.py import those names back from this module, so importing them any earlier would
+# be circular. backprop_ewc/pc_ewc/backprop_si/pc_si/backprop_kwta/pc_kwta are near-duplicates of
+# backprop/pc living entirely in ewc.py / kwta.py -- see those modules' docstrings for why.
+from .ewc import make_backprop_ewc, make_pc_ewc, make_backprop_si, make_pc_si
+from .kwta import make_backprop_kwta, make_pc_kwta
+
 # ------------------------------------------------------------------ dispatch
 METHOD_DEFAULTS = {
     "backprop":     dict(lr=0.05),
@@ -334,6 +341,13 @@ METHOD_DEFAULTS = {
     "pc":           dict(lr=0.05, dt=0.1, steps=50),
     "eqprop_gated": dict(lr=0.005, beta=0.3, dt=0.3, max_steps=800, settle_tol=1e-4,
                          gate_frac=0.3),
+    "backprop_ewc": dict(lr=0.05),
+    "pc_ewc":       dict(lr=0.05, dt=0.1, steps=50),
+    "backprop_si":  dict(lr=0.05),
+    "pc_si":        dict(lr=0.05, dt=0.1, steps=50),
+    # k=None -> every unit transmits (k-WTA off); a sweep script always passes k explicitly.
+    "backprop_kwta": dict(lr=0.05, k=None),
+    "pc_kwta":      dict(lr=0.05, dt=0.1, steps=50, k=None),
 }
 
 # Nothing needs the dataset at construction time any more -- replay fills its buffer from the
@@ -341,7 +355,10 @@ METHOD_DEFAULTS = {
 # 01-15 keep working unchanged.
 _NEEDS_DATA = set()
 _BUILDERS = {"backprop": make_backprop, "replay": make_replay, "eqprop": make_eqprop,
-             "pc": make_pc, "eqprop_gated": make_eqprop_gated}
+             "pc": make_pc, "eqprop_gated": make_eqprop_gated,
+             "backprop_ewc": make_backprop_ewc, "pc_ewc": make_pc_ewc,
+             "backprop_si": make_backprop_si, "pc_si": make_pc_si,
+             "backprop_kwta": make_backprop_kwta, "pc_kwta": make_pc_kwta}
 
 
 def build_method(name, in_dim=196, hidden=64, out_dim=10, seed=0, device="cpu",

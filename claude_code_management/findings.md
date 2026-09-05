@@ -64,12 +64,14 @@ Where it is silent: undefined when the curves never meet, which happens when tas
 task 2 throughout. Replay is censored on 11/24 Domain-IL seeds and 0/5 Class-IL seeds; those runs
 are ranked top by a paired sign test, not dropped.
 
-**Plots.** `52_..._fixed_budget.png`, `53_...png`, `56_...png`, `57_...png` — four panels each,
-one per rule, dotted horizontal line = that panel's crossover height. *Why evidence:* the four
-panels are the four rules under identical everything else, so the horizontal lines are directly
-comparable and PC's sits on backprop's in Domain-IL and above it in Class-IL.
-`52_..._trajectory.png` — task 1 against task 2 with time removed; *why evidence:* PC's and
-backprop's curves coincide along their whole length, not just at one sampled point.
+**Plots.** `52_..._fixed_budget.png`, `53_...png`, `56_...png`, `57_...png` — four panels each, one
+per rule: task-1 (orange) and task-2 (blue) accuracy against training step, shaded by which task is
+training, faint per-seed curves behind. *Why evidence:* the four panels are the four rules under
+identical everything else, and the crossover is the height at which orange and blue meet, so the
+panels compare directly. **The crossing point is not annotated on these figures** — it is read from
+the arrays. `52_..._trajectory.png` — all four rules on one axis, task 1 against task 2 with time
+removed; *why evidence:* PC's curve lies on backprop's along its whole length, not at one sampled
+point. Crossover is where a curve meets the y = x diagonal, which is also not drawn.
 
 ## 2. Endpoint metrics: the sign flips with the reading point
 

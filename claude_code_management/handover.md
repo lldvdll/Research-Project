@@ -126,6 +126,17 @@ Smoke: Class-IL joint-start retains 6.9 / 25.6 / 12.5 / 20.3 against scratch 1.5
    progress visibility.
 9. **801 runs to saturation on purpose** (task 1 → 0.0%) where R1 reports 5.4% at matched
    competence. The caption must say so or the report looks self-contradictory.
+10. **Matched competence makes task-2 length a DEPENDENT VARIABLE, and it confounds any
+    per-update quantity.** Task-2 length runs 119 → 4999 updates in 803. Long runs have a small
+    *mean* per-update ‖ΔW‖ **and** forget more, so mean step size correlates with retention at
+    **r = +0.93** — which reads as "bigger updates preserve task 1" and is an artefact. The
+    **total path** summed over task 2 has no such problem and gives r = −0.56, the interpretable
+    sign. 916 claims only on totals. Check this before correlating anything per-update.
+11. **805's two arms do not train task 1 for the same number of updates.** The joint-initialised
+    arm already knows task 1, so it clears the threshold far sooner — 240 vs 30 steps on
+    Class-IL seed 10. Any "joint pre-training protects" claim in 919 must be read against that,
+    or it is partly "the joint arm trained task 1 less and so had less to lose". The per-arm
+    task-1 phase lengths are printed by 805 and are in its array.
 
 ## 7. Next actions, in order
 

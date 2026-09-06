@@ -352,20 +352,21 @@ T.append(dict(part="Methods", n="M3", w=350, figs=1,
   q="How forgetting is measured, and why that metric", v="ok",
   vt="Two single-rule failures, and the stopping rule falls out of them. No rule comparison appears here.",
   cols=[
-    col(C("amend", "Does an endpoint metric survive a change of stopping point?",
-      pic("111_metric_sensitivity_to_threshold.png"),
+    col(C("ok", "Does an endpoint metric survive a change of stopping point?",
+      pic("907_why_matched_competence_a.png"),
       "<strong>Backprop alone.</strong> Final task-1 falls monotonically to 0.28 as the threshold "
       "moves; S&amp;B mean error is U-shaped. An endpoint number is a statement about where you "
       "stopped.",
-      "fold in 113's mechanism — the endpoint moves because <em>task 1's own peak moves with "
-      "it</em>. Merge both panels into one figure with 343."),
+      "113's mechanism is now folded in, on the right: raising the threshold makes task 1 train "
+      "longer — <strong>131 updates at 75% against 2403 at 95%</strong> — so its peak rises "
+      "78.6 → 93.8 and the endpoint is a fall from a ceiling that is itself moving."),
       C("ok", "Does crossover survive a change of learning rate?",
-      pic("343_lr_degradation_and_reliability.png"),
+      pic("907_why_matched_competence_b.png"),
       "It does not, at the top of the range: Class-IL crossover is <strong>undefined on 10/10 "
       "backprop seeds at lr = 0.16</strong>. Two candidate metrics, two different failure "
       "regimes.", None), feature=True),
     col(C("appx", "Does the choice change the reported result?",
-      pic("112_which_metric_survives.png"),
+      pic("908_metric_survival.png"),
       "Five metrics × five stopping thresholds. Class-IL: crossover and crossover-of-peak hold one "
       "sign at 2 SEM throughout; every endpoint metric flips. Domain-IL: nothing survives.",
       "<strong>appendix, not Methods.</strong> This is inherently a paired PC−backprop figure, so "

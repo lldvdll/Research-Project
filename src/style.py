@@ -46,7 +46,14 @@ def size(name, ratio=0.72):
 # ---------------------------------------------------------------- colour groupings
 # Matched to the figures already in the repo (340/341/342) so new and legacy agree.
 RULE = {"backprop": "#5c5c5c", "pc": "#d1682a", "replay": "#3f7d3a"}
-TASK = {0: "#d1682a", 1: "#2b6ca3"}                  # task 1 orange, task 2 blue
+
+# Task 1 is ROSE, not orange. It was orange, matching 310/332's own figures -- but that is the
+# same hex as RULE["pc"], so orange meant "task 1" in 901/911 and "predictive coding" in
+# 913/916. RULE is the palette that had to keep its colours: it appears in every comparison and
+# intervention figure and matches the legacy 340/341/342 sweeps, whereas TASK appears in two
+# figures that both carry an in-figure legend. Rose against blue is unambiguous and collides
+# with nothing else defined here.
+TASK = {0: "#b5446e", 1: "#2b6ca3"}                  # task 1 rose, task 2 blue
 
 # Domain-IL is TEAL, not green: 340/341/342 already spend green on replay, and a
 # figure carrying both rules and scenarios would otherwise be ambiguous. Script

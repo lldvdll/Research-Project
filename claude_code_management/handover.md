@@ -85,14 +85,39 @@ draws the actual trajectory: block length and end-of-block accuracy are not traj
 contraction. If it holds, the honest claim is that the scenarios differ in **how fast** they
 find a joint solution, not whether they can — which is more interesting than the prediction.
 
-### 806 landed on its second pre-committed branch
-Smoke, 2 seeds: control 3.8, freeze-all-W2 6.4, **freeze task-1 columns 7.2**, **mask 65.0**.
-Freezing the task-1 readout weights does **not** reproduce masking. Adding the task-1 *biases*
-to the freeze moved it 6.5 → 7.2, so that was not the explanation either.
+### 806 landed on its second pre-committed branch — CONFIRMED AT TEN SEEDS
+Final task-1 accuracy, Class-IL, 10 seeds (all cells but `mask`/pc complete):
 
-If this survives ten seeds, **masking does not work by sparing those weights**. The remaining
-candidate is that masking changes what **W1** learns — the trunk reshaped to serve the
-suppression objective — which is not a readout account at all and would reframe R5.
+| condition | backprop | pc |
+|---|---|---|
+| control | 4.8 | 6.0 |
+| freeze all of W2 | 3.2 | 4.3 |
+| **freeze task-1 columns of W2 + b2** | **6.7** | **6.3** |
+| **mask** | **50.9** | *running* |
+
+Masking recovers **+46 points**. Freezing exactly the weights masking spares recovers **+1.9**.
+So **masking does not work by sparing the task-1 output weights** — the pre-committed second
+branch, now on the full seed block rather than smoke. The remaining candidate is that masking
+changes what **W1** learns, the trunk reshaped to serve the suppression objective, which is not
+a readout account at all. **R5 must be rewritten**; `report/sections/results.tex` already carries
+that instruction in its R5 comment block.
+
+Note `mask`'s crossover is censored on 3/10 seeds — with masking, task 1 never falls below
+task 2 there, which is the *best* outcome and must be ranked, not dropped.
+
+**923 points the same way independently.** The linear probe reads 82.6% on task-1 classes where
+argmax reads 21.1 — but it reads **80.2% on the untrained network**, so only ~2.4 points are
+attributable to what the trunk learned. Two independent lines now argue against "forgetting is a
+readout failure over an intact representation".
+
+### 803 has a checkpoint-spacing defect — cheap to fix, worth fixing
+Its interval is `(2 * max_iters_per_task) // CHECKPOINTS` = `10000 // 20` = 500 updates, which
+divides the **budget**, not the run. Matched competence finishes runs in 700–2500 updates, so
+each gets **2–5 checkpoints instead of ~20**, and the last sits a median ~175 updates before the
+end. argmax on task 1 reads 21.1 at that last checkpoint against a true final of 4.8, so 923
+**understates** the end-of-training gap. Re-running 803 with the interval derived from run length
+costs ~8 min and also sharpens 915, 916 and 924. Not done — it is a `src/`-adjacent change to a
+committed 800 script and needs approval.
 
 ### The linear probe has a high floor
 At H=32, Class-IL, task-1 classes: probe reads **81.8% untrained**, 86.2% after task 1, against

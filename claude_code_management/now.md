@@ -3,10 +3,20 @@
 Dashboard. Detail lives in `current_state.md`, `knowledge_base.md`, and each script's docstring.
 **Keep this short.** If a section grows past a screen, it belongs somewhere else.
 
-**Running:** report series 2 (100+), see below. 67 (Class-IL decomposition) status unchecked.
-**Next:** exp100 (capacity, 10 seeds) — protocol tabled, awaiting agreement before the script runs.
-**Write-up:** report structure below supersedes `presentation_plan.md`/`findings.md` as the
-target; those stay as source material.
+**→ Read `handover.md` (2026-09-06) before anything else. It has the full state.**
+
+**Running:** background job `bdd3yf7y1` = `804 && 805 && 806`. Check its output first.
+**Next:** (1) run 802 when the chain clears, (2) write 911/912/913 — they read legacy arrays
+only, so they need nothing that is still running, (3) write 901 from `801_definitional_run.npz`.
+**Write-up:** `report_track.md` is the frozen structure — Methods M1–M3, Results R1–R5,
+Discussion D1, 18 main-text figures against 8,000 words. `script_plan_800_900.md` is the figure
+list. `progress.md` is ground truth for any number. Everything below this line predates the
+800/900 series and is kept as source material.
+
+**Two live results that change plans** (detail in `handover.md` §5): 804 suggests Class-IL
+*also* converges under repeated alternation, contradicting R4's closed-loop prediction; and
+806's smoke says freezing the task-1 output columns does **not** reproduce masking, which would
+move the Class-IL mechanism out of the readout and into the trunk.
 
 ---
 

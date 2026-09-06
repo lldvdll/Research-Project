@@ -265,324 +265,380 @@ T = []
 # ================================================================== METHODS
 T.append(dict(part="Methods", n="M1", w=200, figs=1,
   q="What does forgetting look like?", v="ok",
-  vt="Built. 901 replaces the averaged, cropped version and carries its own saturation warning.",
+  vt="Built as 901 from run 801, replacing the averaged and cropped version.",
   cols=[
     col(C("ok", "What happens to the task you just left?", pic("901_what_forgetting_looks_like.png"),
-      "Class-IL, <strong>one seed, fixed budget</strong>, backprop, every class drawn separately. "
-      "Task 1 plateaus at 93.9%, the switch lands at 900 updates, the curves cross at "
-      "<strong>71%</strong> 57 updates later, and all five task-1 classes end at "
-      "<strong>exactly 0.0%</strong>.",
-      "two things the figure states on its face rather than leaving to a caption: this run "
-      "<em>saturates</em> because it uses a fixed budget where every measured result uses matched "
-      "competence, and <strong>0% is not chance</strong> &mdash; chance on ten classes is 10%, so "
-      "zero means argmax has been captured by the task-2 units."), feature=True),
-    col(C("appx", "Why not the ten-seed version?", pic("102_forgetting_demonstrated.png"),
-      "The averaged form. Correct, and the source of the shape above, but the x-window stops "
-      "~200 steps after the switch where the Class-IL mean still reads &asymp;29%.",
-      "under matched competence the seeds stop at different steps, so an averaged tail is "
-      "computed over a shrinking sample. Kept as appendix context.")),
+      "Class-IL, <strong>one seed, fixed budget</strong> — the whole track shown without averaging "
+      "over runs that start and stop in different places. Two bold curves, all ten classes as "
+      "thin lines, crossover marked, arrows naming forgetting and learning.",
+      "the five task-1 classes falling to zero while the five task-2 classes rise <em>is</em> the "
+      "output-competition mechanism. Planting it in Methods means R5 explains something the "
+      "reader has already seen.")),
+    col(C("amend", "What does the current version show?", pic("102_forgetting_demonstrated.png"),
+      "Ten seeds, both scenarios, both rules — correct in form and the source of the shape above, "
+      "but averaged and cropped.",
+      "the x-window stops ~200 steps after the switch, where the Class-IL mean still reads ≈29%. "
+      "The run's actual final task-1 is <strong>3.3%</strong>. As drawn, it makes forgetting look "
+      "milder than it is.")),
   ],
-  why="This figure defines rather than compares, which is why it sits in Methods and why one "
-      "fixed-budget seed beats a ten-seed mean: nothing is smoothed and the per-class collapse "
-      "the reader needs for R5 is visible from the start. Everything downstream refers to three "
-      "things named here &mdash; the switch, the plateau and the crossing."))
+  why="This figure defines rather than compares, which is why it sits in Methods and why a single "
+      "fixed-budget seed beats a ten-seed mean: nothing is smoothed, the whole trajectory is "
+      "visible, and the per-class lines carry a mechanism the reader needs later. Everything "
+      "downstream refers to three things named here — the switch, the plateau, and the crossing."))
 
 T.append(dict(part="Methods", n="M2", w=500, figs=0,
-  q="The setup &mdash; a parameter table, with figures as supporting evidence", v="part",
-  vt="The activation hole is now closed by data (802 has run) but 903 is not drawn yet.",
+  q="The setup — a parameter table, with figures as supporting evidence", v="part",
+  vt="Six justifications become one grouped table plus appendix panels. The largest word saving available.",
   cols=[
     col(C("tbl", "Can the trunk do enough work to ask mechanistic questions?",
-      pic("101_problem_complexity.png"),
-      "A frozen random projection with a trained head reaches <strong>77.2%</strong> against a "
-      "fully-trained <strong>89.7%</strong>. Training the hidden layer is worth ~12 points.",
-      "table row: <em>hidden layer, trained</em>. This number becomes load-bearing in R5, where "
-      "the linear probe's random-init floor turns out to be the same phenomenon."),
-      C("tbl", "Is the width sufficient?", pic("100_capacity_vs_width.png"),
-      "Joint accuracy 84.1 (H=8) &rarr; 89.7 (H=32) &rarr; 90.3 (H=64). H=32 sits off the "
-      "bottleneck. <strong>H=4 and H=8 are capacity-limited</strong>.",
-      "table row: <em>H = 32</em>. The limitation returns in R2, where PC reverses sign at H=4.")),
-    col(C("build", "Does the conclusion depend on the activation?", P(SK_ACT, 2),
-      "<strong>802 has now run.</strong> Paired PC &minus; backprop crossover: Class-IL +1.27 "
-      "(tanh), +1.51 (sigmoid), <strong>+2.53</strong> (relu). Domain-IL &minus;0.53 (tanh), "
-      "<strong>+0.74 (sigmoid)</strong>, &minus;0.88 (relu).",
-      "the insensitivity argument <strong>half fails, and the report must say so</strong>. "
-      "Class-IL keeps its sign under all three activations. Domain-IL does not &mdash; sigmoid "
-      "flips it positive. Since Domain-IL's effect is small (&minus;0.7) that is a sign flip "
-      "within a narrow band rather than a reversal of a large effect, but tanh can no longer be "
-      "defended as “the choice does not matter” in both scenarios. 903 must draw this."),
-      C("tbl", "Does it depend on the output maths?", pic("120_output_maths_and_masking.png"),
-      "The spec sets the <em>magnitude</em> &mdash; ce 49.94 &lt; hinge 54.76 &lt; mse 59.31 "
-      "&mdash; but masking removes suppression under all three.",
-      "table row: <em>MSE / one-hot</em>. The masking half is a result and moves to R5.")),
-    col(C("ok", "Does PC's settling reach a fixed point?", pic("334_pc_settle_trace_by_dt_log.png"),
-      "dt &le; 0.5 all reach the <strong>identical plateau</strong> (0.0850 Class-IL, 0.0787 "
-      "Domain-IL). dt changes the route, not the destination.",
-      "and the control is <em>not</em> a one-time gate: dt = 0.4 is correct at H=32/depth 1 and "
-      "silently wrong at depth &ge; 2 and Class-IL H=4, sitting 3&ndash;7&times; above the true "
-      "fixed point. That cost two full sweep re-runs. 341/342 use dt = 0.2 for this reason.")),
+      pic("902_architecture_justification_a.png"),
+      "A frozen random projection with a trained head reaches <strong>77.2%</strong> against the "
+      "fully-trained <strong>89.7%</strong>. Training the hidden layer is worth ~12 points, so "
+      "\"where does forgetting live\" is not asked of a dead layer.",
+      "table row: <em>hidden layer, trained</em> — supporting evidence, appendix."),
+      C("tbl", "Is the width sufficient, and where does it stop being?",
+      pic("902_architecture_justification_b.png"),
+      "Joint accuracy 84.1 (H=8) → 89.7 (H=32) → 90.3 (H=64). H=32 is off the bottleneck and flat "
+      "thereafter. <strong>H=4 and H=8 are capacity-limited</strong> — which returns in R2 where "
+      "PC reverses at H=4.",
+      "table row: <em>H = 32</em> — supporting evidence, appendix.")),
+    col(C("ok", "Does the conclusion depend on the activation?", pic("903_specification_a.png"),
+      "<strong>Run 802, ten seeds.</strong> Crossover is flat across activations within each scenario. "
+      "Paired PC − backprop: Class-IL +1.27 (tanh), +1.51 (sigmoid), <strong>+2.53</strong> (relu); "
+      "Domain-IL −0.53, <strong>+0.74</strong>, −0.88.",
+      "table row: <em>tanh</em>. <strong>The insensitivity argument half fails.</strong> Class-IL holds "
+      "its sign under all three activations; Domain-IL flips positive under sigmoid. The Domain-IL "
+      "effect is small (~−0.7), so this is a flip inside a narrow band rather than a large "
+      "reversal — but tanh can no longer be defended as “the choice does not matter” in both "
+      "scenarios, and the caption must say so."),
+      C("tbl", "Does it depend on the output maths?",
+      pic("903_specification_b.png"),
+      "The spec sets the <em>magnitude</em> of suppression — ce 49.94 &lt; hinge 54.76 &lt; mse "
+      "59.31 — but <strong>masking removes it under all three</strong>. The choice changes the "
+      "size, not the finding.",
+      "table row: <em>MSE / one-hot</em>. The masking half of this figure is a result and appears "
+      "in R5.")),
+    col(C("ok", "Does PC's settling reach a fixed point, and does dt move it?",
+      pic("904_settling_fixed_point.png"),
+      "dt ≤ 0.5 all reach the <strong>identical plateau</strong> (0.0850 Class-IL, 0.0787 "
+      "Domain-IL) — dt changes the route, not the destination. That is the whole control: a "
+      "stable band exists and the choice inside it is free.",
+      "the one settling figure that stays in the main text. Cut from four to one."),
+      C("appx", "Does that band survive a change of architecture?",
+      pic("905_settle_band_vs_depth.png"),
+      "The <strong>only</strong> unstable cell is dt = 0.4 at depth ≥ 2; dt = 0.2 converges "
+      "everywhere. The band <em>shrinks with depth</em>, so this is a per-configuration "
+      "precondition — ignoring it cost two sweep re-runs.",
+      "appendix, cited from the table. Methodologically the most transferable result in the "
+      "project, but it does not carry an argument the report is making.")),
+    col(C("ok", "Why pair on seeds?", pic("906_what_pairing_buys.png"),
+      "Same point estimate, two error bars. PC − backprop is +1.65 either way; the unpaired SEM is "
+      "1.119 and the paired SEM <strong>0.250</strong> — <strong>4.5× tighter</strong>. Replay "
+      "tightens 2.1×. Unpaired, +1.65 reads as nothing; paired it is a 6.6-sem effect, with no "
+      "change to the runs.",
+      "one sentence in Methods plus an appendix panel — a statistical footnote, not a result. "
+      "⚠ 007 also quotes <strong>11.5× for Domain-IL</strong>. Script 69's saved array holds one "
+      "scenario only, so that number cannot be re-derived here and is not drawn. Identify its "
+      "source or quote only the half that is backed.")),
   ],
-  why="Every row of the parameter table is defended by a measurement rather than by convention, "
-      "and the one row that had no defence at all &mdash; the activation &mdash; now has data "
-      "behind it. The honest version of that row is weaker than hoped: insensitivity holds in "
-      "Class-IL and fails in Domain-IL under sigmoid."))
+  why="Grouped parameter decisions belong in a table with \"supporting evidence: Fig. N\" "
+      "cross-references, not in six figures each costing 150 words to explain. That converts this "
+      "section from roughly 900 words to about 500, and it reads better — a reader checking "
+      "whether the width was justified wants a row and a pointer, not a page. What stays in the "
+      "main text is the one settling panel, because \"dt changes the route, not the destination\" "
+      "is the sentence that licenses every PC number in the report."))
 
 T.append(dict(part="Methods", n="M3", w=350, figs=1,
   q="How forgetting is measured, and why that metric", v="ok",
-  vt="Justified from single-rule failures only. The circular version is demoted to a robustness check.",
+  vt="Two single-rule failures, and the stopping rule falls out of them. No rule comparison appears here.",
   cols=[
-    col(C("ok", "Why not read the endpoint?", pic("111_metric_sensitivity_to_threshold.png"),
-      "Backprop alone, stopping threshold swept 75&rarr;95%. Every endpoint metric drifts with "
-      "where you stop; crossover does not.",
-      "<strong>this is the whole justification, and it uses one rule measured against itself.</strong> "
-      "It does not reference the PC comparison, so it cannot be selecting a metric by the answer "
-      "that metric gives.")),
-    col(C("appx", "The robustness check, deliberately demoted", pic("112_which_metric_survives.png"),
-      "Which metric preserves the sign of PC &minus; backprop across thresholds.",
-      "<strong>this figure cannot justify the metric choice</strong> &mdash; it picks the "
-      "instrument by the answer it gives on the very comparison it will then be used for. It runs "
-      "<em>after</em> the result as a robustness check and is cited that way. An earlier draft had "
-      "this the wrong way round.")),
+    col(C("amend", "Does an endpoint metric survive a change of stopping point?",
+      pic("111_metric_sensitivity_to_threshold.png"),
+      "<strong>Backprop alone.</strong> Final task-1 falls monotonically to 0.28 as the threshold "
+      "moves; S&amp;B mean error is U-shaped. An endpoint number is a statement about where you "
+      "stopped.",
+      "fold in 113's mechanism — the endpoint moves because <em>task 1's own peak moves with "
+      "it</em>. Merge both panels into one figure with 343."),
+      C("ok", "Does crossover survive a change of learning rate?",
+      pic("343_lr_degradation_and_reliability.png"),
+      "It does not, at the top of the range: Class-IL crossover is <strong>undefined on 10/10 "
+      "backprop seeds at lr = 0.16</strong>. Two candidate metrics, two different failure "
+      "regimes.", None), feature=True),
+    col(C("appx", "Does the choice change the reported result?",
+      pic("112_which_metric_survives.png"),
+      "Five metrics × five stopping thresholds. Class-IL: crossover and crossover-of-peak hold one "
+      "sign at 2 SEM throughout; every endpoint metric flips. Domain-IL: nothing survives.",
+      "<strong>appendix, not Methods.</strong> This is inherently a paired PC−backprop figure, so "
+      "putting it in Methods would show a rule-comparison result before the rule comparison "
+      "exists — the circularity we removed. Cite it from R2 as robustness.")),
   ],
-  why="A metric chosen because it flatters the comparison is not evidence. The argument therefore "
-      "runs entirely on single-rule behaviour: endpoint metrics inherit the stopping rule, "
-      "crossover does not, and a censored crossover means task 1 never fell below task 2 &mdash; "
-      "the best outcome, so it is ranked rather than dropped."))
+  why="The stopping rule is <em>derived</em> here rather than asserted: the endpoint fails as the "
+      "stopping point moves, crossover fails as the learning rate rises, and a competence-matched "
+      "rule is what survives both. Critically, every step uses backprop alone. Choosing the metric "
+      "because it preserves the PC-versus-backprop sign would select the instrument by the answer "
+      "it gives on the comparison it will then be used for — the error <code>CLAUDE.md</code> "
+      "already forbids for learning rates. That is why 112 is cited from Results and not shown "
+      "here."))
 
 # ================================================================== RESULTS
 T.append(dict(part="Results", n="R1", w=250, figs=1,
   q="Two forgetting phenotypes", v="ok",
-  vt="Built. The hinge of the report: columns differ, rows barely do.",
+  vt="The core figure. Four panels that exist, never assembled into the one grid that makes the point.",
   cols=[
-    col(C("ok", "Does the scenario change the shape, and does the rule?",
-      pic("911_two_forgetting_phenotypes.png"),
-      "Phase plot, time removed. Final task 1 <strong>5.4%</strong> (Class-IL) against "
-      "<strong>38.5%</strong> (Domain-IL); crossover 65.0 against 75.8. Ceilings are 93.6 and "
-      "94.3, so retention is read against those.",
-      "read the columns first, then the rows. <strong>The scenario changes the phenotype; the "
-      "learning rule barely changes anything.</strong> Same protocol, same seeds &mdash; only the "
-      "output layer differs. This is why the mechanism investigation splits by scenario and not "
-      "by rule."), feature=True),
+    col(C("ok", "Backprop, Class-IL — where does a run end up?",
+      pic("310_forgetting_by_scenario_class_il.png"),
+      "Task-1 against task-2 accuracy, time removed, 10 seeds. Every trajectory turns hard left "
+      "and terminates against the axis: final task 1 <strong>5.4%</strong>, crossover 65.0.",
+      "this and the three beside it become one 2×2 — scenario across, rule down. Assembly only."),
+      C("ok", "PC, Class-IL — does the shape change?",
+      pic("332_pc_forgetting_by_scenario_class_il.png"),
+      "Same protocol, same seeds. Crossover 66.44 against 65.01. The <em>shape</em> is "
+      "indistinguishable; only the crossing height moves, and only slightly.", None)),
+    col(C("ok", "Backprop, Domain-IL — where does the same run end up?",
+      pic("310_forgetting_by_scenario_domain_il.png"),
+      "Identical protocol and seeds, only the output layer differs. Trajectories stop well short "
+      "of the axis: final task 1 <strong>38.5%</strong>, crossover 75.8, spread 13.1–64.2.", None),
+      C("ok", "PC, Domain-IL — does the shape change?",
+      pic("332_pc_forgetting_by_scenario_domain_il.png"),
+      "Crossover 75.06 against 75.76 — PC slightly <em>behind</em>. Again the family of shapes "
+      "matches backprop's.", None)),
   ],
-  why="The structural argument matters more than the numbers and comes first: Class-IL has ten "
-      "output units, five of which receive no positive target during task 2, so output "
-      "suppression is <em>available</em>. Domain-IL has five shared units and suppression "
-      "<em>cannot occur</em>. The scenarios differ in which mechanisms are physically possible, "
-      "not merely in degree."))
+  why="Read as a 2×2 these four panels make a point no single panel makes: <strong>changing the "
+      "scenario changes the shape of forgetting; changing the rule does not.</strong> Down a "
+      "column the trajectories are near-superimposable; across a row they are different families "
+      "— one collapsing onto an axis, one stopping on a shelf. Every later section is a "
+      "consequence of that asymmetry, which is why this is the first and load-bearing result."))
 
 T.append(dict(part="Results", n="R2", w=500, figs=2,
-  q="The rule comparison &mdash; small, systematic, scenario-dependent", v="ok",
-  vt="Built. 912 asks whether the effect is real; 913 asks whether it is large.",
+  q="The rule comparison — small, systematic, scenario-dependent", v="part",
+  vt="Answered on three axes. The consolidation that makes it one claim has never been drawn.",
   cols=[
-    col(C("ok", "Is the sign reversal stable across every axis we can vary?",
-      pic("912_pc_minus_backprop_sweeps.png"),
-      "Paired PC &minus; backprop crossover across lr, width and depth, both scenarios, zero line. "
-      "At the working point <strong>+1.42 &plusmn; 0.39</strong> (Class-IL) and "
-      "<strong>&minus;0.72 &plusmn; 0.19</strong> (Domain-IL). Depth widens the split both ways "
-      "(+3.44 / &minus;3.49 at four layers); Class-IL H=4 reverses to &minus;4.14.",
-      "the lower row <strong>draws the censoring instead of averaging over it</strong>. At lr 0.16 "
-      "the Class-IL crossover is undefined on 10/10 backprop seeds &mdash; an absent measurement, "
-      "not a null result, and marked as such."), feature=True),
-    col(C("ok", "How large is a real fix, on the same axes?",
-      pic("913_replay_sets_the_scale_a.png"),
-      "Replay, the positive control: <strong>+9.84 &plusmn; 0.77</strong> (Class-IL) and "
-      "<strong>+3.43 &plusmn; 0.50</strong> (Domain-IL) against PC's +1.42 and &minus;0.72.",
-      "about <strong>seven times</strong> PC's effect where PC wins, and positive where PC is "
-      "negative. Separate from 912 on purpose: on 912's &plusmn;4pp axis replay would compress "
-      "the entire PC result into a few pixels."),
-      C("ok", "Is that a tuning artefact?", pic("913_replay_sets_the_scale_b.png"),
-      "The same three sweeps with replay included. Replay stays positive and roughly flat across "
-      "every lr, width and depth.",
-      "so the gap is not an artefact of where the sweep was sampled. What replay costs is stated "
-      "in the text: it stores and re-presents task-1 data, the exact resource a continual-learning "
-      "rule is supposed not to need.")),
+    col(C("build", "Is the sign reversal stable across every axis we can vary?", P(SK_CONSOL, 1),
+      "Proposed: PC − backprop against lr, width and depth, two scenario lines, zero line drawn. "
+      "<strong>Class-IL above zero and Domain-IL below it everywhere except the narrowest "
+      "width.</strong> At the working point: <strong>+1.42 ± 0.39</strong> and "
+      "<strong>−0.72 ± 0.19</strong>, defined 10/10.",
+      "the section's headline, and it replaces the three sweep figures rather than joining them — "
+      "they go to appendix. Three existing scripts' arrays, one figure, no retraining.")),
+    col(C("appx", "The lr sweep behind it", pic("340_lr_sweep_accuracy.png"),
+      "<strong>Both rules peak near lr 0.01–0.02 and decline past it</strong>, so the defaults sit "
+      "close to jointly optimal and the comparison was not read at a point favouring either rule.",
+      "appendix. The consolidated figure carries the claim; this supports it."),
+      C("appx", "…and the width and depth sweeps",
+      pic("342_depth_sweep_accuracy.png"),
+      "<strong>Depth amplifies the split in both directions</strong>: Class-IL +1.42 → +3.44, "
+      "Domain-IL −0.72 → −3.49. Width reverses at H=4 (−4.14 ± 0.70). Contradicts the pre-100 "
+      "\"depth doesn't matter\" line.",
+      "appendix, with 341. The depth asymmetry is quoted in R5 as trunk-side evidence, so it is "
+      "cited twice and drawn once.")),
+    col(C("amend", "How large is a real fix, on the same axes?", pic("340_lr_sweep_diff.png"),
+      "Replay − backprop is the upper line everywhere: <strong>+55 to +62 pp Class-IL "
+      "retention</strong> against PC's +0 to +2; paired Δcrossover <strong>+9.84 ± 0.77</strong> "
+      "against PC's +1.42. Flat across the whole grid, so not a tuning artefact.",
+      "<strong>stays in Results, not Discussion.</strong> Without it the reader finishes the "
+      "headline not knowing whether +1.42 is large. Trim to backprop/PC/replay at the working "
+      "point and give replay its own scale — its magnitude currently crushes PC's line flat.")),
   ],
-  why="Order matters. 912 establishes the effect is real and systematic; 913 puts it on a scale. "
-      "Answering them the other way round would make the first look like special pleading. The "
-      "conclusion the section can defend: the problem is solvable, and changing the "
-      "credit-assignment rule is not what solves it."))
+  why="The answer is small, real, and sign-flipped by scenario. A one-to-three-point effect at a "
+      "single architecture invites the dismissal that it is a quirk of H=32, depth 1 — and the "
+      "sweeps refute that in an unexpected way: the effect is not fragile, it is "
+      "<em>systematic</em>, growing with depth in both directions at once. The replay panel is "
+      "what keeps the claim proportionate. Reporting +1.42 without it risks the Results overselling; "
+      "reporting it here rather than in Discussion means the scale arrives with the claim rather "
+      "than two sections later. The full intervention ranking is a separate, weaker argument and "
+      "goes to Discussion."))
 
 T.append(dict(part="Results", n="R3", w=500, figs=2,
-  q="Does prospective configuration explain the difference?", v="ok",
-  vt="Built, and the answer is sharper than expected: the mechanism replicates and costs the other task.",
+  q="Does prospective configuration explain the difference?", v="gap",
+  vt="The mechanism the source paper credits — and our own — measured against the outcome for the first time.",
   cols=[
-    col(C("ok", "Does PC aim its updates better? (Song &amp; Bogacz Fig. 3b)",
-      pic("915_target_alignment_a.png"),
-      "Target alignment on the batch being trained. PC is <strong>higher</strong> than backprop: "
-      "paired <strong>+0.0245 &plusmn; 0.0046</strong> (5.4 sem) in Class-IL.",
-      "<strong>their claim replicates on our networks.</strong> This belongs in Results whichever "
-      "way it fell &mdash; an earlier draft demoted it to an appendix negative, which was wrong."),
-      C("ok", "&hellip;and what does that cost the task it is not training?",
-      pic("915_target_alignment_b.png"),
-      "The same cosine measured on a fixed task-1 batch that is never trained on. Both rules go "
-      "<strong>negative</strong> after the switch and PC is <strong>more</strong> negative: "
-      "&minus;0.0175 &plusmn; 0.0053 (3.3 sem).",
-      "the interference is a <strong>transient</strong>, not a drift &mdash; it plunges to "
-      "&minus;0.48 within ~10 updates and recovers by ~40, and the plunge is 2.4&times; deeper in "
-      "Class-IL. This is forgetting caught per update rather than inferred from an endpoint, and "
-      "because it is a rate it does not inherit the training budget."), feature=True),
-    col(C("ok", "Does the settling displacement go anywhere?",
-      pic("916_displacement_to_retention_b.png"),
-      "Total distance each layer travels over task 2. PC moves the <strong>output</strong> weights "
-      "markedly less &mdash; paired &minus;0.767 &plusmn; 0.191 (4.0 sem) Class-IL, &minus;0.846 "
-      "&plusmn; 0.200 (4.2 sem) Domain-IL &mdash; while the <strong>trunk path is "
-      "indistinguishable</strong> (0.4 and 0.2 sem).",
-      "PC takes a shorter route through weight space and does not convert it into proportionally "
-      "better retention. Note the difference is the <em>same size in both scenarios</em> even "
-      "though the retention outcome flips sign between them."),
-      C("ok", "⚠ The confound that reverses this answer",
-      pic("916_displacement_to_retention_c.png"),
-      "Matched competence makes task-2 length a dependent variable (119&ndash;4999 updates). Long "
-      "runs have small <em>mean</em> per-update &#8214;&Delta;W&#8214; <em>and</em> forget more, so "
-      "mean step size correlates with retention at <strong>r = +0.93</strong>.",
-      "that reads as “bigger updates preserve task 1” and is an artefact. The "
-      "<strong>total path</strong> has no such problem and gives the interpretable sign, "
-      "<strong>r = &minus;0.56</strong>. Every claim here is made on totals.")),
+    col(C("rerun", "Does PC align its updates toward the solution better than backprop?",
+      P(SK_TA, 1),
+      "<strong>Song &amp; Bogacz's own credited mechanism.</strong> Measured once at 5 seeds "
+      "across four rules: alignment <em>does not track forgetting</em>, and ranks the rules "
+      "opposite to retention. Two panels — alignment through training, and alignment against "
+      "retention, which is flat.",
+      "re-run as backprop vs PC at 10 seeds under the 300-series protocol. A direct test of the "
+      "source paper's mechanism belongs in Results whichever way it falls.")),
+    col(C("build", "Does how far the state moves predict how much is forgotten?", P(SK_DX, 1),
+      "Proposed: per-seed settling displacement <strong>D = ‖x*(settled) − x(feedforward)‖</strong> "
+      "against task-1 retention and against ‖ΔW‖, both scenarios. The missing link — <strong>PC "
+      "dynamics → internal configuration → weight change → forgetting</strong>.",
+      "<code>handle[\"diag\"][\"displacement\"]</code> is already published on every train step, so "
+      "this instruments existing runs. 344's finding becomes a panel of it — see right."),
+      C("ok", "Where does settling reach the weights?",
+      pic("344_weight_step_vs_lr.png"),
+      "W1 shows <strong>no differential damping</strong> (0.93 vs 0.90); W2 does "
+      "(<strong>0.99 vs 0.78</strong>). PC's output update multiplies the same error against the "
+      "<em>settled</em> hidden activity, so settling reaches W2 by a route the hypothesis did not "
+      "predict.",
+      "becomes a panel of the bridge figure rather than standing alone. It refuted its own "
+      "pre-registered prediction, which is why it belongs in the argument.")),
   ],
-  why="The mechanism the source paper credits is real and measurable on our networks &mdash; and "
-      "the same measurement shows what it costs. PC configures itself more prospectively for the "
-      "task in front of it, moves the readout less, and pushes the absent task's outputs further "
-      "away while doing so. That is a coherent mechanistic story, and it explains why the "
-      "retention benefit is small rather than large."))
+  why="Everything before this is behavioural. None of it touches what makes PC <em>PC</em> — that "
+      "the hidden state relaxes to a configuration the feedforward pass would not produce, and the "
+      "update is computed against that. Without this section an examiner can fairly ask where the "
+      "evidence is that prospective configuration has anything to do with the result. "
+      "<strong>Target alignment is the mechanism the source paper credits</strong>, so testing it "
+      "is not optional and its failure is a result about their claim. The displacement is our own "
+      "measure of the same thing and is currently discarded on every update as a convergence "
+      "check. Kept as its own short section rather than folded into R2 because target alignment is "
+      "the most citable thing in the report and would be invisible as a sub-panel."))
 
 T.append(dict(part="Results", n="R4", w=750, figs=3,
-  q="Why these are two investigations, not one", v="part",
-  vt="Two of three built. 917 supplies the strongest scenario separation in the project; the tie-out figure is not drawn.",
+  q="Why these are two investigations, not one", v="gap",
+  vt="The strongest section available, and almost none of it is built.",
   cols=[
-    col(C("ok", "Are the weights converging, orbiting, or drifting?",
-      pic("917_alternation_geometry.png"),
-      "Repeated alternation, 10 blocks, matched competence per block. <strong>Neither scenario "
-      "traces a closed loop.</strong> Task-1 accuracy at the end of each task-2 block: Class-IL "
-      "4.8&rarr;35.9, Domain-IL 37.6&rarr;63.1.",
-      "<strong>the pre-registered prediction is refuted and the section says so.</strong> The plan "
-      "predicted Class-IL would loop and Domain-IL would spiral in. Both converge; what differs is "
-      "where they stop."), feature=True),
-    col(C("ok", "The measurement that separates the scenarios most sharply",
-      pic("917_alternation_geometry.png"),
-      "Panel (d). At a <em>single</em> switch PC &minus; backprop is &minus;0.72 &plusmn; 0.19. At "
-      "the <strong>fifth task-2 block</strong> it is <strong>&minus;16.71 &plusmn; 2.45</strong> "
-      "(6.8 sem) in Domain-IL and &minus;1.78 &plusmn; 3.09 (nothing) in Class-IL.",
-      "PC <em>plateaus</em> in Domain-IL while backprop keeps improving. A two-task protocol "
-      "understates this by more than twenty times &mdash; an argument about the benchmark as much "
-      "as about the rule, and the single largest scenario separation the project has."),
-      C("ok", "Is forgetting about where you start in weight space?",
-      pic("919_joint_then_sequential_a.png"),
-      "Train on the joint distribution to convergence, then run the sequential protocol from "
-      "there. Class-IL 4.8&rarr;<strong>16.2</strong>, Domain-IL 37.6&rarr;<strong>44.3</strong>.",
-      "protection is real and <strong>partial</strong>. The solution can be handed to the network "
-      "and it still leaves, so forgetting here is not mainly a failure to <em>find</em> a joint "
-      "solution &mdash; it is a failure to stay at one.")),
-    col(C("ok", "⚠ The confound in that arm, drawn rather than hidden",
-      pic("919_joint_then_sequential_b.png"),
-      "Both arms stop task 1 at the same competence, but the joint arm is already above threshold "
-      "when its task-1 phase begins, so that phase is far shorter (402&rarr;182 updates).",
-      "a shorter phase means less to lose. Correlation between the phase-length difference and the "
-      "retention difference: Class-IL <strong>r = &minus;0.64</strong> (confound present), "
-      "Domain-IL backprop <strong>r = &minus;0.09</strong> (clean). <strong>Lean on the Domain-IL "
-      "backprop arm.</strong> The two cannot be separated within this design."),
-      C("build", "Which measurements separate by scenario, and which do not?", P(SK_TIE, 2),
-      "Proposed: every measurement made in both scenarios on one axis, rows = measurement, "
-      "columns = scenario, so sign flips read as crossings. Pure re-analysis, no new training.",
-      "this is the figure that makes the section's title an argument rather than an assertion. It "
-      "must include the measurements that do <em>not</em> separate &mdash; freezing recovers "
-      "nothing in either (+0.36 and +0.15) and the argmax&ndash;probe gap is large in both &mdash; "
-      "or it is one-sided.")),
+    col(C("rerun", "Under repeated alternation, does the network converge on a joint solution?",
+      P(SK_REPEAT, 1),
+      "20 alternations, task-1 against task-2 accuracy, colour = time, <strong>both scenarios side "
+      "by side</strong>. Domain-IL already shows the inward spiral. Prediction: <strong>Class-IL "
+      "closes a loop</strong> — ping-ponging between incompatible solutions, learning nothing "
+      "cumulative.",
+      "one figure, not two. The existing run is Domain-IL only, 5 seeds, <strong>fixed "
+      "budget</strong> — re-run at the 90% threshold as backprop vs PC and add the Class-IL arm. "
+      "Note matched competence makes block length a dependent variable, which is itself the "
+      "\"gradual relearn\" result."),
+      C("appx", "What the existing Domain-IL run looks like",
+      pic("68_what_happens_under_repeated_task_switching_spiral.png"),
+      "All three rules spiral inward toward the joint corner — the geometry is already there, at "
+      "the wrong protocol.",
+      "appendix or superseded entirely by the re-run above.")),
+    col(C("build", "Are the weights converging, orbiting, or drifting?", P(SK_PCA, 1),
+      "Proposed: PCA of the weight trajectory under alternation, W1 and W2 separately, both "
+      "scenarios. Accuracy can look settled while parameters wander, so <strong>this is the "
+      "stronger version of the panel to its left</strong> — and it asks whether the trunk "
+      "contracts while the readout orbits.",
+      "68 already stores the full W1 trajectory (600 × 6272 = 196×32, seed 0), so the Domain-IL W1 "
+      "panel is computable today. W2 and Class-IL ride along with the re-run — one experiment, "
+      "both figures.")),
+    col(C("build", "Is forgetting about where you start in weight space?", P(SK_JOINT, 1),
+      "Proposed: train on the <strong>joint</strong> distribution first, then run the sequential "
+      "protocol from there, against sequential-from-scratch. If a network that already solves both "
+      "tasks still collapses on task 1, forgetting is not a failure to <em>find</em> a joint "
+      "solution — it is a failure to <em>stay</em> in one.",
+      "sits awkwardly here and we keep it anyway; where it belongs will be obvious once it runs. "
+      "Pairs with the PCA panel: does joint initialisation turn the Class-IL loop into a spiral?")),
+    col(C("build", "Which measurements separate by scenario, and which do not?", P(SK_TIE, 2),
+      "Proposed: every measurement made in both scenarios, paired and joined. Crossings — PC − "
+      "backprop, the depth trend, digit identity. <strong>Parallels — freeze-W2 recovery "
+      "(+0.36 / +0.15) and the argmax-minus-probe gap (+81.6 / +29.5).</strong>",
+      "the structural half of the justification is <strong>Methods</strong>: Class-IL has five "
+      "output units receiving no positive target, Domain-IL has none, so suppression is available "
+      "in one and impossible in the other. That follows from the architecture description, so this "
+      "figure only has to carry the empirical half.")),
   ],
-  why="The split is justified on two independent grounds. <em>Structural</em>: output suppression "
-      "is available in Class-IL and physically impossible in Domain-IL, so the two scenarios admit "
-      "different explanations. <em>Empirical</em>: the measurements separate by sign and by "
-      "magnitude &mdash; PC &minus; backprop is +1.42 against &minus;0.72 at one switch and "
-      "&minus;1.78 against &minus;16.71 after five, depth trends run opposite ways, and masking is "
-      "only definable in one. The honest qualifier stays: the split is <em>not</em> justified by "
-      "the readout gap, which behaves similarly in both."))
+  why="The split is earned twice. <strong>Structurally it is not arguable</strong>, and that "
+      "argument lives in Methods with the architecture — the two scenarios differ in which "
+      "mechanisms can physically exist, not in degree. <strong>Empirically the geometry argument "
+      "is the strongest available</strong>: a loop and a spiral are different kinds of behaviour, "
+      "not different amounts of one. The weight-space panel is what stops it being a pretty "
+      "picture — a scalar contraction measure turns \"it looks like a loop\" into \"the network "
+      "returns to a substantially different state after each switch, while Domain-IL's "
+      "progressively contracts\". The tie-out then draws the two measurements that behave the "
+      "<em>same</em> in both scenarios as parallel lines rather than hiding them."))
 
 T.append(dict(part="Results", n="R5", w=1000, figs=4,
-  q="Where does the damage live?", v="part",
-  vt="The two decisive figures are built, and they overturn the readout account this section used to assume.",
+  q="Where does the damage live?", v="gap",
+  vt="Merged from two scenario sections into one, organised by tool. Both scenarios in every figure.",
   cols=[
-    col(C("ok", "Is it the task-1 weights, or the competition at argmax?",
-      pic("922_partial_column_freeze_a.png"),
-      "Four conditions, ten seeds. Control 4.8, freeze all of W&#8322; 3.2, <strong>freeze the "
-      "task-1 columns 6.7</strong>, <strong>mask 50.9</strong>.",
-      "<strong>this landed on the second of three pre-committed readings.</strong> Masking "
-      "recovers +46.11 &plusmn; 4.52; freezing exactly the weights masking spares recovers "
-      "+1.87 &plusmn; 1.03. Twenty-five times smaller &mdash; so <strong>masking does not work by "
-      "sparing those weights</strong>. The remaining candidate is that masking changes what "
-      "W&#8321; learns."), feature=True),
-    col(C("ok", "&hellip;and they do not even act at the same time",
-      pic("922_partial_column_freeze_b.png"),
-      "Paired against control: freezing the task-1 columns moves <em>crossover</em> by "
-      "<strong>+1.16 &plusmn; 0.23</strong> (5.0 sem, 10W&ndash;0L) but the endpoint barely at all. "
-      "Masking moves the <em>endpoint</em> by +46 and crossover by +0.20 (0.1 sem).",
-      "freezing changes <strong>where the curves cross</strong>; masking changes <strong>where "
-      "they end</strong>. One mechanism at two strengths would differ in size but agree in shape. "
-      "A second, independent reason to reject the readout account."),
-      C("ok", "Is the code still readable when the readout fails?",
-      pic("923_probe_vs_argmax.png"),
-      "Refit linear probe against argmax, both tasks, both scenarios. Class-IL task 1: probe "
-      "<strong>82.6</strong> against argmax <strong>21.1</strong> &mdash; a +61 point gap.",
-      "<strong>but the probe reads 80.2% on the untrained network of the same seed</strong>, so "
-      "only <strong>~2.4 points</strong> come from anything the trunk learned. Drawn without that "
-      "floor line this figure says “the representation survives” when it mostly shows the "
-      "probe barely needed one. The Domain-IL task-2 panel is the control that keeps it honest: "
-      "there the gap <em>reverses</em> (&minus;2.3, argmax wins), so the probe is not simply a "
-      "better classifier.")),
-    col(C("amend", "The freezing result underneath it", pic("130_freeze_factorial.png"),
-      "Freezing the output layer recovers nothing in either scenario &mdash; +0.36 &plusmn; 0.43 "
-      "and +0.15 &plusmn; 0.24.",
-      "922 explains why this null is not the paradox it looked like: freezing all of W&#8322; also "
-      "blocks task 2 from learning through the readout and forces it into the shared trunk."),
-      C("build", "What moves the outcome distribution?", P(SK_DIST, 2),
-      "Proposed: retention as a distribution over 70 seeds, not a mean, with interventions "
-      "overlaid. Class-IL retention is bimodal &mdash; near-zero and 15&ndash;30% &mdash; so "
-      "<strong>the mean reports a number no individual run produces</strong>.",
-      "still worth building: it is the figure that stops every other number in R5 being read as if "
-      "runs were interchangeable.")),
+    col(C("build", "What moves the outcome distribution?", P(SK_DIST, 2),
+      "Proposed: the retention <em>distribution</em> over 70 seeds, both scenarios, with each "
+      "readout intervention overlaid. Class-IL is two groups, near-zero and 15–30%; Domain-IL is a "
+      "broad unimodal spread. <strong>Averaging Class-IL reports a number no run produces.</strong> "
+      "Masking recovers +17.5; freezing recovers nothing.",
+      "absorbs the freeze bar chart and the masking half of 120. The question is what moves the "
+      "<em>distribution</em>, not the mean."),
+      C("amend", "The freezing result underneath it", pic("130_freeze_factorial.png"),
+      "<strong>Freezing the output layer recovers nothing</strong> — +0.36 ± 0.43 Class-IL, "
+      "+0.15 ± 0.24 Domain-IL. Freezing the hidden layer is strongly negative.",
+      "folds in as an overlay. Freeze-both is absent because crossover is undefined on 0/10 seeds "
+      "— a result, not a gap.")),
+    col(C("build", "Is it the task-1 weights, or the competition at argmax?", P(SK_PFREEZE, 1),
+      "Proposed: freeze <strong>only the task-1 columns of W2</strong>. Masking is train-time only "
+      "— <code>active_vector</code> zeroes the error in <code>output_error</code> while "
+      "<code>predict</code> still argmaxes over all ten units. Masking spares those weights "
+      "<em>while letting task-2 units learn</em>; freezing all of W2 spares them but blocks task "
+      "2's readout path, forcing it into W1.",
+      "the decisive experiment for the contradiction to its left, and cheap. If it reproduces "
+      "+17.5 the mechanism is established; if not, masking works another way. <strong>Needs "
+      "approval — <code>_apply_freeze</code> is whole-matrix.</strong>")),
+    col(C("build", "Is the code still readable when the readout fails?", P(SK_PROBE, 1),
+      "Proposed: a trained/refit linear probe against argmax, both tasks, both scenarios. Probe "
+      "high and argmax low means recalibration; both low means the representation is gone. "
+      "<strong>The project cannot currently tell them apart.</strong>",
+      "three tools, three questions: argmax (what the network reports), a trained probe (is it "
+      "linearly decodable), masking (does removing competitors restore it)."),
+      C("busy", "What the current probe shows", pic("320_ncm_both_tasks.png"),
+      "Task-1 argmax collapses while a prototype readout holds ~83%. The control that matters: "
+      "<strong>on task 2 the probe is worse than argmax</strong> (70.8 vs 91.3), ruling out \"the "
+      "probe is simply a better classifier\".",
+      "unreadable, and the steps near 1700 are seeds leaving the mean. NCM is centroid-only with "
+      "almost no dynamic range. Keep the task-2 reversal as a control; replace the probe.")),
     col(C("build", "What do the weights themselves do, per layer?", P(SK_PATH, 1),
-      "Proposed: per-layer weight path and hidden-code drift from 803 and 804.",
-      "916 already answers half of this &mdash; PC's trunk path is indistinguishable from "
-      "backprop's while its readout path is much shorter. What is missing is the <em>code</em> "
-      "drift that would localise Domain-IL's damage."),
-      C("gapx" if False else "build", "&hellip;and where does Domain-IL's damage sit?", P(SK_DRIFT, 1),
-      "Proposed: hidden-code drift measured on task-1 data during task 2.",
-      "<strong>this is the largest genuine gap in the project.</strong> Suppression is "
-      "structurally impossible in Domain-IL, so the explanation must be representation drift "
-      "&mdash; and freezing only says where it is <em>not</em>. No positive localisation exists.")),
+      "Proposed: per-layer weight step per alternation block, both scenarios, from R4's runs. If "
+      "<strong>W1 converges while W2 keeps oscillating</strong> in Class-IL, that is the "
+      "output-competition claim stated in weights rather than accuracy.",
+      "shares R4's training runs and its PCA panel — one analysis, not one experiment."),
+      C("build", "…and where does Domain-IL's damage sit?", P(SK_DRIFT, 1),
+      "Proposed: hidden-code displacement during task 2, resolved by whether a unit is task-1 or "
+      "task-2 selective, against a frozen-weight baseline. <strong>There is no positive "
+      "localisation for Domain-IL at all</strong> — and that is because it has not been measured, "
+      "not because it cannot be.",
+      "the largest genuine gap, and it is cheap: instrumentation of runs that already exist.")),
+    col(C("ok", "Does task structure predict what survives?",
+      pic("311_task_pair_similarity_combined.png"),
+      "Domain-IL's leading data-side explanation <strong>does not replicate</strong>: r = +0.686 "
+      "(p = 0.029) on seeds 0–9 became <strong>r = +0.183 (p = 0.61)</strong> on seeds 10–19. "
+      "Class-IL's does: 8, 9 and 5 in task 1 raise retention, 6 lowers it, surviving Bonferroni at "
+      "70 seeds.",
+      "one figure, both scenarios, opposite outcomes. The Class-IL digit table (312) is the "
+      "appendix evidence behind the second half.")),
   ],
-  why="This section changed its mind, and the report is stronger for saying so. It was written "
-      "around a readout account: the code survives, argmax misreads it, protect the readout and "
-      "retention returns. Two independent measurements now argue against that. Freezing exactly "
-      "the weights masking spares recovers almost nothing, and the interventions act at different "
-      "points of the curve; and the probe that appeared to show a surviving representation reads "
-      "within ~2.4 points of its own random-init floor. What survives is the observation, not the "
-      "explanation &mdash; and the honest position is that Class-IL's mechanism is not yet "
-      "localised and Domain-IL's is not localised at all."))
+  why="Two sections that both ended in \"we don't know\" made a weak back half. Organised by tool "
+      "instead of by scenario, the contrast becomes the point of each figure rather than the "
+      "section boundary, and the section gains a spine: intervene on the readout, read the "
+      "representation, watch the weights, test the data dependence. <strong>The contradiction at "
+      "its centre narrows rather than muddies.</strong> Masking recovers +17.5 acting only on the "
+      "training error; freezing all of W2 spares the same weights and recovers nothing — but also "
+      "blocks task 2 from learning through the readout. That one difference is testable by "
+      "freezing only the task-1 columns. On the Domain-IL side the honest statement is that the "
+      "measurement has not been made, not that it cannot be — the tools exist and the displacement "
+      "is already logged."))
 
 # ================================================================== DISCUSSION
 T.append(dict(part="Discussion", n="D1", w=300, figs=1,
-  q="Added mechanisms &mdash; a preliminary evaluation", v="part",
-  vt="Data exists for every arm; the consolidated figure is not drawn.",
+  q="Added mechanisms — a preliminary evaluation", v="part",
+  vt="Demoted from Results. Real runs, but the grids were not prepared carefully enough to claim.",
   cols=[
     col(C("build", "Of everything we can add, what recovers retention?", P(SK_INTERV, 2),
-      "Proposed: every intervention on one axis with its SEM and its censoring. Replay +9.84 / "
-      "+3.43 &middot; masking +7.6 to +17.5 (Class-IL only) &middot; SI +3.15 &middot; EWC +1.80 "
-      "&middot; PC +1.42 / &minus;0.72 &middot; freezing nothing &middot; k-WTA "
-      "<strong>&minus;9.8 / &minus;32.4</strong>.",
-      "<strong>⚠ EWC's &lambda; grid never bracketed its optimum</strong>, so its number is a "
-      "lower bound and the figure must say so rather than ranking it as though it were tuned."),
+      "Proposed: every intervention on one axis. Replay ≫ masking (+7.6 to +17.5) &gt; SI (+3.15) "
+      "≈ EWC (+1.80) &gt; freezing (nothing) &gt; k-WTA (<strong>−9.8 backprop, −32.4 PC</strong>).",
+      "framed as future work, not result. Replay, masking and freezing are results-grade and "
+      "appear in R2 and R5; <strong>EWC, SI and k-WTA are what belongs here</strong>.")),
+    col(C("appx", "Consolidation, and what happens past its optimum",
+      pic("210_si_lambda_sweep.png"),
+      "Best at λ=1: +3.15 backprop, +2.39 PC. Past λ≥10 it <strong>deadlocks learning</strong> — "
+      "and the evidence is the censoring, not the mean: defined crossovers fall to 1/10 and 3/10.",
+      "⚠ EWC's λ grid was <strong>still rising at its top end</strong>, so its optimum was never "
+      "bracketed. That is the specific reason this is preliminary."),
       C("appx", "Sparsity gating", pic("220_kwta_k_sweep.png"),
-      "k-WTA is the one intervention that makes things markedly <em>worse</em>, and worse for PC "
-      "than for backprop.",
-      "kept because a negative result on a plausible mechanism is informative, and because the "
-      "asymmetry between the rules is itself a datum.")),
+      "<strong>Harmful, monotonically, and far worse for PC</strong>: Class-IL backprop 59.31 → "
+      "49.53 but PC 61.85 → 29.44. An intervention motivated by the predictive-coding literature "
+      "fails here, and fails PC hardest.",
+      "the reading that PC's relaxation depends on the full hidden code is a <strong>hypothesis "
+      "this is consistent with</strong>, not something it establishes.")),
   ],
-  why="Placing the learning-rule result on one axis with every alternative is what stops it being "
-      "read as larger than it is. The defensible claim: prospective configuration produces a "
-      "small, real, scenario-dependent difference, roughly a seventh of what replay buys, and "
-      "therefore the credit-assignment rule is not the lever. That does not refute Song &amp; "
-      "Bogacz &mdash; it locates their effect at a size, under a protocol that reports its "
-      "censoring and pairs its seeds."))
+  why="These are real runs at 10 seeds, but two things stop them being results. EWC's grid never "
+      "bracketed its optimum, and the head-to-head comparison at each mechanism's best setting "
+      "(230) was only smoke-tested. Presented as a preliminary evaluation they still do useful "
+      "work: they establish that <strong>nothing which modifies credit assignment alone recovers "
+      "much</strong>, and that the one intervention the predictive-coding literature most often "
+      "proposes actively harms. That is a legitimate closing observation and a clear statement of "
+      "what a follow-up should run."))
 
 
+# ================================================================= render
 V = {"ok": ("Answered", "v-ok"), "part": ("Partly answered", "v-part"),
      "gap": ("Not answered", "v-gap"), "build": ("Needs rebuilding", "v-part")}
 
@@ -744,7 +800,7 @@ DOC = f'''<title>Report track — an honest audit of the evidence</title>
 <div class="wrap">
 <header class="mast">
 <p class="eb">Continual learning · backpropagation vs predictive coding</p>
-<h1>Nine questions, and what the evidence now says</h1>
+<h1>Nine questions, and whether the project has actually answered them</h1>
 <p class="sb">Built from the track downward, not from the figures back. Each section runs left to
 right as an argument; cards stacked in a column are a direct comparison. Every section closes with
 why its figures answer the question — or an honest account of why they do not yet.</p>
@@ -757,25 +813,12 @@ why its figures answer the question — or an honest account of why they do not 
 </header>
 
 <div class="map">
-<h3>What changed between v5 and this version</h3>
-<p class="lede"><b>R3 answered, and the answer cuts both ways.</b> Song &amp; Bogacz's target
-alignment replicates &mdash; PC aims its updates better than backprop on the batch it is training
-(+0.0245, 5.4&nbsp;sem) &mdash; and the same measurement shows it pushes the untrained task's
-outputs further away (&minus;0.0175, 3.3&nbsp;sem). The mechanism is real and it has a cost.</p>
-<p class="lede"><b>R4's pre-registered prediction is refuted.</b> Neither scenario traces a closed
-loop under repeated alternation; both converge, and they differ in where they stop. The same run
-produced the project's sharpest scenario separation: PC &minus; backprop is &minus;0.72 after one
-switch and <b>&minus;16.71 &plusmn; 2.45</b> after five, in Domain-IL only.</p>
-<p class="lede"><b>R5 changed its mind.</b> It was written around a readout account. Freezing
-exactly the weights masking spares recovers +1.87 against masking's +46.11, and the linear probe
-that appeared to show a surviving representation sits ~2.4 points above its own random-init floor.
-The observation survives; the explanation does not.</p>
 <h3>Fitting an 8,000-word budget</h3>
 <p class="lede">Written out at 150&ndash;225 words per working figure, the earlier layout came to
 roughly 26 main-text figures and would have overrun by about 40%. This version puts the setup in a
 <strong>grouped parameter table</strong> with figures as appendix evidence, merges the two
 scenario sections into one organised by tool, and demotes the added-mechanism sweeps to
-Discussion. Fifteen main-text figures; the appendix carries the rest and is meant to be
+Discussion. Sixteen main-text figures; the appendix carries the rest and is meant to be
 load-bearing, not a dumping ground.</p>
 <ol>
 <li><b>Methods &middot; approx. 1,050</b><span class="sx">M1&ndash;M3</span> &mdash; what forgetting

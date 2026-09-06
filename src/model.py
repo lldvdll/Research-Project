@@ -230,7 +230,31 @@ def resolve_freeze(p, freeze):
        ignored rather than raising, so a freeze set written for a 2-layer net is harmless on
        a deeper one."""
     named = p.named()
-    return [named[n] for n in freeze if named.get(n) is not None]
+    return [named[n] for n in freeze
+            if isinstance(n, str) and named.get(n) is not None]
+
+
+def freeze_columns(freeze):
+    """Column-freeze entries in a freeze set, as {name: [col, ...]}.
+
+    An entry is normally a NAME ("W1", "b2"), meaning hold that whole tensor still. It may
+    instead be a tuple (name, cols), meaning hold only those COLUMNS -- for a weight matrix
+    shaped [in, out], columns are output units. `freeze` is a SET, so cols must be hashable:
+    write ("W2", (0, 1, 2, 3, 4)), not a list.
+
+    Class-IL's task-1 output units are columns of W2, and freezing exactly those is what
+    separates "the task-1 readout weights are being driven down during task 2" from "freezing
+    all of W2 also blocks task 2 from learning through the readout, forcing it into W1".
+    Masking (active_vector, train-time only) spares those same weights while leaving task 2's
+    readout free, so a column freeze is the weight-space version of the same intervention and
+    the two should agree if that mechanism is what masking exploits. Script 806.
+    """
+    cols = {}
+    for entry in freeze:
+        if not isinstance(entry, str):
+            name, idx = entry
+            cols[name] = list(idx)
+    return cols
 
 
 def hidden_pre(x, p, arch):
@@ -305,5 +329,6 @@ def loss_value(out, target, obj, active_vec=None):
 
 __all__ = ["Arch", "Objective", "Params", "ACTS", "UNIFIED_ARCH", "UNIFIED_OBJ",
            "BOGACZ_ARCH", "BOGACZ_OBJ", "LEGACY_SPEC", "init_params", "flatten",
-           "hidden_pre", "forward", "hidden_code", "resolve_freeze", "make_target", "active_vector",
+           "hidden_pre", "forward", "hidden_code", "resolve_freeze", "freeze_columns",
+           "make_target", "active_vector",
            "output_error", "loss_value", "batch_scale", "replace"]

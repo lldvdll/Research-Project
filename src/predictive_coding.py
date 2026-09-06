@@ -19,7 +19,7 @@ from its feedforward value -- the quantity hypothesis H1 concerns.
 import torch
 from .model import (Arch, Objective, UNIFIED_ARCH, UNIFIED_OBJ, init_params, flatten,
                     forward, hidden_code, make_target, active_vector, output_error,
-                    batch_scale)
+                    batch_scale, freeze_columns)
 
 
 def pc_init(in_dim=196, hidden=64, out_dim=10, seed=0, device="cpu", arch=None):
@@ -158,10 +158,15 @@ def pc_update(x, y_labels, p, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, lr=0.05, dt=0.
     # one freeze set has to mean the same thing under all four rules -- otherwise a freezing
     # experiment compares two different interventions rather than two rules. The raw path here
     # used to `continue` past the whole layer, freezing b1 along with W1.
+    fcols = freeze_columns(freeze)                    # {name: cols}, usually empty
     if opt is None:                                   # raw local update, lr applied directly
         for i in range(L):
-            if f"W{i + 1}" not in freeze:
-                p.Ws[i] += lr * (acts[i].t() @ errs[i]) / scale
+            name = f"W{i + 1}"
+            if name not in freeze:
+                dW = lr * (acts[i].t() @ errs[i]) / scale
+                if name in fcols:                     # hold only these output units still
+                    dW[..., fcols[name]] = 0.0
+                p.Ws[i] += dW
             if p.bs[i] is not None and f"b{i + 1}" not in freeze:
                 p.bs[i] += lr * errs[i].sum(0) / scale
     else:                                             # identical local gradients, via torch
@@ -178,6 +183,15 @@ def pc_update(x, y_labels, p, arch=UNIFIED_ARCH, obj=UNIFIED_OBJ, lr=0.05, dt=0.
                             else -(acts[i].t() @ errs[i]) / scale)
             if p.bs[i] is not None:
                 p.bs[i].grad = torch.zeros_like(p.bs[i]) if bf else -errs[i].sum(0) / scale
+        # Column entries, applied AFTER the per-tensor grads are written and BEFORE the step,
+        # so PC honours the same freeze set as backprop instead of silently ignoring part of
+        # it. methods._apply_freeze is never called on this path -- pc_update owns the step.
+        if fcols:
+            byname = {f"W{i + 1}": p.Ws[i] for i in range(L)}
+            for name, cols in fcols.items():
+                t = byname.get(name)
+                if t is not None and t.grad is not None:
+                    t.grad[..., cols] = 0.0
         opt.step()
     if return_delta:
         out = dict(displacement=float(sum(e.abs().mean() for e in errs[:-1]) / max(1, L - 1)))

@@ -29,7 +29,8 @@ import torch
 
 from .model import (Arch, Objective, Params, UNIFIED_ARCH, UNIFIED_OBJ, LEGACY_SPEC,
                     init_params, flatten, forward, hidden_code, make_target, active_vector,
-                    output_error, loss_value, batch_scale, resolve_freeze, replace)
+                    output_error, loss_value, batch_scale, resolve_freeze, freeze_columns,
+                    replace)
 from .predictive_coding import pc_update, pc_predict, pc_settle
 from .eqprop import eqprop_update, eqprop_settle
 
@@ -85,6 +86,11 @@ def _apply_freeze(p, freeze):
     for t in resolve_freeze(p, freeze):
         if t.grad is not None:
             t.grad.zero_()
+    named = p.named()
+    for name, cols in freeze_columns(freeze).items():
+        t = named.get(name)
+        if t is not None and t.grad is not None:
+            t.grad[..., cols] = 0.0
 
 
 def _publish(handle, p, arch, obj, features, diag=None, freeze=None):

@@ -8,8 +8,11 @@ Everything needed to pick this up cold. Read `now.md` first (one screen), then t
 
 The report structure is **settled** and the figure list is **frozen**. Implementation has started.
 
-- **The track**: `report_track.md` — nine sections as Methods (M1–M3) / Results (R1–R5) /
-  Discussion (D1), costed against 8,000 words. 18 main-text figures.
+- **The track**: `report_track.md` — the **question** order, as eleven cumulative tiers. It was
+  never rewritten into section order, and an earlier version of this handover wrongly said it
+  had been. It now opens with a tier → section mapping table instead; the **section** order
+  (M1–M3 / R1–R5 / D1, 18 main-text figures, costed against 8,000 words) is authoritative in
+  `script_plan_800_900.md` and in `report/sections/*.tex`.
 - **The audit page**: <https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07>
   (versioned in `drafts/`, currently 007). Shows every figure slot, its status, and an honest
   verdict per section.
@@ -42,7 +45,8 @@ The report structure is **settled** and the figure list is **frozen**. Implement
 | **804** repeated alternation | **running** | see §5 — result contradicts the plan |
 | **805** joint→sequential | queued in chain | |
 | **806** partial-column freeze | queued in chain | smoke landed on branch 2 — see §5 |
-| **900 series** | **none written yet** | start with 911, 912, 913 — legacy arrays only |
+| **900 series** | **901, 911, 912, 913 done** | commit `0784c49`. Next: 917 (needs 804), 922 (needs 806) |
+| **LaTeX skeleton** | **done** | commit `731f90e`. Builds clean, 8 pages, live figures already in |
 
 Background job `bdd3yf7y1` runs `804 && 805 && 806`. Output:
 `…/tasks/bdd3yf7y1.output`. **Check it before doing anything else.**
@@ -125,15 +129,33 @@ Smoke: Class-IL joint-start retains 6.9 / 25.6 / 12.5 / 20.3 against scratch 1.5
 
 ## 7. Next actions, in order
 
-1. **Check `bdd3yf7y1`.** When it finishes, run `802_activation_sweep.py` (~1 h).
-2. **Write 911, 912, 913** — the three headline Results figures. They read **legacy arrays only**
-   (310/332 for 911; 340/341/342 for 912 and 913), so they need nothing that is still running.
-3. **Write 901** from `801_definitional_run.npz`, which exists now.
-4. **Write 917** from 804 and settle the spiral-versus-loop question (§5).
-5. **Write 922** from 806 and settle the masking question (§5).
-6. **LaTeX skeleton** — headings for M1–M3 / R1–R5 / D1, `figure`/`figure*` stubs pointing at
-   `report/figures/9NN_*.png`, and the Methods parameter table. Add `\usepackage{subcaption}`
-   and a `\panelwidth` length; `\singlefigure = 0.45\textwidth` already exists.
+Steps 1–3 below are **done** (commits `0784c49`, `731f90e`) and are kept so the order is legible.
+
+1. ~~Write 911, 912, 913~~ — done. Legacy arrays only; every number re-derived matches
+   `progress.md` (PC−BP +1.42 ± 0.39 Class-IL, −0.72 ± 0.19 Domain-IL; replay +9.84, +3.43).
+2. ~~Write 901~~ — done, from `801_definitional_run.npz`.
+3. ~~LaTeX skeleton~~ — done. `\graphicspath` points at `../experiments/` rather than copying
+   PNGs into `report/figures/`, so a 900 re-run updates the report with no sync step. `\fig{}`
+   draws a labelled placeholder for a figure that does not exist yet, so it builds now.
+4. **Check `bdd3yf7y1`.** When it clears, run `802_activation_sweep.py` (~1 h). Do **not** run it
+   alongside the chain — CPU contention would roughly double both.
+5. **Write 917** from 804 and settle the spiral-versus-loop question (§5).
+6. **Write 922** from 806 and settle the masking question (§5).
+7. **Write 915, 916, 923, 924** — all four read `803`, which has already run.
+
+### Figure conventions now fixed by the four that exist
+
+- A Mode B script sizes itself from `style.WIDTH["page"]` divided by the number of columns, not
+  from `half_page`. Verified saved sizes: 911 is 7.060 × 6.353 in, 912 is 7.058 × 4.048 in,
+  913a is 3.180 × 1.970 in.
+- `aspect="equal"` breaks the usual `figsize = w × ratio` arithmetic, because constrained layout
+  shrinks the axes to whatever square fits and pads the rest. 911 needed 0.90, found by measuring.
+- A figure saved at 7.06 in **cannot** go in a `figure` — it needs `figure*`. 913 is a `figure*`
+  for exactly this reason.
+- **Palette collision, not yet fixed:** `style.TASK[0]` and `style.RULE["pc"]` are the same hex
+  (`#d1682a`). In 911 orange means *task 1*; in 913 orange means *PC*. Both are correct per
+  `style.py`, but across the report it is ambiguous. Fixing it is a one-line `src/` change and
+  needs approval — it was not made silently.
 
 ## 8. Open questions for the user
 

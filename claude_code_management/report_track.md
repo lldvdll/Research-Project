@@ -4,6 +4,32 @@ The project as it would be run from a standing start, given what is now known. S
 each tier is only askable once the one above it has an answer. Tiers 1–9 are shared; tiers 10 and 11
 split the mechanism investigation by scenario, and tier 9 is where that split earns its place.
 
+## How the tiers map onto the report's sections
+
+**This document is the QUESTION order, not the section order.** The report is written as
+Methods M1–M3 / Results R1–R5 / Discussion D1 — that structure is authoritative in
+`script_plan_800_900.md` (the 900 table) and in `report/sections/*.tex`. A tier is a question;
+a section is where its answer is told. They are not one-to-one, and neither supersedes the other.
+
+| Section | Tiers it draws on | Figures |
+|---|---|---|
+| **M1** what forgetting looks like, and what is measured | 1 | 901 |
+| **M2** network, data, and the choices behind them | 4, 5 | 902–906 |
+| **M3** why the comparison stops at matched competence | 2 | 907, 908 |
+| **R1** two scenarios, two forgetting phenotypes | 3, 9 | 911 |
+| **R2** the size of the learning-rule effect | 6, 7, 8 | 912, 913, 914 |
+| **R3** testing the mechanism PC is credited with | — (new: 803) | 915, 916 |
+| **R4** what repeated alternation reveals | — (new: 804, 805) | 917–920 |
+| **R5** evidence for an output-competition component | 10, 11 | 921–926 |
+| **D1** discussion and limits | 10, 11 intervention rows | 931, 932 |
+
+Two things the tier list does not contain, because they were added after it was written:
+**R3** (target alignment and settling displacement — a direct test of Song & Bogacz's own
+credited mechanism, restored from the "deliberately out of scope" note at the foot of this file)
+and **R4** (repeated alternation and joint-then-sequential). Where this file and the section
+structure disagree about scope, the section structure is newer and wins; where they disagree
+about a NUMBER, neither wins — `progress.md` does, because it is re-derived from the arrays.
+
 **Every number here is carried from `progress.md`, which re-derived it from the saved arrays.**
 Where a tier needs something that does not exist, it says so in its Status.
 

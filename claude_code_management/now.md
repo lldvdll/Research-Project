@@ -5,18 +5,27 @@ Dashboard. Detail lives in `current_state.md`, `knowledge_base.md`, and each scr
 
 **→ Read `handover.md` (2026-09-06) before anything else. It has the full state.**
 
-**Running:** background job `bdd3yf7y1` = `804 && 805 && 806`. Check its output first.
-**Next:** (1) run 802 when the chain clears, (2) write 911/912/913 — they read legacy arrays
-only, so they need nothing that is still running, (3) write 901 from `801_definitional_run.npz`.
-**Write-up:** `report_track.md` is the frozen structure — Methods M1–M3, Results R1–R5,
-Discussion D1, 18 main-text figures against 8,000 words. `script_plan_800_900.md` is the figure
-list. `progress.md` is ground truth for any number. Everything below this line predates the
-800/900 series and is kept as source material.
+**Running:** background job `bdd3yf7y1` = `804 && 805 && 806`. 804 Class-IL is saved; Domain-IL
+was at PC seed 14/19 when last checked. Check its output first.
+**Done since the handover:** 901, 911, 912, 913 (`0784c49`) and the LaTeX skeleton (`731f90e`,
+builds clean at 8 pages with the four live figures already placed).
+**Next:** (1) run 802 when the chain clears — *not* alongside it, (2) write 915/916/923/924,
+which read 803 and it has already run, (3) write 917 from 804 and 922 from 806.
+**Write-up:** the **section** order — Methods M1–M3, Results R1–R5, Discussion D1, 18 main-text
+figures against 8,000 words — is authoritative in `script_plan_800_900.md` and
+`report/sections/*.tex`. `report_track.md` is the **question** order (eleven tiers) and now opens
+with a mapping table between the two; it was never rewritten into section order, contrary to what
+the first version of `handover.md` said. `progress.md` is ground truth for any number. Everything
+below this line predates the 800/900 series and is kept as source material.
 
-**Two live results that change plans** (detail in `handover.md` §5): 804 suggests Class-IL
-*also* converges under repeated alternation, contradicting R4's closed-loop prediction; and
-806's smoke says freezing the task-1 output columns does **not** reproduce masking, which would
-move the Class-IL mechanism out of the readout and into the trunk.
+**Two live results that change plans** (detail in `handover.md` §5): 804's block lengths
+contradict R4's closed-loop prediction — but the Domain-IL arm now shows the two scenarios
+*do* separate, just not the predicted way (Class-IL blocks collapse to ~50 updates and end
+task 1 near 43%; Domain-IL settles at ~150–200 and ends near 60–70%, with PC seeds 12/13 keeping
+long, irregular task-2 blocks up to 3870). **Judgement still held until 917 draws the
+trajectory** — block length is not trajectory contraction. And 806's smoke says freezing the
+task-1 output columns does **not** reproduce masking, which would move the Class-IL mechanism
+out of the readout and into the trunk.
 
 ---
 

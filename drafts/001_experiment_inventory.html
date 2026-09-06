@@ -1,0 +1,418 @@
+<title>Experiment inventory — what's citable</title>
+<style>
+  :root{
+    --ground:#F4F6F9; --surface:#FFFFFF; --surface-2:#EDF0F5;
+    --ink:#161A21; --ink-muted:#5A6472; --ink-faint:#8A93A1;
+    --rule:#DCE1EA; --accent:#3F5578;
+    --ok:#2E7256; --ok-bg:#E4F0EA;
+    --warn:#8A6111; --warn-bg:#F6EEDC;
+    --stop:#8E4646; --stop-bg:#F3E4E4;
+    --wait:#3D6488; --wait-bg:#E3ECF4;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0F1216; --surface:#171B21; --surface-2:#1E232B;
+      --ink:#E6EAF0; --ink-muted:#98A2B0; --ink-faint:#6C7684;
+      --rule:#272D37; --accent:#8FA6CE;
+      --ok:#63B892; --ok-bg:#152A22;
+      --warn:#CCA04A; --warn-bg:#2C2415;
+      --stop:#CB8080; --stop-bg:#2C1B1B;
+      --wait:#7CAAD2; --wait-bg:#16232E;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0F1216; --surface:#171B21; --surface-2:#1E232B;
+    --ink:#E6EAF0; --ink-muted:#98A2B0; --ink-faint:#6C7684;
+    --rule:#272D37; --accent:#8FA6CE;
+    --ok:#63B892; --ok-bg:#152A22;
+    --warn:#CCA04A; --warn-bg:#2C2415;
+    --stop:#CB8080; --stop-bg:#2C1B1B;
+    --wait:#7CAAD2; --wait-bg:#16232E;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font-family:var(--sans); font-size:15px; line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1020px; margin:0 auto; padding:44px 22px 80px;}
+
+  header{border-bottom:2px solid var(--ink); padding-bottom:18px; margin-bottom:26px;}
+  h1{font-size:26px; line-height:1.2; margin:0 0 6px; letter-spacing:-.015em; text-wrap:balance;}
+  .sub{color:var(--ink-muted); font-size:14px; margin:0; max-width:64ch;}
+
+  .tally{display:flex; flex-wrap:wrap; gap:8px; margin:22px 0 30px;}
+  .tally div{
+    flex:1 1 150px; background:var(--surface); border:1px solid var(--rule);
+    border-radius:3px; padding:11px 13px;
+  }
+  .tally b{display:block; font-family:var(--mono); font-size:23px; line-height:1.1;
+    font-variant-numeric:tabular-nums;}
+  .tally span{font-size:12px; color:var(--ink-muted); letter-spacing:.04em; text-transform:uppercase;}
+  .t-ok b{color:var(--ok);} .t-warn b{color:var(--warn);}
+  .t-wait b{color:var(--wait);} .t-stop b{color:var(--stop);}
+
+  .flag{
+    background:var(--warn-bg); border:1px solid var(--warn); border-radius:3px;
+    padding:13px 15px; margin:0 0 30px; font-size:14px;
+  }
+  .flag strong{color:var(--warn);}
+
+  section{margin-bottom:34px;}
+  .shead{display:flex; align-items:baseline; gap:11px; margin-bottom:4px;}
+  .snum{font-family:var(--mono); font-size:12px; color:var(--accent);
+    border:1px solid var(--accent); border-radius:2px; padding:1px 6px;}
+  .shead h2{font-size:17px; margin:0; letter-spacing:-.01em;}
+  .sdesc{color:var(--ink-muted); font-size:13.5px; margin:0 0 13px;}
+
+  .rows{display:flex; flex-direction:column; gap:1px; background:var(--rule);
+    border:1px solid var(--rule); border-radius:3px; overflow:hidden;}
+  .row{
+    display:grid; grid-template-columns:112px 1fr 128px; gap:14px;
+    background:var(--surface); padding:11px 14px 11px 12px;
+    border-left:3px solid var(--rule);
+  }
+  .row.ok{border-left-color:var(--ok);}
+  .row.warn{border-left-color:var(--warn);}
+  .row.wait{border-left-color:var(--wait);}
+  .row.stop{border-left-color:var(--stop);}
+
+  .id{font-family:var(--mono); font-size:13px; font-variant-numeric:tabular-nums;}
+  .id b{font-size:14.5px; display:block; color:var(--ink);}
+  .id span{color:var(--ink-faint); font-size:11.5px;}
+
+  .mid .name{font-weight:600; font-size:14px; margin-bottom:3px;}
+  .mid .note{color:var(--ink-muted); font-size:13px; margin:0;}
+  .chips{display:flex; flex-wrap:wrap; gap:5px; margin-top:6px;}
+  .chip{
+    font-family:var(--mono); font-size:11px; letter-spacing:.02em;
+    background:var(--surface-2); color:var(--ink-muted);
+    border-radius:2px; padding:1.5px 6px; white-space:nowrap;
+  }
+
+  .status{
+    font-family:var(--mono); font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+    align-self:start; text-align:center; border-radius:2px; padding:3px 7px; white-space:nowrap;
+  }
+  .s-ok{background:var(--ok-bg); color:var(--ok);}
+  .s-warn{background:var(--warn-bg); color:var(--warn);}
+  .s-wait{background:var(--wait-bg); color:var(--wait);}
+  .s-stop{background:var(--stop-bg); color:var(--stop);}
+
+  footer{border-top:1px solid var(--rule); margin-top:40px; padding-top:16px;
+    color:var(--ink-faint); font-size:12.5px;}
+
+  @media (max-width:620px){
+    .row{grid-template-columns:1fr; gap:7px;}
+    .status{justify-self:start;}
+  }
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Experiment inventory — what's citable, what isn't</h1>
+  <p class="sub">Every experiment that could go in the report, grouped by the section it belongs to.
+  Status is based on protocol provenance, verified against the saved arrays.</p>
+</header>
+
+<div class="tally">
+  <div class="t-ok"><b>28</b><span>Use as-is</span></div>
+  <div class="t-warn"><b>2</b><span>Re-run needed</span></div>
+  <div class="t-wait"><b>5</b><span>Not yet run</span></div>
+  <div class="t-stop"><b>3</b><span>Dropped</span></div>
+</div>
+
+<p class="flag"><strong>One standing caveat.</strong> Experiments 40–43 ran at backprop
+learning rate 0.05 via a silent fallback; everything from 51 onward uses the calibrated 0.01.
+Their internal comparisons are valid, but don't put their absolute numbers on the same axis
+as the rest.</p>
+
+<section>
+  <div class="shead"><span class="snum">1</span><h2>What forgetting looks like</h2></div>
+  <p class="sdesc">Backprop only. Establishes the phenomenon and that the two scenarios differ.</p>
+  <div class="rows">
+    <div class="row ok">
+      <div class="id"><b>310</b><span>seeds 10–19</span></div>
+      <div class="mid"><div class="name">Forgetting by scenario</div>
+        <p class="note">Your opening figure. Both scenarios, task 1 and task 2 against training step.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">backprop</span><span class="chip">config_300</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row stop">
+      <div class="id"><b>300</b><span>seeds 0–9</span></div>
+      <div class="mid"><div class="name">Forgetting by scenario — first block</div>
+        <p class="note">Superseded by 310 as the opening figure, because seed 9's task-1 phase was an outlier.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">backprop</span></div></div>
+      <div class="status s-stop">Superseded</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>302</b><span></span></div>
+      <div class="mid"><div class="name">Task-1 difficulty vs initialisation</div>
+        <p class="note">Justifies the seed change: seed 9's slowness reproduced across five fresh initialisations, so it is the digit split, not the init.</p>
+        <div class="chips"><span class="chip">10 splits × 5 inits</span><span class="chip">backprop</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>102</b><span></span></div>
+      <div class="mid"><div class="name">Forgetting demonstrated</div>
+        <p class="note">Qualitative 2×2 grid, scenario × rule. Purely descriptive by design — no metric computed.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">bp + PC</span><span class="chip">90% matched</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row stop">
+      <div class="id"><b>320</b><span></span></div>
+      <div class="mid"><div class="name">NCM on both tasks</div>
+        <p class="note">Dropped. 21 measured the probe against a random-init floor and found almost no dynamic range at this width, so an NCM number here can't be read as "the representation survived".</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">no floor measured</span></div></div>
+      <div class="status s-stop">Dropped</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><span class="snum">2</span><h2>Predictive coding</h2></div>
+  <p class="sdesc">Introduces the rule and establishes the implementation settles. This is your thinnest section.</p>
+  <div class="rows">
+    <div class="row ok">
+      <div class="id"><b>334</b><span></span></div>
+      <div class="mid"><div class="name">Settle trace across dt</div>
+        <p class="note">Every dt up to 0.5 reaches the identical fixed point; 0.7 and above land somewhere else. dt changes the route, not the destination.</p>
+        <div class="chips"><span class="chip">3 seeds</span><span class="chip">PC only</span><span class="chip">both scenarios</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>333</b><span></span></div>
+      <div class="mid"><div class="name">Settle criterion check</div>
+        <p class="note">Every settle step logged at five points through a real run.</p>
+        <div class="chips"><span class="chip">3 seeds</span><span class="chip">PC only</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>50 · 63</b><span>supporting</span></div>
+      <div class="mid"><div class="name">Settling converges · inference rule matches</div>
+        <p class="note">PC needs at most 18 settle steps and runs 50; its inference rule is numerically identical to the source paper's. Together these close the "PC here is just truncated backprop" objection.</p>
+        <div class="chips"><span class="chip">3 seeds</span><span class="chip">methods</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row wait">
+      <div class="id"><b>330</b><span></span></div>
+      <div class="mid"><div class="name">dt sweep — accuracy and settle counts</div>
+        <p class="note">Currently running.</p>
+        <div class="chips"><span class="chip">PC only</span></div></div>
+      <div class="status s-wait">Running</div>
+    </div>
+    <div class="row wait">
+      <div class="id"><b>331</b><span></span></div>
+      <div class="mid"><div class="name">Settle-steps sweep</div>
+        <p class="note">Does truncating settling cost accuracy. Waiting on 330.</p>
+        <div class="chips"><span class="chip">PC only</span></div></div>
+      <div class="status s-wait">Not run</div>
+    </div>
+    <div class="row wait">
+      <div class="id"><b>332</b><span></span></div>
+      <div class="mid"><div class="name">PC forgetting by scenario</div>
+        <p class="note">An exact copy of 310 with the method swapped. Without it this section has no forgetting result — it's the direct partner to your opening figure.</p>
+        <div class="chips"><span class="chip">PC only</span><span class="chip">config_300</span></div></div>
+      <div class="status s-wait">Not run</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><span class="snum">3</span><h2>Comparison and metrics</h2></div>
+  <p class="sdesc">Complete. Nothing here needs data. This is the section to write first.</p>
+  <div class="rows">
+    <div class="row ok">
+      <div class="id"><b>112</b><span></span></div>
+      <div class="mid"><div class="name">Which metric survives</div>
+        <p class="note">The decisive figure. Five metrics across five stopping points; every endpoint measure flips sign, crossover and its peak-normalised form hold at two standard errors.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">bp + PC</span><span class="chip">5 thresholds</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>113</b><span></span></div>
+      <div class="mid"><div class="name">Why the metrics move</div>
+        <p class="note">Your "why" figure, already drawn: metric curves above, trajectory thumbnails below showing task 1's own peak moving as the stopping point moves.</p>
+        <div class="chips"><span class="chip">re-analysis</span><span class="chip">no training</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>111</b><span></span></div>
+      <div class="mid"><div class="name">Metric sensitivity to threshold</div>
+        <p class="note">Cleaner of the two sweeps — almost no censoring.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">backprop</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>110</b><span></span></div>
+      <div class="mid"><div class="name">Metric sensitivity to budget</div>
+        <p class="note">Usable, with one caveat to state: the smallest-budget points are censored subsets of four to six seeds, not ten.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">backprop</span><span class="chip">censoring caveat</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>52 · 53</b><span>Domain-IL</span></div>
+      <div class="mid"><div class="name">Rule comparison — fixed budget and matched competence</div>
+        <p class="note">Cite the backprop and PC arms only. At fixed budget, note that the memory-based control also learns task 2 less well; matched competence removes that.</p>
+        <div class="chips"><span class="chip">5 seeds</span><span class="chip">calibrated lr</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>56 · 57</b><span>Class-IL</span></div>
+      <div class="mid"><div class="name">Rule comparison — both readings</div>
+        <p class="note">PC's only positive result, present in both readings and confirmed at ten seeds by 112.</p>
+        <div class="chips"><span class="chip">5 seeds</span><span class="chip">calibrated lr</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>51</b><span>methods</span></div>
+      <div class="mid"><div class="name">Learning-rate calibration</div>
+        <p class="note">Rules matched on task-1 learning speed, never on the crossover, so the calibration can't be tuned on the dependent variable.</p>
+        <div class="chips"><span class="chip">3 seeds</span><span class="chip">methods</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><span class="snum">4</span><h2>Where the difference lives</h2></div>
+  <p class="sdesc">Your mechanism section. Two of the analyses your advisor liked sit on the older protocol.</p>
+  <div class="rows">
+    <div class="row ok">
+      <div class="id"><b>130</b><span></span></div>
+      <div class="mid"><div class="name">Freeze factorial</div>
+        <p class="note">Carries the "where does forgetting live" claim on its own, without a representation probe. Freezing the output layer recovers nothing, in either scenario.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">bp + PC</span><span class="chip">report protocol</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row warn">
+      <div class="id"><b>65</b><span></span></div>
+      <div class="mid"><div class="name">Synaptic path efficiency</div>
+        <p class="note">Advisor-approved, and it works as a figure — distance travelled against distance achieved, per layer. But it's five seeds, four rules, pre-report protocol.</p>
+        <div class="chips"><span class="chip">5 seeds</span><span class="chip">4 rules</span><span class="chip">old protocol</span></div></div>
+      <div class="status s-warn">Re-run</div>
+    </div>
+    <div class="row warn">
+      <div class="id"><b>64</b><span></span></div>
+      <div class="mid"><div class="name">Target alignment and interference</div>
+        <p class="note">Advisor-approved. Tests the mechanism the source literature credits, and finds it doesn't track forgetting. Same protocol problem as 65.</p>
+        <div class="chips"><span class="chip">5 seeds</span><span class="chip">4 rules</span><span class="chip">old protocol</span></div></div>
+      <div class="status s-warn">Re-run</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>54 · 55</b><span>supporting</span></div>
+      <div class="mid"><div class="name">Update divergence by layer</div>
+        <p class="note">Shows PC's update matches backprop at the input and diverges toward the output, at every depth. Establishes the rules genuinely differ, and where.</p>
+        <div class="chips"><span class="chip">3 seeds</span><span class="chip">supporting</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>66</b><span>optional</span></div>
+      <div class="mid"><div class="name">Weight route by scenario</div>
+        <p class="note">PC's output-layer advantage is roughly twice as large in the scenario where it wins nothing. Useful, but optional — same protocol caveat as 64/65.</p>
+        <div class="chips"><span class="chip">5 seeds</span><span class="chip">4 rules</span></div></div>
+      <div class="status s-ok">Optional</div>
+    </div>
+    <div class="row stop">
+      <div class="id"><b>131</b><span></span></div>
+      <div class="mid"><div class="name">NCM vs argmax</div>
+        <p class="note">Dropped for the same reason as 320 — no random-init floor, and 21 shows the probe has no dynamic range at this width.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">no floor measured</span></div></div>
+      <div class="status s-stop">Dropped</div>
+    </div>
+    <div class="row wait">
+      <div class="id"><b>67</b><span></span></div>
+      <div class="mid"><div class="name">Where PC's Class-IL advantage comes from</div>
+        <p class="note">The only unrun experiment that would turn this section from "every explanation we tested failed" into an answer. Optional — the section stands without it as a negative result.</p>
+        <div class="chips"><span class="chip">smoke-tested only</span></div></div>
+      <div class="status s-wait">Not run</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><span class="snum">5</span><h2>Robustness of the result</h2></div>
+  <p class="sdesc">One section that absorbs every "but what about…". All existing data, no new runs.</p>
+  <div class="rows">
+    <div class="row ok">
+      <div class="id"><b>59</b><span></span></div>
+      <div class="mid"><div class="name">Depth × width</div>
+        <p class="note">Four depths by two widths. PC failed to separate in all eight cells; the memory-based control separated in all eight. This is the generalisation argument.</p>
+        <div class="chips"><span class="chip">5 seeds</span><span class="chip">8 cells</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>74</b><span></span></div>
+      <div class="mid"><div class="name">Depth under three metrics</div>
+        <p class="note">Same factorial, all three metrics from the same runs. Its crossover column reproduces 59 exactly, so cite it for the other two metrics.</p>
+        <div class="chips"><span class="chip">5 seeds</span><span class="chip">bp + PC</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>23</b><span>limitations</span></div>
+      <div class="mid"><div class="name">Dataset × width</div>
+        <p class="note">Your input-resolution answer. A harder dataset made the freeze-trunk gap smaller, not larger — making the input harder did not shift forgetting to the trunk.</p>
+        <div class="chips"><span class="chip">old protocol</span><span class="chip">limitations only</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>21</b><span>methods</span></div>
+      <div class="mid"><div class="name">Width sweep with random-init floor</div>
+        <p class="note">The justification for dropping NCM: at your width, training moves nearest-class-mean accuracy by under two points above an untrained network.</p>
+        <div class="chips"><span class="chip">old protocol</span><span class="chip">methods</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>100 · 101</b><span>methods</span></div>
+      <div class="mid"><div class="name">Capacity · problem complexity</div>
+        <p class="note">Width chosen on measured convergence, and a frozen random trunk falls well short of a trained one — so the hidden layer does real work even though NCM can't see it.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">calibrated lr</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="shead"><span class="snum">6</span><h2>What does work</h2></div>
+  <p class="sdesc">The counterpoint: if a better rule doesn't fix forgetting, does an added mechanism?</p>
+  <div class="rows">
+    <div class="row ok">
+      <div class="id"><b>200</b><span></span></div>
+      <div class="mid"><div class="name">EWC penalty sweep</div>
+        <p class="note">Small gains, and the grid is still rising at its top end.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">bp + PC</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>210</b><span></span></div>
+      <div class="mid"><div class="name">SI penalty sweep</div>
+        <p class="note">Small gains, then a cliff: past a threshold the penalty deadlocks learning. Report the censoring rather than the mean — the high-penalty cells rest on one to three seeds.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">censoring caveat</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row ok">
+      <div class="id"><b>220</b><span></span></div>
+      <div class="mid"><div class="name">k-WTA gating sweep</div>
+        <p class="note">Clean throughout, ten of ten seeds in every cell. Gating harms retention, and harms PC several times more than backprop.</p>
+        <div class="chips"><span class="chip">10 seeds</span><span class="chip">bp + PC</span></div></div>
+      <div class="status s-ok">Use as-is</div>
+    </div>
+    <div class="row wait">
+      <div class="id"><b>230</b><span></span></div>
+      <div class="mid"><div class="name">Head-to-head at each optimum</div>
+        <p class="note">Smoke-tested only. Optional — the three sweeps above already carry the section.</p>
+        <div class="chips"><span class="chip">smoke only</span></div></div>
+      <div class="status s-wait">Not run</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Provenance verified against the saved arrays. Seed counts, rule sets and learning rates read
+  from each experiment's own <span style="font-family:var(--mono)">.npz</span> or from the script
+  as it stood at the commit that produced it.
+</footer>
+</div>

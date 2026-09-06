@@ -1,0 +1,108 @@
+# ============================================================================
+# 800-series experiment configuration -- the final report runs.
+#
+# Every field is an explicit choice. Nothing is inherited from src/protocol.py's Protocol
+# defaults; scripts load this file and pass every value through by name. A script that needs to
+# deviate overrides that ONE field locally and says so in its own docstring.
+#
+# Descended from config_300.yaml. Where the two differ the difference is justified below -- do
+# not assume a value carried over unchanged.
+#
+# Plot colours, fonts and panel sizes are NOT here. They live in src/style.py, shared by the
+# whole 900 series, so a presentation change is one edit and no experiment is touched.
+# ============================================================================
+
+data:
+  img_size: 14                    # MNIST downsampled -> 196 inputs
+  n_tasks: 2
+  classes_per_task: 5             # 2x5 split
+  fashion: false
+  scenarios:
+    - class_il                    # 10 output units (5 old + 5 new); suppression is AVAILABLE
+    - domain_il                   # 5 shared units; suppression is STRUCTURALLY IMPOSSIBLE
+
+architecture:
+  # H = 32 from script 100 on capacity grounds: joint accuracy 84.1 (H=8) -> 89.7 (H=32) ->
+  # 90.3 (H=64), so 32 is clear of the bottleneck and flat above it. H=4 and H=8 ARE capacity
+  # limited, which is why 341's H=4 reversal is a capacity effect and not a rule effect.
+  hidden: 32
+  n_layers: 1
+  activation: tanh                # INHERITED, NOT JUSTIFIED. Song & Bogacz use sigmoid. Script
+                                  # 802 tests tanh/sigmoid/relu; until it runs this is a
+                                  # declared limitation, not a controlled choice.
+  bias: true
+  init: scaled_normal
+
+output_layer:
+  loss: mse
+  target: onehot
+  # Justified by insensitivity rather than preference: 120 shows the spec sets the MAGNITUDE of
+  # Class-IL suppression (ce 49.94 < hinge 54.76 < mse 59.31) but masking removes it under all
+  # three, so the conclusion does not depend on which is chosen.
+  mask: false                     # masking is a per-experiment intervention, never a default
+  reduction: mean
+
+training:
+  optimizer: sgd                  # plain SGD. NOTE make_pc leaves opt=None for "sgd" and applies
+                                  # lr directly -- that raw path is the default, not a fallback.
+  batch_size: 32
+  learning_rate:
+    # CHANGED from config_300.yaml: backprop 0.01 -> 0.02, so both rules share one value.
+    # 314 is the licence -- an exact copy of 310 at backprop lr=0.02, paired on the same seeds:
+    # retention -0.63 +- 0.89 (Class-IL) and -0.89 +- 0.32 (Domain-IL), crossover +0.16 and
+    # -0.17, all p > 0.34. And 340 shows both rules peak near 0.01-0.02 and decline past it, so
+    # this sits close to jointly optimal rather than favouring either rule. 310/332 were NOT
+    # rebuilt and are still cited at backprop 0.01; 314 is the standing proof that is safe.
+    backprop: 0.02
+    pc: 0.02
+    # replay is deliberately absent. No 800-series run trains it -- it reaches the report only
+    # through 340/341/342's saved arrays, where it was swept on the same absolute grid as the
+    # other two rules. A value here would invite a replay run that has not been designed.
+  stop_threshold: 0.90            # matched competence, BOTH tasks
+  stop_patience: 3
+  max_iters_per_task: 5000        # cap only -- how often it is hit must always be reported
+  seeds: 10
+  seed_start: 10                  # seeds 10-19. Seed 9 of the 0-9 block is an intrinsic
+                                  # digit-set outlier (302: 2830-4700 steps across five fresh
+                                  # initialisations), so that block is not used for new work.
+
+predictive_coding:
+  # Two settle controls, and mixing them up invalidates a run.
+  dt: 0.4                         # H=32, depth=1 -- everywhere except a width/depth sweep.
+                                  # 330: settle steps fall 71.2 -> 8.5 from dt 0.02 to 0.4 with
+                                  # every accuracy and forgetting metric flat. 334: dt <= 0.5
+                                  # all reach the same plateau, so dt changes the route and not
+                                  # the fixed point.
+  dt_varying_arch: 0.2            # USE THIS whenever width or depth moves off 32/1. 346/347:
+                                  # dt=0.4 OSCILLATES at depth >= 2 and at Class-IL H=4, with
+                                  # the oscillation centred 3-7x above the true fixed point --
+                                  # a qualitatively wrong state, not overshoot. dt=0.2 is the
+                                  # only value confirmed stable at every depth 1-4 AND at H=4.
+  stop_delta: 1.0e-4              # settling stops itself once |delta displacement| stays below
+  stop_patience: 3                # this, for this many consecutive steps
+  settle_step_cap: 100            # a cap, not a fixed cost: 330 measures ~8.5 steps at dt=0.4
+
+evaluation:
+  # 300/class per disjoint eval set. Raised from 100 in the 300 series: at 90% accuracy the SEM
+  # on a 5-class average falls from ~1.3pp (n=500) to ~0.8pp (n=1500), which was the source of
+  # the final-point scatter seen in the first 300-series run.
+  eval_per_class: 300
+  eval_every: 10                  # steps between STOP-CHECKS
+  log_every: 10                   # steps between logged points on the reported curve
+  device: cpu
+
+mechanism:
+  # Instrumentation for script 803. These cost memory, not correctness, so they are configured
+  # here rather than hard-coded -- a checkpoint count that is fine on one machine may not be on
+  # another.
+  checkpoints: 20                 # weight snapshots and probe refits per run. Storing raw hidden
+                                  # codes at every checkpoint would run to hundreds of MB, so the
+                                  # probe is fitted ONLINE and only its accuracy is kept.
+  alignment_every: 5              # measure target alignment on every k-th update. It is averaged
+                                  # over many updates, so subsampling costs precision in the mean
+                                  # and nothing else.
+  probe_ridge: 1.0e-3
+  probe_floor: true               # ALSO fit the probe on an UNTRAINED network of the same seed
+                                  # and architecture. Measured at H=32 the probe reads 81.8% at
+                                  # init against 86.2% after task 1, so without the floor drawn
+                                  # beside it the probe over-claims exactly as NCM did.

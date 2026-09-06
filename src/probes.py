@@ -143,6 +143,58 @@ def code_drift(before, after):
     return dict(cosine=cos, rel_l2=rel)
 
 
+def linear_probe_fn(features_fn, fit_x, fit_y, n_classes, ridge=1e-3):
+    """predict-like fn from a linear readout REFIT on the CURRENT hidden code.
+
+    NCM asks whether the class MEANS are still separated -- a first-order, centroid-only
+    question with almost no dynamic range. Script 21 puts frozen NCM at 69.9% at H=32 against
+    an 81.2% raw-pixel baseline, while 101 shows the trained representation is worth ~12
+    points, so most of what training does to the code is invisible to it. This asks the
+    question that actually separates the two readings of Class-IL forgetting:
+
+        probe HIGH, argmax LOW    the code is intact; the OUTPUT LAYER has been recalibrated
+        probe LOW,  argmax LOW    the code itself is gone
+
+    Closed-form ridge regression on one-hot targets. Deterministic, no learning rate of its own
+    to confound the rule comparison, no iteration count to tune, and cheap enough to refit at
+    every checkpoint of a run -- which matters, because the point is to watch the gap OPEN as
+    task 2 trains, not to read it once at the end.
+
+    FIT ON A SET THE NETWORK IS NOT BEING EVALUATED ON. This measures what is decodable from
+    the representation, so fitting and scoring on the same images would report the probe's
+    capacity to memorise rather than the code's structure.
+
+    ALWAYS REPORT THE RANDOM-INIT FLOOR ALONGSIDE IT. This probe is stronger than NCM but it
+    is not free of NCM's problem, only further from it. Measured at H=32, Class-IL, task-1
+    classes: on an UNTRAINED network the probe already reads 81.8% (NCM 69.0, argmax 12.2),
+    and after task 1 it reads 86.2%. The whole dynamic range attributable to training the
+    trunk is therefore about 4 points. A post-task-2 reading of ~80% would not show a
+    surviving trained code -- it would show that a random projection of 14x14 MNIST is nearly
+    linearly separable, which it is. The floor costs nothing to measure (same probe, same fit
+    set, same seed, no training) and without it on the figure the probe over-claims exactly
+    as NCM did.
+
+    Returns fn(x) -> labels (raw=True gives the pre-argmax scores), so it drops straight into
+    run_classil(readouts={"argmax": predict, "probe": probe_fn}).
+    """
+    with torch.no_grad():
+        H = features_fn(fit_x).detach()
+        H = torch.cat([H, torch.ones(H.size(0), 1, device=H.device, dtype=H.dtype)], 1)
+        Y = torch.zeros(H.size(0), n_classes, device=H.device, dtype=H.dtype)
+        Y[torch.arange(H.size(0)), fit_y.to(H.device).long()] = 1.0
+        A = H.t() @ H + ridge * torch.eye(H.size(1), device=H.device, dtype=H.dtype)
+        W = torch.linalg.solve(A, H.t() @ Y)
+
+    def predict(x, raw=False):
+        with torch.no_grad():
+            h = features_fn(x).detach()
+            h = torch.cat([h, torch.ones(h.size(0), 1, device=h.device, dtype=h.dtype)], 1)
+            out = h @ W
+        return out if raw else out.argmax(1)
+
+    return predict
+
+
 def saturation(features_fn, x, thresh=0.95):
     """Fraction of hidden units with |activation| above `thresh`. EqProp's main failure mode:
        once tanh flattens, f'(h) -> 0 and the nudge can no longer reach the hidden layer."""

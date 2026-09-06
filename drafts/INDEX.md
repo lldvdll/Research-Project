@@ -28,6 +28,7 @@ alone; it is ~50 KB and reproduces the page exactly.
 | 003 | *not retained* | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | — | First report-track audit: **11 tiers**, 40 figure slots, `minmax` figure grid. Overwritten in place by 004 before it was copied here — recorded so the sequence does not silently skip. |
 | 004 | `004_report_track_v2.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 003 | Report-track audit, **9 sections**, 39 slots, 11 to build. Column grid: story runs left→right, stacked cards are direct comparisons. |
 | 005 | `005_report_track_v3.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 004 | **10 sections**, 43 slots, 13 to build, each build tagged P1/P2/P3. Adds §6 on prospective configuration, a band mapping the audit onto six Results chapters, and the partial-freeze diagnostic. |
+| 006 | `006_report_track_v4.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 005 | **9 sections**, 44 slots, 15 to build. Target alignment restored, weight-space PCA and joint-pretraining added, §2 reordered generic→specific with the metric as its climax, settling cut from four figures to two. |
 
 ## What changed at 004
 
@@ -79,6 +80,50 @@ Rejected from the review: nothing outright, but the suggestion to compress to si
 applied as a **mapping** rather than a restructure — ten questions is the right granularity for
 deciding what to build, six is the right granularity for a dissertation, and the page is the
 former.
+
+## What changed at 006
+
+1. **Target alignment was missing and should never have been.** It is Song & Bogacz's *own*
+   credited mechanism, so a report comparing PC to backprop cannot omit a direct test of it —
+   whichever way it falls. It was filed as an appendix negative on the grounds that it "doesn't
+   track forgetting"; that is the result, not a reason to hide it. Now the opening card of §5,
+   marked re-run (the existing measurement is 5 seeds across four rules, pre-300).
+
+2. **Weight-space PCA added to §6.** Accuracy can look settled while parameters wander, so the
+   PCA of the weight trajectory under repeated alternation is the stronger version of the
+   spiral-versus-loop panel: are weight groupings converging, orbiting, or drifting? 68 already
+   stores the full W1 trajectory (600 × 6272 = 196×32, seed 0), so the Domain-IL W1 panel is
+   computable from saved arrays today.
+
+3. **Joint-then-sequential added to §6.** Train on the joint distribution first, then run the
+   sequential protocol from there. If a network that already solves both tasks still collapses on
+   task 1, forgetting is not a failure to *find* a joint solution but a failure to *stay* in one.
+   That reframes the whole localisation question as parameter organisation rather than layer
+   location, and it pairs with the PCA panel — does joint initialisation turn the Class-IL loop
+   into a spiral?
+
+4. **§2 reordered** generic → forgetting-specific: architecture, specification, PC's own control,
+   statistics, then the metric. The metric column is last and visually flagged, because it is the
+   most forgetting-specific decision in the report and everything downstream rests on it. In 005
+   it had drifted into the middle of the section.
+
+5. **Settling cut from four figures to two** and demoted from its own section into one column of
+   §2. The cost curve (330) is appendix tuning detail; the displacement magnitude (346) is
+   mechanism and moved to §5. Section count 10 → 9.
+
+## Section map of 006
+
+| § | Question | Verdict |
+|---|---|---|
+| 1 | What does forgetting look like? | needs rebuilding |
+| 2 | The setup, and why each choice was made | partly |
+| 3 | Does each rule forget, and does it look the same in each scenario? | answered |
+| 4 | Which rule is better, and is that stable? | partly |
+| 5 | Is the difference actually caused by prospective configuration? | not answered |
+| 6 | Why are these two investigations, not one? | not answered |
+| 7 | Class-IL — evidence for an output-competition component | not answered |
+| 8 | Domain-IL — evidence for a representation-dependent failure | not answered |
+| 9 | What actually helps? | partly |
 
 ## Section map of 005
 

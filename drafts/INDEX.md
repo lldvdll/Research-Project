@@ -30,6 +30,7 @@ alone; it is ~50 KB and reproduces the page exactly.
 | 005 | `005_report_track_v3.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 004 | **10 sections**, 43 slots, 13 to build, each build tagged P1/P2/P3. Adds §6 on prospective configuration, a band mapping the audit onto six Results chapters, and the partial-freeze diagnostic. |
 | 006 | `006_report_track_v4.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 005 | **9 sections**, 44 slots, 15 to build. Target alignment restored, weight-space PCA and joint-pretraining added, §2 reordered generic→specific with the metric as its climax, settling cut from four figures to two. |
 | 007 | `007_report_track_v5.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 006 | Restructured as **Methods / Results / Discussion** and costed against an 8,000-word budget. 15 main-text figures. Setup becomes a parameter table; the two scenario sections merge into one organised by tool; added-mechanism sweeps demoted to Discussion. |
+| 008 | `008_report_track_v6.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 007 | **The evidence version.** Same nine sections; the built 900-series figures replace the sketches and every verdict is re-derived from the runs. 31 cards, 6 still to build, **0 sections unanswered** (007 had three). Three findings changed the story rather than filling it in — see below. |
 
 ## What changed at 004
 
@@ -197,3 +198,38 @@ runs that already exist rather than new experiments.
 
 Related: the track itself is `claude_code_management/report_track.md`; the verified experiment
 index is `claude_code_management/progress.md`.
+
+## What changed at 008 — three findings, not three figures
+
+008 is the first version where the verdicts come from runs rather than predictions, and three of
+them moved the argument rather than confirming it. All three are recorded here because a later
+reader will otherwise assume the plan was borne out.
+
+1. **R3's mechanism replicates, and the replication is what indicts it.** Song & Bogacz's target
+   alignment is higher for PC on the batch being trained (paired +0.0245 ± 0.0046, 5.4 sem,
+   Class-IL) — their claim holds on our networks. Measured on a fixed task-1 batch during task 2,
+   PC is *more* negative than backprop (−0.0175 ± 0.0053, 3.3 sem): the prospective configuration
+   that helps the current task pushes the other task's outputs further away. An earlier draft had
+   excluded alignment as an appendix negative; a negative result on the mechanism a paper credits
+   is a result about that paper.
+
+2. **R4's pre-registered prediction is refuted.** The plan predicted Class-IL would trace a closed
+   loop under repeated alternation while Domain-IL spiralled in. Neither loops — both converge,
+   and differ in where they stop (Class-IL plateaus near 35%, Domain-IL still climbing at 63%).
+   The same run produced the project's sharpest scenario separation: PC − backprop is −0.72 ± 0.19
+   after one switch and **−16.71 ± 2.45 (6.8 sem)** after five, in Domain-IL only. A two-task
+   protocol understates it by more than twenty times.
+
+3. **R5 changed its mind, and the section is stronger for saying so.** It was built on a readout
+   account — the code survives, argmax misreads it, protect the readout and retention returns.
+   806 shows freezing exactly the weights masking spares recovers +1.87 ± 1.03 against masking's
+   +46.11 ± 4.52, and the two interventions do not even act at the same point of the curve
+   (freezing moves the crossing, masking moves the endpoint). Independently, 923's probe reads
+   82.6% on task-1 classes where argmax reads 21.1 — but **80.2% on the untrained network**, so
+   ~2.4 points are attributable to training. The observation survives; the explanation does not.
+
+Two defects in the 800 arrays were found while building these and are recorded rather than worked
+around: 803 takes 2–5 checkpoints per run instead of ~20 (its interval divides the budget, not the
+run), so 923 understates the end-of-training gap; and 805's joint-arm accuracy *curves* were lost
+to a key collision, leaving only its endpoint scalars. Neither invalidates a result; both make one
+weaker than it needs to be.

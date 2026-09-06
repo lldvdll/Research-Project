@@ -29,6 +29,7 @@ alone; it is ~50 KB and reproduces the page exactly.
 | 004 | `004_report_track_v2.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 003 | Report-track audit, **9 sections**, 39 slots, 11 to build. Column grid: story runs left→right, stacked cards are direct comparisons. |
 | 005 | `005_report_track_v3.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 004 | **10 sections**, 43 slots, 13 to build, each build tagged P1/P2/P3. Adds §6 on prospective configuration, a band mapping the audit onto six Results chapters, and the partial-freeze diagnostic. |
 | 006 | `006_report_track_v4.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 005 | **9 sections**, 44 slots, 15 to build. Target alignment restored, weight-space PCA and joint-pretraining added, §2 reordered generic→specific with the metric as its climax, settling cut from four figures to two. |
+| 007 | `007_report_track_v5.html` | 2026-09-06 | [10978e55](https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07) | 006 | Restructured as **Methods / Results / Discussion** and costed against an 8,000-word budget. 15 main-text figures. Setup becomes a parameter table; the two scenario sections merge into one organised by tool; added-mechanism sweeps demoted to Discussion. |
 
 ## What changed at 004
 
@@ -110,6 +111,55 @@ former.
 5. **Settling cut from four figures to two** and demoted from its own section into one column of
    §2. The cost curve (330) is appendix tuning detail; the displacement magnitude (346) is
    mechanism and moved to §5. Section count 10 → 9.
+
+## What changed at 007
+
+The trigger was a word-budget check. Written out at 150–225 words per working figure, 006's layout
+came to ~26 main-text figures against a Results allowance of ~3,000 words — an overrun of roughly
+40%. Five structural changes bring it to 15.
+
+1. **The setup becomes a grouped parameter table** with figures as appendix evidence rather than
+   six main-text figures each costing ~150 words to explain. Largest single saving.
+
+2. **The two scenario sections merge into one, organised by tool rather than by scenario** (R5).
+   Two sections that both ended in "we don't know" made a weak back half; by tool, the scenario
+   contrast becomes the point of each figure instead of the section boundary.
+
+3. **Added mechanisms demoted to Discussion** as a preliminary evaluation — but split by evidence
+   quality, not wholesale. Replay, masking and freezing are results-grade at 10 seeds under the
+   current protocol and stay in R2 and R5. **EWC, SI and k-WTA** go to Discussion: EWC's λ grid
+   never bracketed its optimum, and 230's head-to-head was only smoke-tested.
+
+4. **Replay stays in Results.** Moving it to the intervention section, and that section to
+   Discussion, would leave the reader finishing the headline without knowing whether +1.42 is
+   large. The scale belongs where the claim is made; the full ranking is Discussion.
+
+5. **112 goes to appendix, not Methods.** It is inherently a paired PC−backprop figure, so placing
+   it in Methods would show a rule-comparison result before the rule comparison exists — exactly
+   the circularity removed at 004.
+
+Also: every section now carries an explicit word and figure cost, and the page is banded into
+Methods / Results / Discussion.
+
+**Open question that changes the arithmetic:** whether captions count against the 8,000. If they
+do not, a caption can carry ~100 words of "what was done / what it shows" per figure, and several
+of the appendix demotions above become unnecessary. Worth settling before the 800 list is frozen.
+
+## Section map of 007
+
+| Part | § | Question | Verdict |
+|---|---|---|---|
+| Methods | M1 | What does forgetting look like? | needs rebuilding |
+| Methods | M2 | The setup — parameter table, figures as supporting evidence | partly |
+| Methods | M3 | How forgetting is measured, and why that metric | answered |
+| Results | R1 | Two forgetting phenotypes | answered |
+| Results | R2 | The rule comparison — small, systematic, scenario-dependent | partly |
+| Results | R3 | Does prospective configuration explain the difference? | not answered |
+| Results | R4 | Why these are two investigations, not one | not answered |
+| Results | R5 | Where does the damage live? | not answered |
+| Discussion | D1 | Added mechanisms — a preliminary evaluation | partly |
+
+Methods ≈ 1,050 words · Results ≈ 3,000 · Discussion contribution ≈ 300.
 
 ## Section map of 006
 

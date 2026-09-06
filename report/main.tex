@@ -23,6 +23,12 @@
 \usepackage{xcolor}
 \usepackage{xfrac}
 \usepackage{cleveref}
+\usepackage{subcaption}   % 900-series Mode A: one PNG per result, composed here
+
+% The 900 scripts write their PNG beside themselves, as CLAUDE.md requires. Including them from
+% there rather than copying into figures/ means a re-run updates the report with no sync step,
+% and there is never a stale duplicate to tell apart from the live one.
+\graphicspath{{figures/}{../experiments/}}
 
 % Commenting commands
 
@@ -32,7 +38,31 @@
 
 % Custom Commands
 \newcommand{\singlefigure}{0.45\textwidth}
-\newcommand{\wordcount}[1]{\textcolor{red}{\textbf{<write \sim#1 words>}}}
+
+% Width of ONE panel of a Mode A group composed with subfigure. The 900 scripts save at final
+% physical size (src/style.py), so every \includegraphics below is included at its natural width
+% with NO scale factor -- scaling an image scales its fonts with it, and an 8pt axis label
+% included at 0.9 lands as 7.2pt. If a figure does not fit, change the figsize in the 900 script
+% and re-run it; do not scale it here.
+\newlength{\panelwidth}
+\setlength{\panelwidth}{0.48\textwidth}
+
+% \fig{901_name.png} -- include the 900-series figure if it has been generated, otherwise draw a
+% labelled placeholder. Without this the skeleton does not compile until every one of the 18
+% main-text figures exists, which would mean no readable draft for weeks. \IfFileExists does not
+% consult \graphicspath, so the path is spelled out.
+% \detokenize is required: every 900 filename contains underscores, which are subscript
+% operators in text mode, so a bare \texttt{#1} fails to compile on exactly the figures that do
+% not exist yet.
+\newcommand{\fig}[1]{%
+  \IfFileExists{../experiments/#1}%
+    {\includegraphics{#1}}%
+    {\fbox{\parbox[c][0.16\textheight][c]{0.92\linewidth}{\centering
+       \textcolor{orange}{\texttt{\detokenize{#1}} --- not generated yet}}}}%
+}
+% \sim is math-only and < > are not literal in text mode, so the original form of this macro
+% failed to compile the moment anything used it.
+\newcommand{\wordcount}[1]{\textcolor{red}{\textbf{[write ${\sim}$#1 words]}}}
 \newcommand{\gap}[1]{\textit{\textcolor{orange}{[gap: #1]}}}
 
 

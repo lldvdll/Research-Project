@@ -1,114 +1,216 @@
+% ======================================================================================
+% RESULTS -- R1..R5.  Budget ~3000 words across 14 main-text figures, ~215 words each.
+%
+% Section titles are deliberately NOT claims. An earlier draft called R5 "a representation
+% problem"; the evidence supports "a representation-DEPENDENT failure", which is weaker and is
+% what the titles below say. Do not strengthen a heading without a figure that carries it.
+% ======================================================================================
+
 \section{Results}
 \label{sec:results}
 
-\subsection{Is the Configuration Valid for Drawing Conclusions?}
+% --------------------------------------------------------------------- R1
+\subsection{Two scenarios, two forgetting phenotypes}
+\label{sec:r1}
 
-\subsubsection{Network Capacity}
-\wordcount{200}
-\begin{itemize}
-    \item Hidden width 32 is the smallest width that reaches the joint (no-forgetting) accuracy ceiling in both scenarios, and is used throughout the rest of this report.
-    \item The joint ceiling itself, not 100\%, is the benchmark retention is read against.
-    \item This ceiling measurement is not yet fully converged at long training budgets; treat it as a lower bound pending a longer rerun.
-\end{itemize}
-\begin{figure}[H]
+\wordcount{450}
+% Fig.~\ref{fig:911} is the hinge of the whole report: it is the evidence for splitting the
+% mechanism investigation by SCENARIO rather than by RULE. Read the columns first (they
+% differ), then the rows (they barely do).
+%
+% Numbers, all ten seeds, matched competence, re-derived from the saved arrays:
+%   final task 1     Class-IL  5.4    Domain-IL 38.5
+%   crossover        Class-IL 65.0    Domain-IL 75.8
+%   ceilings         Class-IL 93.6    Domain-IL 94.3   -- retention is read against these
+%
+% The STRUCTURAL half of the argument matters more than the numbers and must come first:
+% Class-IL has 10 output units, five of which receive no positive target during task 2, so
+% output suppression is AVAILABLE. Domain-IL has 5 shared units and suppression CANNOT occur.
+% The scenarios do not differ in degree; they differ in which mechanisms are physically
+% possible. Only the output layer differs between them -- same rule, same protocol, same seeds.
+%
+% Be honest about the half that does not split: the argmax-minus-probe gap is large in BOTH
+% (+81.6 and +29.5), even though suppression is impossible in one. R5 returns to this.
+
+\begin{figure*}[t]
+  \fig{911_two_forgetting_phenotypes.png}
+  \caption{\label{fig:911}\wordcount{130}}
+\end{figure*}
+
+% --------------------------------------------------------------------- R2
+\subsection{The size of the learning-rule effect}
+\label{sec:r2}
+
+\wordcount{650}
+% Order matters here. Fig.~\ref{fig:912} answers "is it real"; Fig.~\ref{fig:913} answers "is
+% it large". Answering them in the other order makes the first look like special pleading.
+%
+% At the working configuration (H = 32, one hidden layer):
+%   PC - backprop crossover   Class-IL  +1.42 +- 0.39   (9W-1L, p = 0.021)
+%                             Domain-IL -0.72 +- 0.19   (0W-10L, p = 0.002)
+% Small, real, and scenario-flipped. Task-1 phase lengths are comparable (719/707 vs 755/787
+% steps), so this is NOT PC retaining by training less -- say so explicitly, it is the first
+% objection a reader will raise.
+%
+% Depth widens the split in BOTH directions at once (+3.44 vs -3.49 at four layers), and width
+% adds a reversal: Class-IL H = 4 is -4.14 +- 0.70, PC strongly WORSE at the narrowest width.
+% That survives the dt correction (it was -6.19 under the confounded dt = 0.4).
+%
+% ⚠ The lr sweep must be reported with its censoring, not through it: at lr 0.16 the Class-IL
+% crossover is undefined on 10/10 backprop seeds and 6/10 PC seeds. There is no measurement
+% there. Fig.~\ref{fig:912}'s lower row carries this and the text must not average over it.
+%
+% Then the scale. Replay: +9.84 +- 0.77 and +3.43 +- 0.50 -- about seven times PC's effect
+% where PC wins, and positive where PC is negative, flat across every lr, width and depth.
+% The conclusion to state plainly: the problem is solvable, and changing the credit-assignment
+% rule is not what solves it. Note also what replay costs -- it stores and re-presents task-1
+% data, the exact resource a continual-learning rule is meant not to need. The comparison is
+% of effect size under a fixed protocol, not of cost.
+
+\begin{figure*}[t]
+  \fig{912_pc_minus_backprop_sweeps.png}
+  \caption{\label{fig:912}\wordcount{150}}
+\end{figure*}
+
+% figure*, not figure: panel (b) is saved at 7.06in (full \textwidth) because it carries three
+% sweeps side by side, and it cannot be included in a 3.40in column without scaling -- which
+% would shrink its 8pt labels. Panel (a) is column-width and is centred on its own row.
+\begin{figure*}[t]
+  \begin{subfigure}{\textwidth}
     \centering
-    \includegraphics[width=\singlefigure]{figures/100_capacity_vs_width.png}
-    \caption{\label{fig:capacity} Placeholder caption: joint-training accuracy vs.\ hidden width, both scenarios.}
-\end{figure}
+    \fig{913_replay_sets_the_scale_a.png}
+    \subcaption{\label{fig:913a}\wordcount{45}}
+  \end{subfigure}
 
-\subsubsection{Problem Complexity}
-\wordcount{200}
-\begin{itemize}
-    \item A frozen, randomly-initialised hidden layer with only the output layer trained falls short of the trained ceiling on average, confirming the hidden layer is doing real work in this task.
-    \item \gap{the current summary statistic (range across draws) is a placeholder; needs mean/SD or a proper test against the trained ceiling before this is a citable comparison}
-\end{itemize}
-\begin{figure}[H]
+  \begin{subfigure}{\textwidth}
     \centering
-    \includegraphics[width=\singlefigure]{figures/101_problem_complexity.png}
-    \caption{\label{fig:complexity} Placeholder caption: frozen random-$W_1$ accuracy distribution vs.\ trained ceiling.}
-\end{figure}
+    \fig{913_replay_sets_the_scale_b.png}
+    \subcaption{\label{fig:913b}\wordcount{55}}
+  \end{subfigure}
+  \caption{\label{fig:913}\wordcount{50}}
+\end{figure*}
 
-\subsubsection{Early Stopping Criteria}
-\wordcount{250}
-\begin{itemize}
-    \item A fixed training budget lets metric values swing substantially, since different methods spend a fixed number of updates at very different points in learning.
-    \item An accuracy-based stopping threshold is intended to remove this confound by comparing methods once each has demonstrably learned the task to the same standard.
-\end{itemize}
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\singlefigure]{figures/110_metric_sensitivity_to_budget_bar.png}
-    \caption{\label{fig:budget} Placeholder caption: metric sensitivity to training budget, backprop only.}
-\end{figure}
+% --------------------------------------------------------------------- R3
+\subsection{Testing the mechanism prospective configuration is credited with}
+\label{sec:r3}
 
-\subsection{Metrics}
 \wordcount{500}
-\begin{itemize}
-    \item Of five candidate metrics, crossover is the only one whose predictive-coding-minus-backprop comparison does not change sign as the stopping threshold moves.
-    \item This is what fixes crossover as the primary metric for every comparison later in this report.
-\end{itemize}
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\singlefigure]{figures/112_which_metric_survives.png}
-    \caption{\label{fig:metricsurvives} Placeholder caption: PC$-$backprop difference, five metrics, across stopping thresholds.}
+% A DIRECT test of the source paper's own claim (Song \& Bogacz Fig. 3b), and it belongs in
+% Results whichever way it falls -- an earlier draft demoted it to an appendix negative, which
+% was wrong: a negative result on the mechanism a paper credits is a result about that paper.
+%
+% Two quantities from the same instrumented run (script 803):
+%   target alignment   cos(target - out_before, out_after - out_before), through training and
+%                      against retention. Also in the interference mode (ref=), measured on a
+%                      fixed task-1 batch DURING task 2 -- which is the quantity that matters
+%                      for forgetting and which the source paper does not report.
+%   displacement       D = ||x*(settled) - x(feedforward)||, non-zero at equilibrium BY
+%                      CONSTRUCTION. Say so, or a non-zero D reads as evidence when it is a
+%                      definition. The measurement is whether D predicts ||dW|| and retention.
+
+\begin{figure}[t]
+  \fig{915_target_alignment.png}
+  \caption{\label{fig:915}\gap{915 not written; 803 has run}\wordcount{110}}
 \end{figure}
 
-\subsection{Results}
-\wordcount{500}
-\begin{itemize}
-    \item \gap{the headline predictive-coding-vs-backprop comparison, read at the settled operating point and metric above; not yet drawn as its own figure}
-    \item Class-IL and Domain-IL are expected to tell different stories here and should be reported separately rather than pooled.
-\end{itemize}
-
-\subsection{Scenarios}
-\wordcount{300}
-\begin{itemize}
-    \item Domain-IL and Class-IL differ only in the output layer's structure, which isolates where any rule difference actually comes from.
-    \item \gap{a fresh, in-series four-rule comparison across both scenarios has not yet been run under the current protocol}
-\end{itemize}
-
-\subsection{Where is Forgetting?}
-\wordcount{800}
-\begin{itemize}
-    \item Masking the loss so that absent-class output units receive no gradient recovers retention, and does so regardless of which loss or target coding is used underneath.
-    \item Freezing the output layer's weights outright recovers almost nothing, which is a different lever from masking: freezing blocks legitimate new-task learning as well as the destructive part, and the two roughly cancel.
-    \item The hidden code retains far more class-1 information than the output layer reports, most starkly in Class-IL (ordinary readout 0\%, probe $\sim$80\%) but present in Domain-IL too.
-\end{itemize}
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\singlefigure]{figures/120_output_maths_and_masking.png}
-    \caption{\label{fig:outputmaths} Placeholder caption: crossover under three output specifications, masked vs.\ unmasked.}
-\end{figure}
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\singlefigure]{figures/130_freeze_factorial.png}
-    \caption{\label{fig:freeze} Placeholder caption: crossover under trunk/output-layer freezing, both rules, both scenarios.}
-\end{figure}
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=\singlefigure]{figures/131_ncm_vs_argmax.png}
-    \caption{\label{fig:ncm} Placeholder caption: ordinary readout vs.\ nearest-class-mean probe, task-1 accuracy over time.}
+\begin{figure}[t]
+  \fig{916_displacement_to_retention.png}
+  \caption{\label{fig:916}\gap{916 not written; 803 has run}\wordcount{110}}
 \end{figure}
 
-\subsection{Depth}
-\wordcount{300}
-\begin{itemize}
-    \item \gap{planned as an extension of the freeze/mask/NCM factorial above rather than a standalone experiment; not yet run}
-\end{itemize}
+% --------------------------------------------------------------------- R4
+\subsection{What repeated alternation reveals about the trajectory}
+\label{sec:r4}
 
-\subsection{Data}
-\wordcount{400}
-\begin{itemize}
-    \item \gap{earlier exploratory work suggested which specific classes share an output unit strongly affects Domain-IL retention; needs a fresh in-series rerun before it is citable}
-\end{itemize}
+\wordcount{700}
+% ⚠ THE PRE-REGISTERED PREDICTION LOOKS WRONG AND THE SECTION MUST SAY SO. The plan predicted
+% Class-IL traces a closed LOOP under repeated alternation while Domain-IL SPIRALS IN. 804's
+% block lengths do not support that as stated: Class-IL block lengths collapse hard (backprop
+% seed 18: 530 -> 40 updates across ten blocks, ending task 1 at 46.3) against ~5% after a
+% single switch, so Class-IL is converging too.
+%
+% But it is NOT uniform and the exceptions are the interesting part: Class-IL PC seed 13 hit
+% the 5000-update cap twice and ended at task-1 0.2, where its neighbours end near 45.
+% Domain-IL PC seeds 12 and 13 keep LONG, irregular task-2 blocks (up to 3870) while their
+% task-1 blocks shrink.
+%
+% Hold the claim until Fig.~\ref{fig:917} draws the actual trajectory: block length and
+% end-of-block accuracy are not the same thing as trajectory contraction. If the shape holds,
+% the honest claim is that the scenarios differ in HOW FAST they find a joint solution, not in
+% whether they can -- which is a more interesting result than the prediction was.
+%
+% Then 919: joint pre-training protects only PARTIALLY (Class-IL joint-start retains
+% 6.9/25.6/12.5/20.3 against scratch 1.5/6.2/3.1/9.1, still collapsing from ~77%). So
+% forgetting is not simply a failure to FIND a joint solution -- the solution can be handed to
+% the network and it still leaves.
 
-\subsection{Path Efficiency}
-\wordcount{400}
-\begin{itemize}
-    \item \gap{earlier exploratory work suggested predictive coding is more efficient at the output layer and slightly less efficient at the input layer than backprop; needs a fresh in-series rerun}
-\end{itemize}
+\begin{figure*}[t]
+  \fig{917_alternation_geometry.png}
+  \caption{\label{fig:917}\gap{917 not written; 804 Class-IL done, Domain-IL running}\wordcount{150}}
+\end{figure*}
 
-\subsection{Target Alignment}
-\wordcount{350}
-\begin{itemize}
-    \item \gap{earlier exploratory work found predictive coding was not more target-aligned than backprop, and that the metric did not track retention; needs a fresh in-series rerun before this can be reported as a claim}
-\end{itemize}
+\begin{figure}[t]
+  \fig{918_weight_space_pca.png}
+  \caption{\label{fig:918}\gap{918 not written; needs 804}\wordcount{110}}
+\end{figure}
+
+\begin{figure}[t]
+  \fig{919_joint_then_sequential.png}
+  \caption{\label{fig:919}\gap{919 not written; 805 queued}\wordcount{110}}
+\end{figure}
+
+\begin{figure}[t]
+  \fig{920_what_separates_by_scenario.png}
+  \caption{\label{fig:920}\gap{920 not written; re-analysis only}\wordcount{110}}
+\end{figure}
+
+% --------------------------------------------------------------------- R5
+\subsection{Evidence for an output-competition component}
+\label{sec:r5}
+
+\wordcount{700}
+% Title deliberately weak. An earlier draft said "an output and calibration problem"; the
+% evidence supports a COMPONENT, not the whole account, and the tension below is why.
+%
+% THE TENSION IS THE FINDING AND THIS SECTION MUST STAGE IT, NOT RESOLVE IT:
+%   masking the absent classes recovers +17.5 points (script 120)
+%   freezing the whole output layer recovers NOTHING, +0.36 +- 0.43 (script 130)
+% Both spare the task-1 output weights during task 2, so naively they should agree.
+%
+% Script 806 separates them, and its smoke result landed on the SECOND pre-committed branch:
+% control 3.8, freeze-all-W2 6.4, freeze task-1 columns 7.2, mask 65.0. Freezing exactly the
+% weights masking spares does NOT reproduce masking -- and adding the task-1 biases moved it
+% only 6.5 -> 7.2, so that is not the explanation either.
+% ⚠ IF THIS SURVIVES TEN SEEDS, REWRITE THIS SECTION. Masking would then not work by sparing
+% those weights, and the remaining candidate is that masking changes what W1 learns -- the
+% trunk reshaped to serve the suppression objective -- which is not a readout account at all.
+%
+% The probe (Fig.~\ref{fig:923}) must draw its RANDOM-INIT FLOOR or it over-claims exactly as
+% NCM did. Measured at H = 32: untrained probe 81.8%, after task 1 86.2%, against argmax
+% 12.2 -> 91.8. Only ~4 points of the probe's range are attributable to training the trunk.
+% NCM is excluded and the reason is stated: it has almost no dynamic range here.
+
+\begin{figure}[t]
+  \fig{921_retention_distribution.png}
+  \caption{\label{fig:921}\gap{921 not written}\wordcount{110}}
+\end{figure}
+
+\begin{figure}[t]
+  \fig{922_partial_column_freeze.png}
+  \caption{\label{fig:922}\gap{922 not written; 806 queued}\wordcount{110}}
+\end{figure}
+
+\begin{figure*}[t]
+  \fig{923_probe_vs_argmax.png}
+  \caption{\label{fig:923}\gap{923 not written; 803 has run}\wordcount{150}}
+\end{figure*}
+
+\begin{figure}[t]
+  \fig{924_weight_path_and_code_drift.png}
+  \caption{\label{fig:924}\gap{924 not written; needs 803 and 804}\wordcount{110}}
+\end{figure}
+
+\begin{figure}[t]
+  \fig{925_task_structure.png}
+  \caption{\label{fig:925}\gap{925 not written}\wordcount{110}}
+\end{figure}

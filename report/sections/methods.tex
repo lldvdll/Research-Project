@@ -1,78 +1,110 @@
-\section{Methods}
+% ======================================================================================
+% METHODS -- M1, M2, M3.  Budget ~1500 words.
+%
+% Figure slots are named for the 900 script that produces them. A slot with a \gap marker has
+% no figure yet; the 900 script named in the comment is the one that will fill it.
+% ======================================================================================
 
-\subsection{Continual Learning}
-\wordcount{250}
-\begin{itemize}
-    \item Two incremental-learning scenarios are used: Domain-IL, where later tasks share the same output units (e.g.\ relearning road signs in a new country), and Class-IL, where each task adds disjoint output units (e.g.\ learning new animals abroad while still knowing the old ones).
-    \item Both scenarios use the same 2-task, 5-class-per-task Split-MNIST protocol, at $14\times14$ resolution, so that the output layer's structure is the only difference between them.
-    \item Replay acts as the positive control throughout, establishing that the forgetting problem is solvable in principle under this setup.
-\end{itemize}
+\section{Setting up the measurement}
+\label{sec:methods}
 
-\subsection{Energy-Based Models (and Backpropagation)}
-\wordcount{400}
-\begin{itemize}
-    \item Predictive coding networks maintain explicit error nodes alongside value nodes, so that error signals are exchanged locally between adjacent nodes rather than backpropagated as a single global signal.
-    \item Under prospective configuration, inputs and outputs are clamped and hidden activity is allowed to relax to the state that minimises total prediction error before any weight update is applied.
-    \item Backpropagation is run on an identical architecture and objective and serves as the negative control, differing from predictive coding only in how credit is assigned.
-\end{itemize}
+% --------------------------------------------------------------------- M1
+\subsection{What forgetting looks like, and what is measured}
+\label{sec:m1}
 
-\subsection{Controls}
-\wordcount{250}
-\begin{itemize}
-    \item Hidden width, architecture, loss, target coding, and learning rate are held identical across rules wherever a fair comparison depends on it; see \cref{sec:results} for which of these are settled and which remain open.
-    \item No number from work predating the current experiment series is treated as evidence; every citable claim in this report is re-derived under the present protocol.
-    \item Backpropagation and replay are the two controls bracketing the comparison; predictive coding is the rule under test.
-\end{itemize}
+\wordcount{350}
+% Definitional only. Name the switch, the plateau and the crossover on Fig.~\ref{fig:901}, then
+% state the metric the whole report is read on. Do NOT compare anything here -- rule identity
+% is not introduced until R2.
+%
+% MUST SAY, or the report reads as self-contradictory twenty pages later: this figure runs to
+% saturation on a fixed budget and ends at 0.0%, where R1 reports 5.4% at matched competence.
+% Both are correct; the difference is the stopping rule, and R1 explains why the measured
+% results use the other one.
+%
+% MUST SAY: 0% is not chance. Chance on ten classes is 10%. Zero on every task-1 class means
+% argmax has been captured by the task-2 output units.
 
-\subsection{Metrics}
+\begin{figure}[t]
+  \fig{901_what_forgetting_looks_like.png}
+  \caption{\label{fig:901}\wordcount{110}}
+\end{figure}
 
-\subsubsection{Endpoint}
-\wordcount{150}
-\begin{itemize}
-    \item The simplest forgetting readout: task-1 accuracy at the end of task-2 training.
-    \item It is confounded by the training budget, since every method trends toward the same floor given enough updates, so endpoint alone cannot separate rules reliably.
-\end{itemize}
+% --------------------------------------------------------------------- M2
+\subsection{Network, data and the choices behind them}
+\label{sec:m2}
 
-\subsubsection{S\&B}
-\wordcount{150}
-\begin{itemize}
-    \item Song and Bogacz's own combined test-error measure, reported here for comparability with their published claims.
-    \item It conflates learning speed with forgetting and cannot separate the two on its own.
-\end{itemize}
+\wordcount{600}
+% The parameter table carries the values; the prose carries only the JUSTIFICATION, and only
+% where the justification is a measurement of ours rather than an inherited convention.
+%   width          settled by 810/100 on capacity grounds, not inherited (prior work disagrees
+%                  with itself about width). Note the trap: a capacity sweep at too short a
+%                  budget produces a flat region indistinguishable from a ceiling.
+%   activation     the one choice with no justification behind it until 802. Fig.~\ref{fig:903}.
+%   output spec    120: the finding is insensitivity, not optimality.
+%   settling       dt = 0.4 at H=32/depth 1, dt = 0.2 whenever width or depth varies. This is
+%                  NOT a detail: 346/347 found dt = 0.4 oscillates at depth >= 2 and at
+%                  Class-IL H = 4, sitting 3-7x above the true fixed point, and it cost two
+%                  full sweep re-runs. Say that a control is re-verified whenever the
+%                  configuration moves, not once at the start.
 
-\subsubsection{Crossover}
-\wordcount{200}
-\begin{itemize}
-    \item The task-1 accuracy at the point where its curve is overtaken by task-2's, measured after the switch.
-    \item Invariant to uniform time rescaling, and, empirically, the most stable of the candidate metrics under changes to the stopping rule.
-\end{itemize}
+\begin{table}[t]
+  \caption{\label{tab:params}Every control parameter, and what fixed it.\wordcount{60}}
+  % \footnotesize and the shortened third column keep this inside \columnwidth. It overflowed
+  % by 24.6pt at \normalsize -- check the log after adding a row.
+  \footnotesize
+  \begin{ruledtabular}
+  \begin{tabular}{lll}
+    Parameter & Value & Fixed by \\ \hline
+    Input         & MNIST $14\times14$, $[0,1]$      & \gap{cite} \\
+    Split         & $2\times5$, both scenarios       & \gap{cite} \\
+    Hidden width  & $H=32$                           & 810 \\
+    Hidden layers & 1                                & 342 \\
+    Activation    & $\tanh$                          & 802 \\
+    Output units  & 10 Class-IL, 5 Domain-IL         & structural \\
+    Loss          & squared error                    & 812 \\
+    Optimiser     & SGD, batch 32                    & \gap{cite} \\
+    Learning rate & \gap{0.02, both rules}           & 340, 314 \\
+    PC settling   & $dt=0.4$; $0.2$ off-point        & 334, 347 \\
+    Stopping      & 90\% on both tasks               & \cref{sec:m3} \\
+    Seeds         & 10--19, paired                   & 906 \\
+  \end{tabular}
+  \end{ruledtabular}
+\end{table}
 
-\subsubsection{Curve over Diagonal Area}
-\wordcount{150}
-\begin{itemize}
-    \item The integral of the task-1-vs-task-2 trajectory above the line where the two are equal.
-    \item A trade-off efficiency measure: how much task-1 accuracy is preserved per unit of task-2 accuracy gained.
-\end{itemize}
+\begin{figure}[t]
+  \fig{903_specification.png}
+  \caption{\label{fig:903}\gap{903 not written; needs 802, which is queued}\wordcount{110}}
+\end{figure}
 
-\subsection{Interpretability}
+\begin{figure}[t]
+  \fig{904_settling_fixed_point.png}
+  \caption{\label{fig:904}\gap{904 not written; copies script 334}\wordcount{110}}
+\end{figure}
 
-\subsubsection{Path Efficiency}
-\wordcount{200}
-\begin{itemize}
-    \item Synaptic path length, the accumulated $\sum|\Delta w|$ over training, is compared against the net displacement $|w(T)-w(0)|$ to give a per-weight inefficiency ratio.
-    \item A ratio of 1.0 is a straight-line update; a larger ratio means the weight wandered.
-\end{itemize}
+% --------------------------------------------------------------------- M3
+\subsection{Why the comparison stops at matched competence}
+\label{sec:m3}
 
-\subsubsection{Target Alignment}
-\wordcount{200}
-\begin{itemize}
-    \item Song and Bogacz's own proposed mechanism, measured in output space: the cosine similarity between the direction from the current output toward the target, and the direction an update actually moves the output.
-    \item Their claim is that predictive coding is more aligned than backpropagation, and that this alignment is what protects task 1.
-\end{itemize}
+\wordcount{450}
+% This is a control presented as a result, because it licenses every comparison downstream and
+% because a reader will otherwise assume the metric was chosen to produce the answer.
+%
+% ⚠ THE ARGUMENT MUST BE MADE FROM SINGLE-RULE FAILURES ONLY. Justify the metric from 813
+% (endpoint metrics drift with the stopping threshold) and 814 (crossover is censored at high
+% lr), both of which are properties of ONE rule measured against itself. Do NOT justify it by
+% 815/112, which selects the metric by which one preserves the PC-backprop sign -- that is
+% choosing the instrument by the answer it gives on the comparison it will then be used for.
+% 815 belongs in the appendix as a robustness check AFTER the result, and is cited that way.
+%
+% Then state plainly what crossover cannot do: its RAW value is not stopping-point independent
+% (110: Domain-IL 36.2 -> 75.3 across a budget sweep). The stable quantity is the PAIRED
+% difference, which is what every Results figure plots.
+%
+% And state that a censored crossover is the BEST outcome, not a missing one -- task 1 never
+% fell below task 2 -- so it is ranked, never dropped.
 
-\subsubsection{NCM / Probing}
-\wordcount{250}
-\begin{itemize}
-    \item Nearest-class-mean classification applied directly to hidden-layer features, discarding the output layer entirely.
-    \item Separates a genuine representation failure (both the ordinary readout and the probe are low) from a calibration or readout failure (the ordinary readout is low but the probe is high).
-\end{itemize}
+\begin{figure}[t]
+  \fig{907_why_matched_competence.png}
+  \caption{\label{fig:907}\gap{907 not written; merges 111 and 343}\wordcount{110}}
+\end{figure}

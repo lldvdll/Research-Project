@@ -1,9 +1,34 @@
+% ======================================================================================
+% INTRODUCTION.  Budget ~1000 words.
+% ======================================================================================
+
 \section{Introduction}
+\label{sec:intro}
 
-\wordcount{800}
-
-\begin{itemize}
-    \item Catastrophic forgetting is a well-known failure of artificial neural networks trained sequentially, and stands in contrast to the gradual, graceful decay of learned skills and memories observed in humans.
-    \item Song and Bogacz (2024) claim that a specific energy-based learning rule, prospective configuration in a predictive coding network, forgets less than backpropagation, and attribute this to improved target alignment during learning.
-    \item This report tests that claim under a controlled, matched protocol, and separately investigates where and how forgetting occurs in the network regardless of which rule is used.
-\end{itemize}
+\wordcount{1000}
+% Four moves, in this order:
+%
+% 1. Catastrophic forgetting, stated as the phenomenon rather than as a literature. One
+%    paragraph; Fig.~\ref{fig:901} does the describing.
+%
+% 2. The specific claim under test. Song & Bogacz report that predictive coding under
+%    prospective configuration forgets less than backprop, and credit a mechanism: the hidden
+%    state settles to a configuration the feedforward pass would not produce, so the weight
+%    update is aimed differently. \gap{cite [R1]}
+%
+% 3. What this report adds, which is a measurement standard rather than a new rule:
+%      - the two continual-learning scenarios are separated, because output suppression is
+%        AVAILABLE in one and STRUCTURALLY IMPOSSIBLE in the other, and that changes which
+%        mechanisms can explain a result;
+%      - rules are compared at MATCHED COMPETENCE on PAIRED seeds, so "forgot less" cannot be
+%        confounded with "learned less" and the shared seed variance is removed;
+%      - censoring is reported rather than averaged over;
+%      - replay is carried throughout as a positive control, so every small effect has a scale
+%        to be read against.
+%
+% 4. The finding, given away in the introduction rather than withheld: the effect is real,
+%    small, scenario-dependent, and about a seventh of replay's. Withholding it would make the
+%    report read as advocacy.
+%
+% ⚠ Do not cite any number from the pre-300 work here or anywhere. Those runs used inconsistent
+% setups and untrusted code; they inform experiment DESIGN only.

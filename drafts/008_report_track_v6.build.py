@@ -384,23 +384,24 @@ T.append(dict(part="Methods", n="M3", w=350, figs=1,
 # ================================================================== RESULTS
 T.append(dict(part="Results", n="R1", w=250, figs=1,
   q="Two forgetting phenotypes", v="ok",
-  vt="The core figure. Four panels that exist, never assembled into the one grid that makes the point.",
+  vt="Built as 911 a-d, on identical hard-coded axes so the four files compose as one 2×2.",
   cols=[
     col(C("ok", "Backprop, Class-IL — where does a run end up?",
-      pic("310_forgetting_by_scenario_class_il.png"),
+      pic("911_two_forgetting_phenotypes_a.png"),
       "Task-1 against task-2 accuracy, time removed, 10 seeds. Every trajectory turns hard left "
       "and terminates against the axis: final task 1 <strong>5.4%</strong>, crossover 65.0.",
-      "this and the three beside it become one 2×2 — scenario across, rule down. Assembly only."),
+      "regenerated as 911a. All four panels share hard-coded 0–100 axes and equal aspect, so they "
+      "compose as one 2×2 — scenario across, rule down."),
       C("ok", "PC, Class-IL — does the shape change?",
-      pic("332_pc_forgetting_by_scenario_class_il.png"),
+      pic("911_two_forgetting_phenotypes_b.png"),
       "Same protocol, same seeds. Crossover 66.44 against 65.01. The <em>shape</em> is "
       "indistinguishable; only the crossing height moves, and only slightly.", None)),
     col(C("ok", "Backprop, Domain-IL — where does the same run end up?",
-      pic("310_forgetting_by_scenario_domain_il.png"),
+      pic("911_two_forgetting_phenotypes_c.png"),
       "Identical protocol and seeds, only the output layer differs. Trajectories stop well short "
       "of the axis: final task 1 <strong>38.5%</strong>, crossover 75.8, spread 13.1–64.2.", None),
       C("ok", "PC, Domain-IL — does the shape change?",
-      pic("332_pc_forgetting_by_scenario_domain_il.png"),
+      pic("911_two_forgetting_phenotypes_d.png"),
       "Crossover 75.06 against 75.76 — PC slightly <em>behind</em>. Again the family of shapes "
       "matches backprop's.", None)),
   ],
@@ -412,33 +413,35 @@ T.append(dict(part="Results", n="R1", w=250, figs=1,
 
 T.append(dict(part="Results", n="R2", w=500, figs=2,
   q="The rule comparison — small, systematic, scenario-dependent", v="part",
-  vt="Answered on three axes. The consolidation that makes it one claim has never been drawn.",
+  vt="Built. 912 consolidates the three axes into one claim; 913 puts it on a scale.",
   cols=[
-    col(C("build", "Is the sign reversal stable across every axis we can vary?", P(SK_CONSOL, 1),
-      "Proposed: PC − backprop against lr, width and depth, two scenario lines, zero line drawn. "
+    col(C("ok", "Is the sign reversal stable across every axis we can vary?", pic("912_pc_minus_backprop_sweeps.png"),
+      "Built as 912. PC − backprop against lr, width and depth, two scenario lines, zero line. "
       "<strong>Class-IL above zero and Domain-IL below it everywhere except the narrowest "
       "width.</strong> At the working point: <strong>+1.42 ± 0.39</strong> and "
       "<strong>−0.72 ± 0.19</strong>, defined 10/10.",
-      "the section's headline, and it replaces the three sweep figures rather than joining them — "
-      "they go to appendix. Three existing scripts' arrays, one figure, no retraining.")),
-    col(C("appx", "The lr sweep behind it", pic("340_lr_sweep_accuracy.png"),
+      "the section's headline; the three sweep figures move to the appendix as 914. Censored "
+      "points are marked with a red ×, not averaged through — at lr 0.16 no paired difference "
+      "exists in Class-IL at all.")),
+    col(C("appx", "The lr sweep behind it", pic("914_sweeps_behind_912_a.png"),
       "<strong>Both rules peak near lr 0.01–0.02 and decline past it</strong>, so the defaults sit "
       "close to jointly optimal and the comparison was not read at a point favouring either rule.",
       "appendix. The consolidated figure carries the claim; this supports it."),
       C("appx", "…and the width and depth sweeps",
-      pic("342_depth_sweep_accuracy.png"),
+      pic("914_sweeps_behind_912_b.png"),
       "<strong>Depth amplifies the split in both directions</strong>: Class-IL +1.42 → +3.44, "
       "Domain-IL −0.72 → −3.49. Width reverses at H=4 (−4.14 ± 0.70). Contradicts the pre-100 "
       "\"depth doesn't matter\" line.",
       "appendix, with 341. The depth asymmetry is quoted in R5 as trunk-side evidence, so it is "
       "cited twice and drawn once.")),
-    col(C("amend", "How large is a real fix, on the same axes?", pic("340_lr_sweep_diff.png"),
+    col(C("ok", "How large is a real fix, on the same axes?", pic("913_replay_sets_the_scale.png"),
       "Replay − backprop is the upper line everywhere: <strong>+55 to +62 pp Class-IL "
       "retention</strong> against PC's +0 to +2; paired Δcrossover <strong>+9.84 ± 0.77</strong> "
       "against PC's +1.42. Flat across the whole grid, so not a tuning artefact.",
-      "<strong>stays in Results, not Discussion.</strong> Without it the reader finishes the "
-      "headline not knowing whether +1.42 is large. Trim to backprop/PC/replay at the working "
-      "point and give replay its own scale — its magnitude currently crushes PC's line flat.")),
+      "<strong>stays in Results, not Discussion.</strong> Trimmed to the working point as asked, "
+      "on a <strong>broken axis</strong> so replay's magnitude no longer crushes PC's flat: PC "
+      "+1.42 ± 0.39 against replay <strong>+9.84 ± 0.77</strong> in Class-IL, and −0.72 against "
+      "<strong>+3.43</strong> in Domain-IL.")),
   ],
   why="The answer is small, real, and sign-flipped by scenario. A one-to-three-point effect at a "
       "single architecture invites the dismissal that it is a quirk of H=32, depth 1 — and the "

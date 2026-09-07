@@ -1,45 +1,42 @@
-"""Do the two scenarios forget in different SHAPES, and does the learning rule change that shape?
+"""Does the scenario change the shape of forgetting, and does the learning rule?
 
-900-series PLOT SCRIPT. Loads saved arrays, trains nothing.
+900-series PLOT SCRIPT. Loads saved arrays, trains nothing. Results R1 -- the load-bearing result.
 
-MODE B -- one file, four panels, ONE LaTeX caption, panels lettered by style.panel_label. This
-figure earns shared axes because its claim is a statement ABOUT the axes: columns differ and rows
-do not. Four separately-scaled files could not make that claim, since the reader would have to
-trust that four y-limits were matched by hand.
+FOUR PLOTS, ONE PER GRID CELL, in 007's card order:
+    911_two_forgetting_phenotypes_a.png   backprop, Class-IL
+    911_two_forgetting_phenotypes_b.png   pc,       Class-IL
+    911_two_forgetting_phenotypes_c.png   backprop, Domain-IL
+    911_two_forgetting_phenotypes_d.png   pc,       Domain-IL
 
-THE FIGURE IS A PHASE PLOT: x = task-1 accuracy, y = task-2 accuracy, time removed. Accuracy
-against step answers "how much was lost"; this answers "along what path", which is the question a
-shape claim needs. The trajectory runs right along the bottom while task 1 trains, then turns and
-climbs while task 2 trains, and the CHARACTER of that turn is what separates the scenarios:
+script_plan_800_900.md calls 911 an "assemble 310 + 332" 2x2 with scenario across and rule down.
+The four files ARE that 2x2 -- every panel is drawn on IDENTICAL, HARD-CODED axes (0-100 both
+ways, equal aspect), so the report composes them with subfigure and the comparison survives.
+Limits are set explicitly rather than by sharex/sharey precisely because the panels live in
+separate files: a shared scale that depends on being in one figure would silently break.
 
-    Class-IL    the turn is square. Task-2 accuracy rises while task-1 accuracy falls to the left
-                wall, so the path exits through the top-LEFT corner -- one task is traded for the
-                other almost completely.
-    Domain-IL   the turn is rounded and stops short. The path ends in the upper-middle, both
-                tasks partly held.
+THE CLAIM IS ABOUT THE GRID, NOT ANY PANEL. Down a column (same scenario, different rule) the
+trajectories are near-superimposable. Across a row (same rule, different scenario) they are
+different families: Class-IL turns hard left and terminates against the axis, Domain-IL stops on
+a shelf well short of it. Changing the scenario changes the shape; changing the rule does not.
 
-WHAT IS COMPARED, AND WHAT IS NOT. Rows are the learning rule; columns are the scenario. If the
-rule mattered as much as the scenario, rows would differ as much as columns do. They do not, and
-that asymmetry is the whole point of the figure -- it is the visual form of the paired numbers
-912 reports, and it is the evidence for splitting the mechanism investigation by scenario rather
-than by rule.
+    final task 1   Class-IL  5.4 (bp)  6.0 (pc)     Domain-IL  38.5 (bp)  37.0 (pc)
+    crossover      Class-IL 65.0 (bp) 66.4 (pc)     Domain-IL  75.8 (bp)  75.1 (pc)
 
-NO MEAN LINE. Matched-competence stopping ends each seed at a different absolute step, so a
-step-aligned mean is computed over a shrinking sample in its tail and reports a trajectory no
-individual run took. The ten seeds are drawn individually and the two SCALARS that summarise them
-(crossover height, final task-1) are printed in the panel with their SEM.
-
-PROVENANCE
-    310  backprop, seeds 10-19, config_300.yaml, 90% matched competence, lr 0.01
-    332  pc,       seeds 10-19, config_300.yaml, 90% matched competence, lr 0.02, dt 0.4
-Paired seed-for-seed: at a given seed both rules see the same class split and the same init.
-CAVEAT, and it must stay in the caption: the backprop arm ran at lr 0.01 and the PC arm at 0.02,
-the established per-rule defaults. 314 re-ran backprop at 0.02 and found no difference (all
-p > 0.34), which is why the pairing is allowed to stand; config_800.yaml adopts 0.02 for both, so
-repointing this script at 816 later is a two-line edit.
+FORM AND STYLING COPIED FROM 310, the script this regenerates: x = task-1 accuracy, y = task-2
+accuracy with time removed, ten seed lines coloured by WHICH TASK IS TRAINING (orange then blue),
+a dashed green x=y diagonal with each seed's crossing marked, a dashed red line at task-2's stop
+threshold with each seed's endpoint marked, and thin marginal histograms for the two
+distributions. tab: colours, dpi 120, bbox_inches="tight". No shared style module.
 
 UNITS TRAP: in these arrays `t1`/`t2` are FRACTIONS (0-1) while `crossovers`/`finals` are already
 PERCENT. The curves are scaled here; the scalars are not.
+
+PROVENANCE
+    310_forgetting_by_scenario_{scenario}.npz     backprop, seeds 10-19, config_300.yaml, 90%
+    332_pc_forgetting_by_scenario_{scenario}.npz  pc, same seeds and protocol, dt 0.4
+Paired seed-for-seed: at a given seed both rules see the same class split and the same init.
+⚠ The backprop arm ran at lr 0.01 and the PC arm at 0.02, each rule's established default. 314
+re-ran backprop at 0.02 and found no difference (all p > 0.34), which is why the pairing stands.
 """
 import sys
 from pathlib import Path
@@ -51,102 +48,79 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.protocol import figure_path
-from src.metrics import sem
-from src import style
 
-# ---------------------------------------------------------------- sources
 EXP = ROOT / "experiments"
-SOURCE = {
-    ("backprop", "class_il"):  EXP / "310_forgetting_by_scenario_class_il.npz",
-    ("backprop", "domain_il"): EXP / "310_forgetting_by_scenario_domain_il.npz",
-    ("pc", "class_il"):        EXP / "332_pc_forgetting_by_scenario_class_il.npz",
-    ("pc", "domain_il"):       EXP / "332_pc_forgetting_by_scenario_domain_il.npz",
-}
-RULES = ["backprop", "pc"]              # rows
-SCENARIOS = ["class_il", "domain_il"]   # columns
-LABEL = {"backprop": "backprop", "pc": "predictive coding",
-         "class_il": "Class-IL", "domain_il": "Domain-IL"}
+# 007's card order: column 1 is Class-IL (bp then pc), column 2 is Domain-IL (bp then pc).
+PANELS = [
+    ("a", "310_forgetting_by_scenario_class_il.npz",     "backprop", "Class-IL"),
+    ("b", "332_pc_forgetting_by_scenario_class_il.npz",  "PC",       "Class-IL"),
+    ("c", "310_forgetting_by_scenario_domain_il.npz",    "backprop", "Domain-IL"),
+    ("d", "332_pc_forgetting_by_scenario_domain_il.npz", "PC",       "Domain-IL"),
+]
+TASK1_COLOR = "tab:orange"      # as 310 already uses
+TASK2_COLOR = "tab:blue"
+CROSSOVER_COLOR = "tab:green"
+FINAL_COLOR = "tab:red"
+THRESHOLD = 90.0
 
-style.apply()
 
+def draw(tag, fname, rule, scenario):
+    d = np.load(EXP / fname, allow_pickle=True)
+    n = len(d["steps"])
 
-def panel(ax, path, letter, title):
-    d = np.load(path, allow_pickle=True)
-    # Trajectories are fractions; the saved scalars are percent. Scale one, not the other.
-    for i in range(len(d["steps"])):
+    fig = plt.figure(figsize=(5.0, 5.0))
+    gs = fig.add_gridspec(2, 2, width_ratios=(6, 1), height_ratios=(1, 6),
+                          wspace=0.04, hspace=0.04)
+    ax = fig.add_subplot(gs[1, 0])
+    axt = fig.add_subplot(gs[0, 0], sharex=ax)     # final task-1 distribution
+    axr = fig.add_subplot(gs[1, 1], sharey=ax)     # crossing-height distribution
+
+    for i in range(n):
         s = np.asarray(d["steps"][i])
-        x = np.asarray(d["t1"][i], dtype=float) * 100.0
-        y = np.asarray(d["t2"][i], dtype=float) * 100.0
-        sw = int(d["switch0"][i])
-        # Split on the switch. The +1 overlaps one point so the two coloured segments join
-        # rather than leaving a gap at the corner, which is exactly where the shape is read.
-        k = int(np.searchsorted(s, sw, side="right"))
-        ax.plot(x[:k + 1], y[:k + 1], color=style.TASK[0], lw=0.7, alpha=0.55)
-        ax.plot(x[k:], y[k:], color=style.TASK[1], lw=0.7, alpha=0.55)
+        x = np.asarray(d["t1"][i], float) * 100.0   # fractions -> percent
+        y = np.asarray(d["t2"][i], float) * 100.0
+        k = int(np.searchsorted(s, int(d["switch0"][i]), side="right"))
+        ax.plot(x[:k + 1], y[:k + 1], color=TASK1_COLOR, lw=0.8, alpha=0.6)
+        ax.plot(x[k:], y[k:], color=TASK2_COLOR, lw=0.8, alpha=0.6)
 
-    lo, hi = 0.0, 100.0
-    ax.plot([lo, hi], [lo, hi], ls=":", lw=0.8, color=style.NEUTRAL, zorder=1)
-
-    cx, fin = np.asarray(d["crossovers"], float), np.asarray(d["finals"], float)
-    # Each seed's crossing sits ON the diagonal at its crossover height, by definition of the
-    # metric -- it is drawn there rather than searched for in the curve, so the marker and the
-    # number 912 reports cannot disagree.
+    cx = np.asarray(d["crossovers"], float)
+    fin = np.asarray(d["finals"], float)
     ok = np.isfinite(cx)
-    ax.scatter(cx[ok], cx[ok], s=9, facecolor="none", edgecolor=style.ZERO_LINE, lw=0.7, zorder=4)
-    ends = np.array([[np.asarray(d["t1"][i], float)[-1] * 100.0,
-                      np.asarray(d["t2"][i], float)[-1] * 100.0]
-                     for i in range(len(d["steps"]))])
-    ax.scatter(ends[:, 0], ends[:, 1], s=11, marker="s", color=style.TASK[1], zorder=5)
+    ax.plot([0, 100], [0, 100], ls="--", lw=1.0, color=CROSSOVER_COLOR, alpha=0.8)
+    ax.scatter(cx[ok], cx[ok], s=26, marker="s", color=CROSSOVER_COLOR, zorder=5)
+    ax.axhline(THRESHOLD, ls="--", lw=1.0, color=FINAL_COLOR, alpha=0.7)
+    ends_y = [np.asarray(d["t2"][i], float)[-1] * 100.0 for i in range(n)]
+    ax.scatter(fin, ends_y, s=26, marker="o", facecolor="none",
+               edgecolor=FINAL_COLOR, lw=1.4, zorder=5)
 
-    mc, sc_ = sem(cx)
-    mf, sf = sem(fin)
-    ax.text(0.97, 0.06,
-            f"crossover {mc:.1f}$\\pm${sc_:.1f}\nfinal t1 {mf:.1f}$\\pm${sf:.1f}",
-            transform=ax.transAxes, ha="right", va="bottom", fontsize=7, linespacing=1.35)
-    if not ok.all():
-        ax.text(0.97, 0.94, f"censored {int((~ok).sum())}/{ok.size}", transform=ax.transAxes,
-                ha="right", va="top", fontsize=6.5, color=style.CAPPED)
+    # marginals, as 310 draws them
+    axt.hist(fin, bins=np.arange(0, 102, 5), color=FINAL_COLOR, alpha=0.6)
+    axt.axvline(np.nanmean(fin), color=FINAL_COLOR, lw=1.6)
+    axr.hist(cx[ok], bins=np.arange(0, 102, 5), orientation="horizontal",
+             color=CROSSOVER_COLOR, alpha=0.6)
+    axr.axhline(np.nanmean(cx), color=CROSSOVER_COLOR, lw=1.6)
+    for a in (axt, axr):
+        a.axis("off")
 
-    ax.set_xlim(lo, hi)
-    ax.set_ylim(lo, hi)
+    # Hard-coded and identical in every panel -- the four files are one 2x2.
+    ax.set_xlim(0, 100)
+    ax.set_ylim(0, 100)
     ax.set_aspect("equal")
-    ax.set_xticks([0, 25, 50, 75, 100])
-    ax.set_yticks([0, 25, 50, 75, 100])
-    ax.set_title(title)
-    style.panel_label(ax, letter, dx=-0.13)
+    ax.set_xlabel("task-1 accuracy (%)", fontsize=9)
+    ax.set_ylabel("task-2 accuracy (%)", fontsize=9)
+    ax.grid(alpha=0.2)
+    axt.set_title(f"{scenario} · {rule} — crossover {np.nanmean(cx):.1f}, "
+                  f"final task-1 {np.nanmean(fin):.1f}", fontsize=9)
+    if not ok.all():
+        ax.annotate(f"{int((~ok).sum())}/{ok.size} never crossed", (0.97, 0.03),
+                    xycoords="axes fraction", ha="right", fontsize=7.5, color="crimson")
+
+    out = figure_path(__file__, tag)
+    fig.savefig(out, dpi=120, bbox_inches="tight")
+    plt.close(fig)
+    print(f"saved {out}   crossover {np.nanmean(cx):5.2f}  final t1 {np.nanmean(fin):5.2f}")
 
 
 if __name__ == "__main__":
-    w = style.WIDTH["page"] / 2.0          # two panels across a figure* -- 3.53 in each
-    # `aspect="equal"` fixes the AXES aspect, not the panel's, so the figure height cannot be
-    # w * ratio the way a normal panel's is: constrained layout shrinks the axes to whatever
-    # square fits and pads the rest. 0.90 is the measured height at which the padding closes
-    # without clipping the titles -- raise it and dead space returns.
-    fig, axes = plt.subplots(2, 2, figsize=(2 * w, 2 * w * 0.90), sharex=True, sharey=True)
-    for r, rule in enumerate(RULES):
-        for c, scenario in enumerate(SCENARIOS):
-            panel(axes[r][c], SOURCE[(rule, scenario)], "abcd"[r * 2 + c],
-                  f"{LABEL[scenario]} · {LABEL[rule]}")
-    for c in range(2):
-        axes[1][c].set_xlabel("task-1 accuracy (%)")
-    for r in range(2):
-        axes[r][0].set_ylabel("task-2 accuracy (%)")
-
-    handles = [plt.Line2D([], [], color=style.TASK[0], lw=1.3),
-               plt.Line2D([], [], color=style.TASK[1], lw=1.3),
-               plt.Line2D([], [], ls="none", marker="o", mfc="none",
-                          mec=style.ZERO_LINE, ms=3.2),
-               plt.Line2D([], [], ls="none", marker="s", color=style.TASK[1], ms=3.2)]
-    axes[0][0].legend(handles, ["training task 1", "training task 2", "crossover", "run end"],
-                      loc="upper right", fontsize=6.5, handlelength=1.4, borderpad=0.2)
-
-    out = figure_path(__file__)
-    fig.savefig(out)
-    print(f"saved {out}")
-    for rule in RULES:
-        for scenario in SCENARIOS:
-            d = np.load(SOURCE[(rule, scenario)], allow_pickle=True)
-            mc, sc_ = sem(np.asarray(d["crossovers"], float))
-            mf, sf = sem(np.asarray(d["finals"], float))
-            print(f"  {LABEL[scenario]:10s} {rule:9s}  crossover {mc:5.2f}+-{sc_:.2f}"
-                  f"   final t1 {mf:5.2f}+-{sf:.2f}")
+    for args in PANELS:
+        draw(*args)

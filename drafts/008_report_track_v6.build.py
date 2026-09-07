@@ -453,25 +453,31 @@ T.append(dict(part="Results", n="R2", w=500, figs=2,
       "goes to Discussion."))
 
 T.append(dict(part="Results", n="R3", w=500, figs=2,
-  q="Does prospective configuration explain the difference?", v="gap",
-  vt="The mechanism the source paper credits — and our own — measured against the outcome for the first time.",
+  q="Does prospective configuration explain the difference?", v="ok",
+  vt="Built from run 803. The mechanism replicates, tracks retention, and shows what it costs.",
   cols=[
-    col(C("rerun", "Does PC align its updates toward the solution better than backprop?",
-      P(SK_TA, 1),
-      "<strong>Song &amp; Bogacz's own credited mechanism.</strong> Measured once at 5 seeds "
-      "across four rules: alignment <em>does not track forgetting</em>, and ranks the rules "
-      "opposite to retention. Two panels — alignment through training, and alignment against "
-      "retention, which is flat.",
-      "re-run as backprop vs PC at 10 seeds under the 300-series protocol. A direct test of the "
-      "source paper's mechanism belongs in Results whichever way it falls.")),
-    col(C("build", "Does how far the state moves predict how much is forgotten?", P(SK_DX, 1),
-      "Proposed: per-seed settling displacement <strong>D = ‖x*(settled) − x(feedforward)‖</strong> "
-      "against task-1 retention and against ‖ΔW‖, both scenarios. The missing link — <strong>PC "
-      "dynamics → internal configuration → weight change → forgetting</strong>.",
-      "<code>handle[\"diag\"][\"displacement\"]</code> is already published on every train step, so "
-      "this instruments existing runs. 344's finding becomes a panel of it — see right."),
+    col(C("ok", "Does PC align its updates toward the solution better than backprop?",
+      pic("915_target_alignment.png"),
+      "<strong>Song &amp; Bogacz's own credited mechanism</strong>, re-run at 10 seeds as the card "
+      "asked. PC aims better on the batch it is training (<strong>+0.0245 ± 0.0046</strong>, "
+      "5.4 sem) and <em>worse</em> on a fixed task-1 batch it is not (−0.0175 ± 0.0053). The "
+      "prospective configuration that helps the current task costs the other one.",
+      "⚠ <strong>the 5-seed legacy finding does not replicate.</strong> It reported alignment as flat "
+      "against retention; at 10 seeds it tracks it strongly — r = <strong>+0.96</strong> (Class-IL), "
+      "+0.74 (Domain-IL) — and that survives controlling for task-2 length, so it is not the "
+      "matched-competence artefact. The honest qualifier: PC aligns better in BOTH scenarios, but "
+      "retention only follows in Class-IL, so alignment does not explain the Domain-IL sign flip.")),
+    col(C("ok", "Does how far the state moves predict how much is forgotten?", pic("916_displacement_to_retention_a.png"),
+      "Per-seed settling displacement <strong>D = ‖x*(settled) − x(feedforward)‖</strong> against total "
+      "‖ΔW₂‖ and against retention. Both links hold: r = <strong>−0.85</strong> and "
+      "<strong>+0.84</strong> in Class-IL.",
+      "⚠ the second link holds <strong>only in Class-IL</strong>: controlling for task-2 length the "
+      "partial r is +0.85 there and <strong>+0.12</strong> in Domain-IL. The mechanism explains "
+      "where PC helps and not where it does not. ⚠ Claims use the TOTAL path, not the mean step — "
+      "mean step size correlates with retention at r = +0.93, which is a run-length artefact of "
+      "matched competence."),
       C("ok", "Where does settling reach the weights?",
-      pic("344_weight_step_vs_lr.png"),
+      pic("916_displacement_to_retention_b.png"),
       "W1 shows <strong>no differential damping</strong> (0.93 vs 0.90); W2 does "
       "(<strong>0.99 vs 0.78</strong>). PC's output update multiplies the same error against the "
       "<em>settled</em> hidden activity, so settling reaches W2 by a route the hypothesis did not "

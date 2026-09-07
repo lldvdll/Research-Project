@@ -1,39 +1,56 @@
-"""Does PC's settling displacement translate into smaller weight movement, and does smaller
-weight movement translate into better retention?
+"""Does how far PC's state moves during settling predict how much is forgotten?
 
-900-series PLOT SCRIPT. Loads saved arrays, trains nothing.
+900-series PLOT SCRIPT. Loads saved arrays, trains nothing. Results R3.
 
-MODE A -- three PNGs, composed with `subfigure`.
+TWO PLOTS, ONE PER GRID CELL, matching 007's two cards:
+    916_displacement_to_retention_a.png   the bridge, form from SK_DX
+    916_displacement_to_retention_b.png   where settling reaches the weights -- 344 regenerated,
+                                          which 007's card asks to fold in as a panel of the bridge
 
-THE CHAIN THIS FIGURE TESTS, one link at a time:
-    D = ||x*(settled) - x(feedforward)||   ->   ||dW|| per layer   ->   task-1 retention
+THE CHAIN THIS TESTS, link by link:
+    PC dynamics  ->  internal configuration D  ->  weight change  ->  forgetting
 
-⚠ LINK 1 IS NOT A COMPARISON. Backprop's displacement is EXACTLY 0.0000 by construction -- it has
-no relaxation, so there is nothing to displace. Panel (a) therefore describes PC and does not
-compare the rules; a non-zero D is a definition, not evidence. What can be measured is whether D
-varies across PC seeds and whether that variation goes anywhere.
+where D = ||x*(settled) - x(feedforward)||, the distance between the relaxed hidden state and the
+one the feedforward pass would have produced.
 
-⚠ A CONFOUND THAT REVERSES THE ANSWER, AND THE REASON PANELS (b) AND (c) USE THE TOTAL PATH
-RATHER THAN THE MEAN STEP. Under matched-competence stopping, task-2 length is a dependent
-variable: it runs from 119 to 4999 updates here. Long runs have SMALL mean per-update ||dW|| and
-ALSO forget more, so the mean step size correlates with retention at r = +0.93 -- which reads as
-"bigger updates preserve task 1" and is an artefact of run length, not a mechanism. The total
-path summed over task 2 does not have this problem and gives the opposite, interpretable sign:
+⚠ D IS ZERO FOR BACKPROP BY CONSTRUCTION -- it has no relaxation, so there is nothing to displace.
+Panel (a) therefore describes PC and is not a rule comparison; a non-zero D is a definition, not
+evidence. What CAN be measured is whether D varies across PC seeds and whether that variation
+goes anywhere. It does:
 
-    total ||dW2|| over task 2  vs  final task-1 accuracy      r = -0.56  (Class-IL, backprop)
+    r(D, total ||dW2|| over task 2)   Class-IL −0.85   Domain-IL −0.62
+    r(D, final task-1 accuracy)       Class-IL +0.84   Domain-IL +0.29
 
-More total movement in the output weights, more forgetting. That is the direction the report
-claims, and it is claimed on the total, never on the mean.
+More displacement, less total movement in the output weights, more retention. ⚠ But the second
+link SURVIVES ONLY IN CLASS-IL: controlling for task-2 length the partial correlation is +0.85 in
+Class-IL and +0.12 in Domain-IL. The mechanism has explanatory power exactly where PC helps, and
+none where it does not, which is consistent with R2's sign flip rather than an answer to it.
 
-THE RESULT PANEL (b) CARRIES. PC moves the output weights LESS than backprop over the same task:
-total ||dW2|| 1.75 against 2.52 in Class-IL, 1.42 against 2.26 in Domain-IL. It takes a shorter
-route. It does not convert that into proportionally better retention -- which is the same shape
-as R2's finding that the effect is real and small, arrived at from the weights instead of the
-accuracy curve.
+⚠ THE CONFOUND THAT MADE ME USE TOTALS. Matched competence makes task-2 length a dependent
+variable (119-4999 updates here). Long runs have a small MEAN per-update ||dW|| and also forget
+more, so mean step size correlates with retention at r = +0.93 -- which reads as "bigger updates
+preserve task 1" and is an artefact of run length. The TOTAL path summed over task 2 has no such
+problem and gives the interpretable sign. Every weight claim here is on totals.
+
+WHAT (b) ADDS, AND WHY IT REFUTED ITS OWN PREDICTION. 344 predicted PC's damping would show in W1,
+whose error signal comes through settling, and not in W2, which uses the same direct target error
+for both rules. The opposite happened. Log-log slope of realised ||dW|| against nominal lr:
+
+    W1   backprop 0.93   pc 0.90     no differential damping
+    W2   backprop 0.99   pc 0.78     PC's output step scales sub-linearly
+
+PC's output update multiplies the same error against the SETTLED hidden activity, so settling
+reaches W2 by a route the hypothesis did not anticipate. It belongs in the argument because it
+refuted its own pre-registration.
+
+Styling follows the 300-series scripts: tab: colours, dpi 120, bbox_inches="tight", 9pt labels.
+No shared style module.
 
 PROVENANCE
-    803  both scenarios, backprop and pc, seeds 10-19, config_800.yaml, matched competence.
-         D and ||dW|| per layer are recorded on EVERY update; nothing here is subsampled.
+    803_mechanism_logged_{scenario}.npz   D and ||dW|| per layer on EVERY update, seeds 10-19,
+                                          config_800.yaml, matched competence. Nothing subsampled.
+    344_weight_step_vs_lr.npz             PRE-800. Realised mean |dW| per layer across the shared
+                                          lr grid, backprop and pc, 5 seeds.
 """
 import sys
 from pathlib import Path
@@ -45,144 +62,104 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.protocol import figure_path
-from src.metrics import paired_diff, sem
-from src import style
 
 EXP = ROOT / "experiments"
-SOURCE = {s: EXP / f"803_mechanism_logged_{s}.npz" for s in ("class_il", "domain_il")}
 SCENARIOS = ["class_il", "domain_il"]
-RULES = ["backprop", "pc"]
-LABEL = {"class_il": "Class-IL", "domain_il": "Domain-IL",
-         "backprop": "backprop", "pc": "PC"}
-LEAD = 150
-LAYERS = ["W1", "W2"]        # dW columns, in order
-
-style.apply()
+NICE = {"class_il": "Class-IL", "domain_il": "Domain-IL"}
+COLORS = {"class_il": "tab:purple", "domain_il": "tab:green"}
+METHOD_COLOR = {"backprop": "0.35", "pc": "tab:orange"}     # as 344/340 use
 
 
-def runs(scenario, rule):
-    """Per run: (disp, dW, switch, final_t1), sliced to task 2 where noted at the call site."""
-    d = np.load(SOURCE[scenario], allow_pickle=True)
+def pc_runs(scenario):
+    """Per PC seed: (mean displacement over task 2, total ||dW2|| over task 2, retention)."""
+    d = np.load(EXP / f"803_mechanism_logged_{scenario}.npz", allow_pickle=True)
     out = []
     for i, m in enumerate(d["methods"]):
-        if m != rule:
+        if m != "pc":
             continue
-        out.append((np.asarray(d[f"disp_{i}"], float), np.asarray(d[f"dW_{i}"], float),
-                    int(d[f"switch0_{i}"]), float(d[f"final_t1_{i}"])))
-    return out
+        sw = int(d[f"switch0_{i}"])
+        dp, dw = np.asarray(d[f"disp_{i}"], float), np.asarray(d[f"dW_{i}"], float)
+        post = np.arange(len(dp)) > sw
+        out.append((dp[post].mean(), dw[post, 1].sum(), float(d[f"final_t1_{i}"])))
+    return np.array(out)
 
 
-def total_path(scenario, rule, layer):
-    """Sum of ||dW|| over each seed's own task 2 -- NOT the mean. See the docstring."""
-    return np.array([dw[np.arange(len(dw)) > s, layer].sum()
-                     for _, dw, s, _ in runs(scenario, rule)])
-
-
-def retention(scenario, rule):
-    return np.array([r[3] for r in runs(scenario, rule)])
+def partial(x, y, z):
+    rxy, rxz, ryz = (np.corrcoef(a, b)[0, 1] for a, b in ((x, y), (x, z), (y, z)))
+    return (rxy - rxz * ryz) / np.sqrt((1 - rxz ** 2) * (1 - ryz ** 2))
 
 
 def panel_a():
-    """Settling displacement through task 2. PC only -- backprop's is identically zero."""
-    fig, ax = plt.subplots(figsize=style.size("col", 0.62))
-    for scenario in SCENARIOS:
-        rs = runs(scenario, "pc")
-        hi = min(len(d) - s for d, _, s, _ in rs)
-        grid = np.arange(-min(LEAD, min(s for _, _, s, _ in rs)), hi)
-        stack = np.vstack([d[s + grid] for d, _, s, _ in rs])
-        mu = stack.mean(axis=0)
-        se = stack.std(axis=0, ddof=1) / np.sqrt(stack.shape[0])
-        c = style.SCENARIO[scenario]
-        ax.plot(grid, mu, lw=1.2, color=c, label=f"{LABEL[scenario]} · PC")
-        ax.fill_between(grid, mu - se, mu + se, color=c, alpha=0.15, lw=0)
-    ax.axhline(0, color=style.RULE["backprop"], lw=1.0, ls=(0, (5, 3)))
-    ax.annotate("backprop $\\equiv 0$ by construction", (0.98, 0.0),
-                xycoords=("axes fraction", "data"), xytext=(0, 4),
-                textcoords="offset points", fontsize=6.5, ha="right", va="bottom",
-                color=style.RULE["backprop"])
-    ax.axvline(0, color=style.ZERO_LINE, lw=0.8)
-    ax.annotate("task switch", (0, 1.0), xycoords=("data", "axes fraction"),
-                xytext=(3, -9), textcoords="offset points", fontsize=6.5, ha="left")
-    ax.set_xlabel("updates relative to the task switch")
-    ax.set_ylabel("settling displacement $D$")
-    ax.legend(fontsize=6.5, handlelength=1.5, borderpad=0.15)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.4, 4.2))
+    for s in SCENARIOS:
+        D, W2, R = pc_runs(s).T
+        r1, r2 = np.corrcoef(D, W2)[0, 1], np.corrcoef(D, R)[0, 1]
+        ax1.scatter(D, W2, s=34, color=COLORS[s], alpha=0.85,
+                    label=f"{NICE[s]}  (r = {r1:+.2f})")
+        ax2.scatter(D, R, s=34, color=COLORS[s], alpha=0.85,
+                    label=f"{NICE[s]}  (r = {r2:+.2f})")
+        for ax, y in ((ax1, W2), (ax2, R)):
+            b = np.polyfit(D, y, 1)
+            xs = np.linspace(D.min(), D.max(), 20)
+            ax.plot(xs, np.polyval(b, xs), lw=1.3, color=COLORS[s], alpha=0.6)
+    ax1.set_xlabel("mean settling displacement $D$ over task 2", fontsize=9)
+    ax1.set_ylabel("total $\\|\\Delta W_2\\|$ over task 2", fontsize=9)
+    ax1.set_title("link 1: more displacement, less total\noutput-weight movement", fontsize=9)
+    ax2.set_xlabel("mean settling displacement $D$ over task 2", fontsize=9)
+    ax2.set_ylabel("final task-1 accuracy (%)", fontsize=9)
+    ax2.set_title("link 2: and more retention — but only in Class-IL\n"
+                  "(partial r | task-2 length: +0.85 vs +0.12)", fontsize=9)
+    for ax in (ax1, ax2):
+        ax.grid(alpha=0.25)
+        ax.legend(fontsize=8, loc="best")
+    fig.suptitle("PC only — backprop's displacement is identically zero by construction",
+                 fontsize=9)
+    fig.tight_layout()
     out = figure_path(__file__, "a")
-    fig.savefig(out)
+    fig.savefig(out, dpi=120, bbox_inches="tight")
     print(f"saved {out}")
+    for s in SCENARIOS:
+        D, W2, R = pc_runs(s).T
+        # TASK-2 length, not total run length -- the confound being controlled for is how long
+        # task 2 ran, and total length would fold task 1's own variable phase into it.
+        d = np.load(EXP / f"803_mechanism_logged_{s}.npz", allow_pickle=True)
+        L = np.array([len(d[f"disp_{i}"]) - int(d[f"switch0_{i}"])
+                      for i, m in enumerate(d["methods"]) if m == "pc"], dtype=float)
+        print(f"  {NICE[s]:10s} r(D,W2) {np.corrcoef(D, W2)[0, 1]:+.2f}   "
+              f"r(D,ret) {np.corrcoef(D, R)[0, 1]:+.2f}   "
+              f"partial r(D,ret | task-2 len) {partial(D, R, L):+.2f}")
 
 
 def panel_b():
-    """Total distance each layer travelled over task 2."""
-    fig, ax = plt.subplots(figsize=style.size("col", 0.60))
-    width, xs = 0.36, np.arange(len(SCENARIOS) * len(LAYERS))
-    for k, rule in enumerate(RULES):
-        vals, errs = [], []
-        for scenario in SCENARIOS:
-            for layer, _ in enumerate(LAYERS):
-                m, s = sem(total_path(scenario, rule, layer))
-                vals.append(m)
-                errs.append(s)
-        ax.bar(xs + (k - 0.5) * width, vals, width, yerr=errs,
-               color=style.RULE[rule], alpha=0.85, label=LABEL[rule],
-               error_kw=dict(lw=0.9))
-    # The bars carry UNPAIRED group SEM, which is wide because seeds differ a lot -- the W2 bars
-    # overlap and would be read as "no difference". The comparison this project actually makes is
-    # PAIRED (same seed, same class split, same init), and on W2 it is a 4-sem effect. Annotating
-    # it prevents the figure from understating its own result.
-    j = 0
-    for scenario in SCENARIOS:
-        for layer, _ in enumerate(LAYERS):
-            m, s, nsem = paired_diff(total_path(scenario, "pc", layer),
-                                     total_path(scenario, "backprop", layer))
-            top = max(total_path(scenario, r, layer).mean() for r in RULES)
-            ax.annotate(f"paired {m:+.2f}\n({nsem:.1f} sem)", (xs[j], top),
-                        xytext=(0, 20), textcoords="offset points", ha="center",
-                        fontsize=5.8, linespacing=1.25, color=style.ZERO_LINE)
-            j += 1
-    ax.set_xticks(xs)
-    ax.set_xticklabels([f"{LABEL[s]}\n$\\|\\Delta {l}\\|$" for s in SCENARIOS for l in LAYERS],
-                       fontsize=6.5)
-    ax.set_ylabel("total path over task 2")
-    ax.set_ylim(0, ax.get_ylim()[1] * 1.22)
-    ax.legend(fontsize=6.5, handlelength=1.2, borderpad=0.15, loc="lower right")
+    rows = np.load(EXP / "344_weight_step_vs_lr.npz", allow_pickle=True)["data"]
+    lrs = sorted({float(r[1]) for r in rows})
+    fig, axes = plt.subplots(1, 2, figsize=(10.0, 4.0), sharey=True)
+    for ax, (col, lab) in zip(axes, ((3, "$W_1$ (hidden)"), (4, "$W_2$ (output)"))):
+        for m in ("backprop", "pc"):
+            y = [np.mean([float(r[col]) for r in rows
+                          if r[0] == m and float(r[1]) == g]) for g in lrs]
+            slope = np.polyfit(np.log(lrs), np.log(y), 1)[0]
+            ax.plot(lrs, y, marker="o", ms=5, lw=1.8, color=METHOD_COLOR[m],
+                    label=f"{m}   slope {slope:.2f}")
+            print(f"  {lab:16s} {m:9s} log-log slope {slope:.2f}")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xticks(lrs)
+        ax.set_xticklabels([str(g) for g in lrs], fontsize=8)
+        ax.minorticks_off()
+        ax.set_xlabel("nominal learning rate", fontsize=9)
+        ax.set_title(lab, fontsize=9)
+        ax.grid(alpha=0.25, which="both")
+        ax.legend(fontsize=8, loc="upper left")
+    axes[0].set_ylabel("realised mean $|\\Delta W|$ per step", fontsize=9)
+    fig.suptitle("Damping shows in the OUTPUT layer, not the hidden one — the opposite of "
+                 "344's prediction", fontsize=9)
+    fig.tight_layout()
     out = figure_path(__file__, "b")
-    fig.savefig(out)
-    print(f"saved {out}")
-
-
-def panel_c():
-    """Total output-layer path against what survived. One point per seed."""
-    fig, ax = plt.subplots(figsize=style.size("col", 0.66))
-    for scenario in SCENARIOS:
-        for rule, mk in (("backprop", "o"), ("pc", "^")):
-            x, y = total_path(scenario, rule, 1), retention(scenario, rule)
-            ax.scatter(x, y, s=13, marker=mk, facecolor="none", lw=0.9,
-                       edgecolor=style.SCENARIO[scenario],
-                       label=f"{LABEL[scenario]} · {LABEL[rule]}")
-    ax.set_xlabel("total $\\|\\Delta W_2\\|$ over task 2")
-    ax.set_ylabel("final task-1 accuracy (%)")
-    ax.legend(fontsize=6.0, handlelength=1.0, borderpad=0.15, labelspacing=0.2)
-    out = figure_path(__file__, "c")
-    fig.savefig(out)
+    fig.savefig(out, dpi=120, bbox_inches="tight")
     print(f"saved {out}")
 
 
 if __name__ == "__main__":
     panel_a()
     panel_b()
-    panel_c()
-    print("\n  total path over task 2, and its correlation with final task-1 accuracy:")
-    for scenario in SCENARIOS:
-        for rule in RULES:
-            r2 = retention(scenario, rule)
-            row = []
-            for layer, name in enumerate(LAYERS):
-                p = total_path(scenario, rule, layer)
-                row.append(f"{name} {p.mean():6.3f}  r(path,ret) {np.corrcoef(p, r2)[0, 1]:+.2f}")
-            print(f"    {LABEL[scenario]:10s} {rule:9s} " + "   ".join(row))
-    print("\n  paired PC - backprop on total path:")
-    for scenario in SCENARIOS:
-        for layer, name in enumerate(LAYERS):
-            m, se_, nsem = paired_diff(total_path(scenario, "pc", layer),
-                                       total_path(scenario, "backprop", layer))
-            print(f"    {LABEL[scenario]:10s} {name}  {m:+.3f}+-{se_:.3f} ({nsem:.1f} sem)")

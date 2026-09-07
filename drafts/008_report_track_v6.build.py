@@ -496,40 +496,40 @@ T.append(dict(part="Results", n="R3", w=500, figs=2,
       "the most citable thing in the report and would be invisible as a sub-panel."))
 
 T.append(dict(part="Results", n="R4", w=750, figs=3,
-  q="Why these are two investigations, not one", v="gap",
-  vt="The strongest section available, and almost none of it is built.",
+  q="Why these are two investigations, not one", v="ok",
+  vt="Built. The prediction is refuted and the section is stronger for it.",
   cols=[
-    col(C("rerun", "Under repeated alternation, does the network converge on a joint solution?",
-      P(SK_REPEAT, 1),
-      "20 alternations, task-1 against task-2 accuracy, colour = time, <strong>both scenarios side "
-      "by side</strong>. Domain-IL already shows the inward spiral. Prediction: <strong>Class-IL "
-      "closes a loop</strong> — ping-ponging between incompatible solutions, learning nothing "
-      "cumulative.",
-      "one figure, not two. The existing run is Domain-IL only, 5 seeds, <strong>fixed "
-      "budget</strong> — re-run at the 90% threshold as backprop vs PC and add the Class-IL arm. "
-      "Note matched competence makes block length a dependent variable, which is itself the "
-      "\"gradual relearn\" result."),
+    col(C("ok", "Under repeated alternation, does the network converge on a joint solution?",
+      pic("917_alternation_geometry.png"),
+      "Ten blocks, task-1 against task-2 accuracy, colour = time, both scenarios on identical axes. "
+      "Task-1 accuracy at the end of each task-2 block: Class-IL <strong>4.8 → 35.9</strong>, "
+      "Domain-IL <strong>37.6 → 63.1</strong>.",
+      "⚠ <strong>the predicted Class-IL closed loop does not occur.</strong> Neither scenario loops; "
+      "both spiral in and differ in where they stop. A loop would be flat in block number and "
+      "nothing is flat. ⚠ And a separation a two-task protocol cannot see: PC − backprop is "
+      "−0.72 after one switch but <strong>−16.71 ± 2.45</strong> (6.8 sem) by the fifth block in "
+      "Domain-IL, against −1.78 (0.6 sem, nothing) in Class-IL."),
       C("appx", "What the existing Domain-IL run looks like",
       pic("68_what_happens_under_repeated_task_switching_spiral.png"),
       "All three rules spiral inward toward the joint corner — the geometry is already there, at "
       "the wrong protocol.",
       "appendix or superseded entirely by the re-run above.")),
-    col(C("build", "Are the weights converging, orbiting, or drifting?", P(SK_PCA, 1),
-      "Proposed: PCA of the weight trajectory under alternation, W1 and W2 separately, both "
-      "scenarios. Accuracy can look settled while parameters wander, so <strong>this is the "
-      "stronger version of the panel to its left</strong> — and it asks whether the trunk "
-      "contracts while the readout orbits.",
-      "68 already stores the full W1 trajectory (600 × 6272 = 196×32, seed 0), so the Domain-IL W1 "
-      "panel is computable today. W2 and Class-IL ride along with the re-run — one experiment, "
-      "both figures.")),
-    col(C("build", "Is forgetting about where you start in weight space?", P(SK_JOINT, 1),
+    col(C("ok", "Are the weights converging, orbiting, or drifting?", pic("918_weight_space_pca.png"),
+      "PCA of the weight trajectory, W₁ and W₂ separately, both scenarios. The scalar that matters is "
+      "the cycle-to-cycle distance — how far the state at the end of block <em>k</em> sits from the "
+      "same phase of the previous cycle. A closed loop keeps it FLAT.",
+      "it collapses: <strong>0.87 → 0.07</strong> (×0.08) for Class-IL W₁ and 0.61 → 0.15 (×0.24) for "
+      "Domain-IL. The weights converge too, confirming 917 one level down. Note Class-IL contracts "
+      "<em>harder</em> while plateauing lower — it settles firmly into a worse compromise. "
+      "⚠ PCA is fitted per run, so axes are not comparable between panels.")),
+    col(C("ok", "Is forgetting about where you start in weight space?", pic("919_joint_then_sequential.png"),
       "Proposed: train on the <strong>joint</strong> distribution first, then run the sequential "
       "protocol from there, against sequential-from-scratch. If a network that already solves both "
       "tasks still collapses on task 1, forgetting is not a failure to <em>find</em> a joint "
       "solution — it is a failure to <em>stay</em> in one.",
       "sits awkwardly here and we keep it anyway; where it belongs will be obvious once it runs. "
       "Pairs with the PCA panel: does joint initialisation turn the Class-IL loop into a spiral?")),
-    col(C("build", "Which measurements separate by scenario, and which do not?", P(SK_TIE, 2),
+    col(C("ok", "Which measurements separate by scenario, and which do not?", pic("920_what_separates_by_scenario.png"),
       "Proposed: every measurement made in both scenarios, paired and joined. Crossings — PC − "
       "backprop, the depth trend, digit identity. <strong>Parallels — freeze-W2 recovery "
       "(+0.36 / +0.15) and the argmax-minus-probe gap (+81.6 / +29.5).</strong>",

@@ -549,8 +549,8 @@ T.append(dict(part="Results", n="R4", w=750, figs=3,
       "<em>same</em> in both scenarios as parallel lines rather than hiding them."))
 
 T.append(dict(part="Results", n="R5", w=1000, figs=4,
-  q="Where does the damage live?", v="part",
-  vt="Six of seven built. The readout account is overturned; the Domain-IL drift card awaits run 807.",
+  q="Where does the damage live?", v="ok",
+  vt="Built. Both the readout account and the drift account come out negative — and that is the answer.",
   cols=[
     col(C("ok", "What moves the outcome distribution?", pic("921_retention_distribution_a.png"),
       "Proposed: the retention <em>distribution</em> over 70 seeds, both scenarios, with each "
@@ -595,12 +595,17 @@ T.append(dict(part="Results", n="R5", w=1000, figs=4,
       "<strong>W1 converges while W2 keeps oscillating</strong> in Class-IL, that is the "
       "output-competition claim stated in weights rather than accuracy.",
       "shares R4's training runs and its PCA panel — one analysis, not one experiment."),
-      C("build", "…and where does Domain-IL's damage sit?", P(SK_DRIFT, 1),
-      "Proposed: hidden-code displacement during task 2, resolved by whether a unit is task-1 or "
-      "task-2 selective, against a frozen-weight baseline. <strong>There is no positive "
-      "localisation for Domain-IL at all</strong> — and that is because it has not been measured, "
-      "not because it cannot be.",
-      "the largest genuine gap, and it is cheap: instrumentation of runs that already exist.")),
+      C("ok", "…and where does Domain-IL's damage sit?", pic("924b_hidden_code_drift.png"),
+      "Built as 924b from <strong>new run 807</strong>, written because no saved array held hidden "
+      "codes. The code moves a long way — about 40% of its own norm — but <strong>NOT "
+      "preferentially where task 1 lived</strong>: task-1 units 0.439 against task-2 units 0.448 "
+      "(Class-IL), 0.375 against 0.398 (Domain-IL).",
+      "⚠ <strong>and the frozen-trunk arm settles it.</strong> With the trunk held (drift exactly "
+      "0.0000, representation provably untouched) Class-IL task-1 still falls to <strong>0.0%</strong>, "
+      "against 4.8% free. The readout alone suffices to destroy it, and preventing all "
+      "representational change is slightly WORSE. Read with 922: forgetting is not localised to a "
+      "layer — either layer left free is enough, which is why protecting one never helped. A "
+      "negative result about localisation, but an answer where there was none.")),
     col(C("ok", "Does task structure predict what survives?",
       pic("925_task_structure.png"),
       "Domain-IL's leading data-side explanation <strong>does not replicate</strong>: r = +0.686 "
@@ -623,21 +628,24 @@ T.append(dict(part="Results", n="R5", w=1000, figs=4,
 
 # ================================================================== DISCUSSION
 T.append(dict(part="Discussion", n="D1", w=300, figs=1,
-  q="Added mechanisms — a preliminary evaluation", v="part",
+  q="Added mechanisms — a preliminary evaluation", v="ok",
   vt="Demoted from Results. Real runs, but the grids were not prepared carefully enough to claim.",
   cols=[
-    col(C("build", "Of everything we can add, what recovers retention?", P(SK_INTERV, 2),
-      "Proposed: every intervention on one axis. Replay ≫ masking (+7.6 to +17.5) &gt; SI (+3.15) "
-      "≈ EWC (+1.80) &gt; freezing (nothing) &gt; k-WTA (<strong>−9.8 backprop, −32.4 PC</strong>).",
-      "framed as future work, not result. Replay, masking and freezing are results-grade and "
-      "appear in R2 and R5; <strong>EWC, SI and k-WTA are what belongs here</strong>.")),
-    col(C("appx", "Consolidation, and what happens past its optimum",
-      pic("210_si_lambda_sweep.png"),
+    col(C("ok", "Of everything we can add, what recovers retention?", pic("931_intervention_ranking.png"),
+      "replay <strong>+9.84 / +3.43</strong> · SI +3.14 / +1.22 · EWC +1.80 / +0.74 · "
+      "PC <strong>+1.42 / −0.72</strong> · freeze +0.36 / +0.15 · k-WTA "
+      "<strong>−9.78 / −2.63</strong>, paired against each intervention's own control.",
+      "⚠ EWC is hatched: its λ grid never bracketed its optimum, so it is a LOWER BOUND, not "
+      "a tuned result, and ranking it against SI would be dishonest. ⚠ k-WTA is shown at "
+      "k = 3 — it is harmful at every genuine k, and k = H = 32 gates nothing and IS the "
+      "control, so “best k” would have reported +0.00 and buried the finding."),
+      C("appx", "Consolidation, and what happens past its optimum",
+      pic("932_si_and_kwta_sweeps.png"),
       "Best at λ=1: +3.15 backprop, +2.39 PC. Past λ≥10 it <strong>deadlocks learning</strong> — "
       "and the evidence is the censoring, not the mean: defined crossovers fall to 1/10 and 3/10.",
       "⚠ EWC's λ grid was <strong>still rising at its top end</strong>, so its optimum was never "
       "bracketed. That is the specific reason this is preliminary."),
-      C("appx", "Sparsity gating", pic("220_kwta_k_sweep.png"),
+      C("appx", "Sparsity gating", pic("932_si_and_kwta_sweeps.png"),
       "<strong>Harmful, monotonically, and far worse for PC</strong>: Class-IL backprop 59.31 → "
       "49.53 but PC 61.85 → 29.44. An intervention motivated by the predictive-coding literature "
       "fails here, and fails PC hardest.",

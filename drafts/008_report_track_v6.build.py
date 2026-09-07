@@ -287,8 +287,8 @@ T.append(dict(part="Methods", n="M1", w=200, figs=1,
       "downstream refers to three things named here — the switch, the plateau, and the crossing."))
 
 T.append(dict(part="Methods", n="M2", w=500, figs=0,
-  q="The setup — a parameter table, with figures as supporting evidence", v="part",
-  vt="Six justifications become one grouped table plus appendix panels. The largest word saving available.",
+  q="The setup — a parameter table, with figures as supporting evidence", v="ok",
+  vt="Built. Every table row now has a measurement behind it — including the activation, which had none.",
   cols=[
     col(C("tbl", "Can the trunk do enough work to ask mechanistic questions?",
       pic("902_architecture_justification_a.png"),
@@ -412,7 +412,7 @@ T.append(dict(part="Results", n="R1", w=250, figs=1,
       "consequence of that asymmetry, which is why this is the first and load-bearing result."))
 
 T.append(dict(part="Results", n="R2", w=500, figs=2,
-  q="The rule comparison — small, systematic, scenario-dependent", v="part",
+  q="The rule comparison — small, systematic, scenario-dependent", v="ok",
   vt="Built. 912 consolidates the three axes into one claim; 913 puts it on a scale.",
   cols=[
     col(C("ok", "Is the sign reversal stable across every axis we can vary?", pic("912_pc_minus_backprop_sweeps.png"),
@@ -523,20 +523,25 @@ T.append(dict(part="Results", n="R4", w=750, figs=3,
       "<em>harder</em> while plateauing lower — it settles firmly into a worse compromise. "
       "⚠ PCA is fitted per run, so axes are not comparable between panels.")),
     col(C("ok", "Is forgetting about where you start in weight space?", pic("919_joint_then_sequential.png"),
-      "Proposed: train on the <strong>joint</strong> distribution first, then run the sequential "
-      "protocol from there, against sequential-from-scratch. If a network that already solves both "
-      "tasks still collapses on task 1, forgetting is not a failure to <em>find</em> a joint "
-      "solution — it is a failure to <em>stay</em> in one.",
-      "sits awkwardly here and we keep it anyway; where it belongs will be obvious once it runs. "
-      "Pairs with the PCA panel: does joint initialisation turn the Class-IL loop into a spiral?")),
+      "Built as 919 from run 805. Joint pre-trained against from scratch, paired on seed: Class-IL "
+      "4.8 → 16.2 (<strong>+11.35 ± 3.67</strong>), Domain-IL 37.6 → 44.3 (+6.70 ± 2.02). "
+      "Protection is real and <strong>partial</strong> — a network handed a joint solution still "
+      "leaves it, so forgetting is a failure to <em>stay</em> at one, not to find one.",
+      "⚠ the confound is drawn, not hidden. Both arms stop task 1 at the same competence, but the "
+      "joint arm starts above threshold so its task-1 phase is far shorter (402 → 182 updates) and "
+      "has less to lose. r(phase difference, retention difference) is <strong>−0.64</strong> in "
+      "Class-IL but <strong>−0.09</strong> for Domain-IL backprop — lean on that arm. The two "
+      "cannot be separated within this design.")),
     col(C("ok", "Which measurements separate by scenario, and which do not?", pic("920_what_separates_by_scenario.png"),
-      "Proposed: every measurement made in both scenarios, paired and joined. Crossings — PC − "
-      "backprop, the depth trend, digit identity. <strong>Parallels — freeze-W2 recovery "
-      "(+0.36 / +0.15) and the argmax-minus-probe gap (+81.6 / +29.5).</strong>",
-      "the structural half of the justification is <strong>Methods</strong>: Class-IL has five "
-      "output units receiving no positive target, Domain-IL has none, so suppression is available "
-      "in one and impossible in the other. That follows from the architecture description, so this "
-      "figure only has to carry the empirical half.")),
+      "Built as 920. Eight measurements made in both scenarios, each normalised to its own larger "
+      "value. <strong>Two cross zero</strong> — PC − backprop at the working point and at depth 4. "
+      "<strong>Six share sign</strong>, including the two that must be shown or the figure is "
+      "one-sided: freeze-W2 recovery (+0.36 / +0.15) and the argmax−probe gap (+61.4 / +34.0).",
+      "the structural half lives in <strong>Methods</strong> — Class-IL has five output units "
+      "receiving no positive target and Domain-IL has none — so this figure carries only the "
+      "empirical half. ⚠ Sign flip is not the only way to separate: the 5th-alternation row shares "
+      "sign but differs ninefold (−1.78 at 0.6 sem against −16.71 at 6.8 sem), and only one end is "
+      "a measurement at all. The line length carries that; the bold styling does not.")),
   ],
   why="The split is earned twice. <strong>Structurally it is not arguable</strong>, and that "
       "argument lives in Methods with the architecture — the two scenarios differ in which "
@@ -553,12 +558,14 @@ T.append(dict(part="Results", n="R5", w=1000, figs=4,
   vt="Built. Both the readout account and the drift account come out negative — and that is the answer.",
   cols=[
     col(C("ok", "What moves the outcome distribution?", pic("921_retention_distribution_a.png"),
-      "Proposed: the retention <em>distribution</em> over 70 seeds, both scenarios, with each "
-      "readout intervention overlaid. Class-IL is two groups, near-zero and 15–30%; Domain-IL is a "
-      "broad unimodal spread. <strong>Averaging Class-IL reports a number no run produces.</strong> "
-      "Masking recovers +17.5; freezing recovers nothing.",
-      "absorbs the freeze bar chart and the masking half of 120. The question is what moves the "
-      "<em>distribution</em>, not the mean."),
+      "Built as 921a. Class-IL is <strong>two groups</strong> — median <strong>1.13</strong> against "
+      "a mean of 6.58, with 64% of seeds below 5% — so the mean is a number no run produces. "
+      "Domain-IL is a broad unimodal spread. Masking moves the whole distribution (mean 50.9).",
+      "the question is what moves the <em>distribution</em>, not the mean. ⚠ Two source caveats the "
+      "panel labels carry: the large block is <strong>50 seeds, not 70</strong> (007 says 70; the "
+      "array holds 50 and its own summary says “18/50”), and it exists for <strong>Class-IL "
+      "only</strong> — Domain-IL is drawn from ten seeds, so that shape claim is suggestive rather "
+      "than well sampled."),
       C("ok", "The freezing result underneath it", pic("921_retention_distribution_b.png"),
       "<strong>Freezing the output layer recovers nothing</strong> — +0.36 ± 0.43 Class-IL, "
       "+0.15 ± 0.24 Domain-IL. Freezing the hidden layer is strongly negative.",
@@ -591,10 +598,13 @@ T.append(dict(part="Results", n="R5", w=1000, figs=4,
       "unreadable, and the steps near 1700 are seeds leaving the mean. NCM is centroid-only with "
       "almost no dynamic range. Keep the task-2 reversal as a control; replace the probe.")),
     col(C("ok", "What do the weights themselves do, per layer?", pic("924_per_layer_weight_path.png"),
-      "Proposed: per-layer weight step per alternation block, both scenarios, from R4's runs. If "
-      "<strong>W1 converges while W2 keeps oscillating</strong> in Class-IL, that is the "
-      "output-competition claim stated in weights rather than accuracy.",
-      "shares R4's training runs and its PCA panel — one analysis, not one experiment."),
+      "Built as 924 from R4's runs. Per-update weight path relative to each layer's own first block: "
+      "Class-IL W₁ 1.00 → <strong>1.34</strong> and W₂ 1.00 → <strong>1.99</strong>; Domain-IL "
+      "0.93 and 1.11.",
+      "⚠ this supports the scenario split but <strong>not the card's wording</strong>. Neither "
+      "Class-IL layer converges — both <em>accelerate</em>, the readout twice as much as the trunk "
+      "— while Domain-IL stays flat in both. So the asymmetry is between SCENARIOS, not between "
+      "layers within Class-IL, and the trunk is not “converged”."),
       C("ok", "…and where does Domain-IL's damage sit?", pic("924b_hidden_code_drift.png"),
       "Built as 924b from <strong>new run 807</strong>, written because no saved array held hidden "
       "codes. The code moves a long way — about 40% of its own norm — but <strong>NOT "
@@ -815,7 +825,7 @@ text-transform:uppercase;color:var(--mut);margin-bottom:13px}
 footer{padding:40px 0 0;color:var(--mut);font-size:13px;max-width:80ch}
 """
 
-DOC = f'''<title>Report track — an honest audit of the evidence</title>
+DOC = f'''<title>Report track — the evidence, generated</title>
 <style>{CSS}</style>
 <svg width="0" height="0" style="position:absolute"><defs>
 <marker id="mk" viewBox="0 0 8 8" refX="6" refY="4" markerWidth="5" markerHeight="5" orient="auto">
@@ -823,10 +833,13 @@ DOC = f'''<title>Report track — an honest audit of the evidence</title>
 <div class="wrap">
 <header class="mast">
 <p class="eb">Continual learning · backpropagation vs predictive coding</p>
-<h1>Nine questions, and whether the project has actually answered them</h1>
-<p class="sb">Built from the track downward, not from the figures back. Each section runs left to
-right as an argument; cards stacked in a column are a direct comparison. Every section closes with
-why its figures answer the question — or an honest account of why they do not yet.</p>
+<h1>Nine questions, and what the evidence says</h1>
+<p class="sb">The same track as v5, with every figure now generated by the 800/900 series from a
+saved array. Each section runs left to right as an argument; cards stacked in a column are a direct
+comparison. Nothing here is a sketch and nothing is proposed: where a card previously showed an
+intended plot, it now shows the run that produced it. Three results came out <em>against</em> the
+prediction the card recorded, and those are marked ⚠ where they occur rather than quietly
+rewritten.</p>
 <div class="tal">
 <div><b>{cnt["Answered"]}</b> answered</div><div><b>{cnt["Partly answered"]}</b> partly</div>
 <div><b>{cnt["Not answered"]}</b> not answered</div><div><b>{sum(x["figs"] for x in T)}</b> main-text figures</div>

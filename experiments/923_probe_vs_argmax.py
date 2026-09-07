@@ -1,50 +1,54 @@
-"""Does the hidden code for task 1 survive when argmax says task 1 is gone?
+"""Is the code still readable when the readout fails?
 
-900-series PLOT SCRIPT. Loads saved arrays, trains nothing.
+900-series PLOT SCRIPT. Loads saved arrays, trains nothing. Results R5.
 
-MODE B -- one file, four panels (task x scenario), ONE LaTeX caption. Shared axes because the
-whole reading is a COMPARISON ACROSS PANELS: the argmax-minus-probe gap is large in Class-IL,
-where output suppression is available, and also large in Domain-IL, where it is structurally
-impossible. Four independently scaled panels could not support that.
+TWO PLOTS, ONE PER GRID CELL, matching 007's two cards:
+    923_probe_vs_argmax_a.png   TASK 1 -- the question
+    923_probe_vs_argmax_b.png   TASK 2 -- the control that keeps the probe honest
 
-WHAT A LINEAR PROBE IS FOR. `predict` reads the network's own output units through argmax. A
-probe refits a fresh linear readout on the hidden layer, so it asks a different question:
+Form is 007's SK_PROBE: a refit linear probe against argmax through training, switch marked, with
+the two readings named on the plot.
 
-    argmax LOW, probe HIGH   the information is still in the hidden code and the OUTPUT is
-                             misreading it -- a recalibration failure
-    argmax LOW, probe LOW    the code itself is gone -- a representation failure
+    argmax LOW, probe HIGH   the information is in the hidden code and the OUTPUT misreads it
+    argmax LOW, probe LOW    the code itself is gone
 
-⚠ THE FLOOR IS NOT OPTIONAL, AND THIS IS THE WHOLE REASON NCM WAS REPLACED AND THEN THE
-REPLACEMENT NEARLY REPEATED ITS MISTAKE. A linear probe on 32 tanh units is a strong classifier
-even with RANDOM weights. Measured here, Class-IL, task-1 classes: the probe reads 82.4% on the
-UNTRAINED network and 86.2% after task 1. So of the ~84% it reports mid-run, about 82 points are
-available before any training has happened and only ~4 points are attributable to what the trunk
-learned. Drawn without that line, this figure says "the representation survives" when what it
-mostly shows is that the probe barely needed one. Every panel therefore carries its own
-random-init floor, and the claim is made on the DISTANCE ABOVE IT, never on the raw height.
+⚠ THE RANDOM-INIT FLOOR IS NOT OPTIONAL, AND IT IS WHY NCM WAS REPLACED. A linear probe on 32 tanh
+units is a strong classifier even with RANDOM weights. Measured here on the untrained network of
+the same seed, the probe already reads 80.2% on the task-1 classes. So of the 82.6% it reports
+mid-run, roughly 80 points are available before any training and only ~2.4 are attributable to
+what the trunk learned. Drawn without that line this figure says "the representation survives"
+when what it mostly shows is that the probe barely needed one. Every panel draws its own floor,
+and the claim is made on the DISTANCE ABOVE IT.
 
-NCM is excluded for the same reason -- it is a centroid-only probe with almost no dynamic range
-here -- and the one control it does provide is kept: on task 2 its sign reverses (NCM 70.8
-against argmax 91.3), which rules out "the probe is simply a better classifier".
+    at each seed's last checkpoint, backprop
+        Class-IL  task 1   probe 82.6  argmax 21.1  gap +61.4  floor 80.2  above floor +2.4
+        Class-IL  task 2   probe 83.1  argmax 72.3  gap +10.9  floor 79.7  above floor +3.4
+        Domain-IL task 1   probe 81.8  argmax 47.8  gap +34.0  floor 78.0  above floor +3.8
+        Domain-IL task 2   probe 81.5  argmax 83.8  gap  −2.3  floor 77.1  above floor +4.3
 
-⚠ A DEFECT IN 803'S CHECKPOINT SPACING, AND WHAT IT COSTS THIS FIGURE. 803 sets its checkpoint
-interval to (2 * max_iters_per_task) // CHECKPOINTS = 10000 // 20 = 500 updates. That divides the
-BUDGET, not the run -- and under matched competence the runs finish in 700-2500 updates, so each
-one gets only 2 to 5 checkpoints instead of ~20, and the LAST checkpoint sits a median of ~175
-updates before the run actually ends. The consequence is quantitative and must not be papered
-over: argmax on task 1 reads 21.1 at the last checkpoint but 4.8 at the true end (Class-IL,
-backprop). So this figure reports the gap SHORTLY BEFORE the end of training, not at it, and the
-real end-of-training gap is LARGER than what is drawn. Every number here is labelled "last
-checkpoint" for that reason. Fixing it means re-running 803 with the interval derived from the
-run length rather than the budget; that costs about 8 minutes and would also sharpen 915, 916
-and 924.
+THE TASK-2 PANEL IS THE CONTROL. There the gap REVERSES -- argmax beats the probe -- which rules
+out "the probe is simply a better classifier". 007's card keeps exactly this control from the NCM
+version (70.8 against 91.3) while replacing the probe itself, and it survives the replacement.
+
+⚠ THE GAP IS LARGE IN BOTH SCENARIOS (+61.4 and +34.0) even though output suppression is
+structurally impossible in Domain-IL. 920 draws that as one of the measurements that does NOT
+separate. It is the honest limit on the readout account.
+
+⚠ A DEFECT IN 803'S CHECKPOINT SPACING. Its interval is (2 * max_iters_per_task) // CHECKPOINTS =
+10000 // 20 = 500 updates, which divides the BUDGET, not the run. Matched competence finishes runs
+in 700-2500 updates, so each gets 2-5 checkpoints instead of ~20 and the LAST sits a median ~175
+updates before the end. argmax on task 1 reads 21.1 there against a true final of 4.8, so this
+figure UNDERSTATES the end-of-training gap. Every number is labelled "last checkpoint" for that
+reason. Fixing it means re-running 803 with the interval derived from run length -- about 8 min.
+
+Styling follows the 300-series scripts: tab: colours, dpi 120, bbox_inches="tight", 9pt labels.
+No shared style module.
 
 PROVENANCE
-    803  both scenarios, backprop and pc, seeds 10-19, config_800.yaml, matched competence.
-         The probe is a ridge least-squares readout (ridge = 1e-3) refitted at each checkpoint on
-         `stop_eval` and scored on `report_eval` -- FIT AND SCORE SPLITS ARE DISJOINT. It
-         predicts output UNITS, exactly as `predict` does, so the two are scored identically.
-         2-5 checkpoints per run -- see the defect note above, NOT the ~20 intended.
+    803_mechanism_logged_{scenario}.npz   both scenarios, backprop and pc, seeds 10-19,
+    config_800.yaml, matched competence. The probe is a ridge least-squares readout (ridge 1e-3)
+    refitted at each checkpoint on `stop_eval` and scored on `report_eval` -- FIT AND SCORE SPLITS
+    ARE DISJOINT -- predicting output UNITS exactly as `predict` does, so the two are scored alike.
 """
 import sys
 from pathlib import Path
@@ -56,108 +60,71 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from src.protocol import figure_path
-from src.metrics import sem
-from src import style
 
 EXP = ROOT / "experiments"
-SOURCE = {s: EXP / f"803_mechanism_logged_{s}.npz" for s in ("class_il", "domain_il")}
 SCENARIOS = ["class_il", "domain_il"]
-LABEL = {"class_il": "Class-IL", "domain_il": "Domain-IL"}
-# probe rows are (step, probe_t1, probe_t2, argmax_t1, argmax_t2)
+NICE = {"class_il": "Class-IL", "domain_il": "Domain-IL"}
+COLORS = {"class_il": "tab:purple", "domain_il": "tab:green"}
 STEP, P1, P2, A1, A2 = 0, 1, 2, 3, 4
-RULE_SHOWN = "backprop"     # 912 already establishes the rules barely differ; see below
-
-style.apply()
+RULE = "backprop"          # 912 establishes the rules barely differ; one is drawn for legibility
 
 
-def runs(scenario, rule):
-    d = np.load(SOURCE[scenario], allow_pickle=True)
-    out = []
-    for i, m in enumerate(d["methods"]):
-        if m != rule:
-            continue
-        out.append((np.asarray(d[f"probe_{i}"], float),
-                    np.asarray(d[f"probe_floor_{i}"], float),
-                    int(d[f"switch0_{i}"])))
-    return out
+def runs(scenario):
+    d = np.load(EXP / f"803_mechanism_logged_{scenario}.npz", allow_pickle=True)
+    return [(np.asarray(d[f"probe_{i}"], float), np.asarray(d[f"probe_floor_{i}"], float),
+             int(d[f"switch0_{i}"]))
+            for i, m in enumerate(d["methods"]) if m == RULE]
 
 
-def series(scenario, rule, task):
-    """Probe and argmax against updates relative to the switch, on a common grid.
-
-    Checkpoints fall at different absolute steps in every run (matched competence sets the
-    budget), so each run is interpolated onto the grid every run reached -- the same
-    intersection-not-union rule 915 uses, for the same reason.
-    """
-    rs = runs(scenario, rule)
-    rel = [p[:, STEP] - sw for p, _, sw in rs]
-    grid = np.linspace(max(r.min() for r in rel), min(r.max() for r in rel), 60)
+def draw(task, tag):
     pcol, acol = (P1, A1) if task == 0 else (P2, A2)
-    probe = np.vstack([np.interp(grid, r, p[:, pcol]) for r, (p, _, _) in zip(rel, rs)])
-    argmax = np.vstack([np.interp(grid, r, p[:, acol]) for r, (p, _, _) in zip(rel, rs)])
-    floor = np.array([f[task] for _, f, _ in rs])
-    return grid, probe, argmax, floor
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.2), sharey=True)
+    for ax, s in zip(axes, SCENARIOS):
+        rs = runs(s)
+        rel = [p[:, STEP] - sw for p, _, sw in rs]
+        grid = np.linspace(max(r.min() for r in rel), min(r.max() for r in rel), 60)
+        probe = np.vstack([np.interp(grid, r, p[:, pcol]) for r, (p, _, _) in zip(rel, rs)])
+        argmax = np.vstack([np.interp(grid, r, p[:, acol]) for r, (p, _, _) in zip(rel, rs)])
+        floor = np.array([f[task] for _, f, _ in rs])
 
+        for stack, c, lab in ((probe, COLORS[s], "refit linear probe"),
+                              (argmax, "0.35", "argmax (the network's own readout)")):
+            mu = stack.mean(axis=0)
+            se = stack.std(axis=0, ddof=1) / np.sqrt(stack.shape[0])
+            ax.plot(grid, mu, lw=2.0, color=c, label=lab)
+            ax.fill_between(grid, mu - se, mu + se, color=c, alpha=0.2)
+        ax.axhline(floor.mean(), ls="--", lw=1.4, color="tab:red")
+        ax.annotate(f"probe floor, UNTRAINED net ({floor.mean():.0f}%)",
+                    (grid[-1], floor.mean()), xytext=(-4, 5), textcoords="offset points",
+                    ha="right", fontsize=7.5, color="tab:red")
+        ax.axvline(0, color="0.25", lw=1.2)
+        ax.annotate("switch", (0, 2), xytext=(4, 0), textcoords="offset points", fontsize=8)
 
-def final_checkpoint(scenario, rule, task):
-    """Probe, argmax and floor at each seed's OWN last checkpoint.
-
-    The common grid in `series` ends where the SHORTEST run ended, which is early in most runs --
-    argmax there is still mid-collapse. The claim R5 makes is about the end of training, so it is
-    computed per seed and reported separately rather than read off the end of the shared window.
-    """
-    pcol, acol = (P1, A1) if task == 0 else (P2, A2)
-    rs = runs(scenario, rule)
-    return (np.array([p[-1, pcol] for p, _, _ in rs]),
-            np.array([p[-1, acol] for p, _, _ in rs]),
-            np.array([f[task] for _, f, _ in rs]))
-
-
-def panel(ax, scenario, task, letter):
-    grid, probe, argmax, floor = series(scenario, RULE_SHOWN, task)
-    for stack, c, name in ((probe, style.SCENARIO[scenario], "linear probe"),
-                           (argmax, style.RULE["backprop"], "argmax")):
-        mu = stack.mean(axis=0)
-        se = stack.std(axis=0, ddof=1) / np.sqrt(stack.shape[0])
-        ax.plot(grid, mu, lw=1.3, color=c, label=name)
-        ax.fill_between(grid, mu - se, mu + se, color=c, alpha=0.18, lw=0)
-    f, fse = sem(floor)
-    ax.axhline(f, color=style.CAPPED, lw=0.9, ls=(0, (4, 3)))
-    ax.annotate(f"probe floor, untrained net ({f:.0f}%)", (0.98, f), xytext=(0, 3),
-                xycoords=("axes fraction", "data"), textcoords="offset points",
-                fontsize=6.0, ha="right", va="bottom", color=style.CAPPED)
-    ax.axvline(0, color=style.ZERO_LINE, lw=0.8)
-    # The curves stop where the SHORTEST run stopped. These are each seed's own last checkpoint
-    # -- still a median ~175 updates before its run ended, so they understate the final gap.
-    fp, fa, ff = final_checkpoint(scenario, RULE_SHOWN, task)
-    ax.text(0.98, 0.06,
-            f"last checkpoint: probe {fp.mean():.0f}, argmax {fa.mean():.0f}\n"
-            f"probe above floor {fp.mean() - ff.mean():+.1f}",
-            transform=ax.transAxes, ha="right", va="bottom", fontsize=6.0, linespacing=1.35)
-    ax.set_ylim(-2, 102)
-    ax.set_title(f"{LABEL[scenario]} · task {task + 1}")
-    style.panel_label(ax, letter, dx=-0.17)
+        fp = np.array([p[-1, pcol] for p, _, _ in rs]).mean()
+        fa = np.array([p[-1, acol] for p, _, _ in rs]).mean()
+        ax.annotate(f"last checkpoint: probe {fp:.0f}, argmax {fa:.0f}\n"
+                    f"gap {fp - fa:+.1f} · probe above floor {fp - floor.mean():+.1f}",
+                    (0.98, 0.04), xycoords="axes fraction", ha="right", fontsize=7.5,
+                    linespacing=1.3)
+        ax.set_xlabel("updates relative to the task switch", fontsize=9)
+        ax.set_ylim(-2, 102)
+        ax.set_title(f"{NICE[s]} · task {task + 1}", fontsize=9)
+        ax.grid(alpha=0.25)
+        print(f"  {NICE[s]:10s} task {task + 1}   probe {fp:5.1f}  argmax {fa:5.1f}  "
+              f"gap {fp - fa:+6.1f}  floor {floor.mean():5.1f}  above floor {fp - floor.mean():+5.1f}")
+    axes[0].set_ylabel("accuracy (%)", fontsize=9)
+    axes[0].legend(fontsize=8, loc="lower left")
+    title = ("The code stays linearly readable while argmax collapses — but barely above what an "
+             "UNTRAINED trunk already gives" if task == 0 else
+             "The control: on the task just trained the gap REVERSES, so the probe is not simply "
+             "a better classifier")
+    fig.suptitle(title, fontsize=9)
+    fig.tight_layout()
+    out = figure_path(__file__, tag)
+    fig.savefig(out, dpi=120, bbox_inches="tight")
+    print(f"saved {out}")
 
 
 if __name__ == "__main__":
-    w = style.WIDTH["page"] / 2.0
-    fig, axes = plt.subplots(2, 2, figsize=(2 * w, 2 * w * 0.62), sharex=True, sharey=True)
-    for r, task in enumerate((0, 1)):
-        for c, scenario in enumerate(SCENARIOS):
-            panel(axes[r][c], scenario, task, "abcd"[r * 2 + c])
-    for c in range(2):
-        axes[1][c].set_xlabel("updates relative to the task switch")
-    for r in range(2):
-        axes[r][0].set_ylabel("accuracy (%)")
-    axes[0][0].legend(loc="lower left", fontsize=6.5, handlelength=1.5, borderpad=0.15)
-
-    out = figure_path(__file__)
-    fig.savefig(out)
-    print(f"saved {out}")
-    print("\n  at each seed's OWN last checkpoint, mean over seeds (backprop):")
-    for scenario in SCENARIOS:
-        for task in (0, 1):
-            p, a, f = (v.mean() for v in final_checkpoint(scenario, RULE_SHOWN, task))
-            print(f"    {LABEL[scenario]:10s} task {task + 1}   probe {p:5.1f}   "
-                  f"argmax {a:5.1f}   gap {p - a:+6.1f}   floor {f:5.1f}   "
-                  f"probe ABOVE floor {p - f:+5.1f}")
+    draw(0, "a")
+    draw(1, "b")

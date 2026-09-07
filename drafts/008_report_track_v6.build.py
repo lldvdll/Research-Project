@@ -549,43 +549,48 @@ T.append(dict(part="Results", n="R4", w=750, figs=3,
       "<em>same</em> in both scenarios as parallel lines rather than hiding them."))
 
 T.append(dict(part="Results", n="R5", w=1000, figs=4,
-  q="Where does the damage live?", v="gap",
-  vt="Merged from two scenario sections into one, organised by tool. Both scenarios in every figure.",
+  q="Where does the damage live?", v="part",
+  vt="Six of seven built. The readout account is overturned; the Domain-IL drift card awaits run 807.",
   cols=[
-    col(C("build", "What moves the outcome distribution?", P(SK_DIST, 2),
+    col(C("ok", "What moves the outcome distribution?", pic("921_retention_distribution_a.png"),
       "Proposed: the retention <em>distribution</em> over 70 seeds, both scenarios, with each "
       "readout intervention overlaid. Class-IL is two groups, near-zero and 15–30%; Domain-IL is a "
       "broad unimodal spread. <strong>Averaging Class-IL reports a number no run produces.</strong> "
       "Masking recovers +17.5; freezing recovers nothing.",
       "absorbs the freeze bar chart and the masking half of 120. The question is what moves the "
       "<em>distribution</em>, not the mean."),
-      C("amend", "The freezing result underneath it", pic("130_freeze_factorial.png"),
+      C("ok", "The freezing result underneath it", pic("921_retention_distribution_b.png"),
       "<strong>Freezing the output layer recovers nothing</strong> — +0.36 ± 0.43 Class-IL, "
       "+0.15 ± 0.24 Domain-IL. Freezing the hidden layer is strongly negative.",
       "folds in as an overlay. Freeze-both is absent because crossover is undefined on 0/10 seeds "
       "— a result, not a gap.")),
-    col(C("build", "Is it the task-1 weights, or the competition at argmax?", P(SK_PFREEZE, 1),
-      "Proposed: freeze <strong>only the task-1 columns of W2</strong>. Masking is train-time only "
+    col(C("ok", "Is it the task-1 weights, or the competition at argmax?", pic("922_partial_column_freeze.png"),
+      "Built as 922 from run 806. Masking is train-time only "
       "— <code>active_vector</code> zeroes the error in <code>output_error</code> while "
       "<code>predict</code> still argmaxes over all ten units. Masking spares those weights "
       "<em>while letting task-2 units learn</em>; freezing all of W2 spares them but blocks task "
       "2's readout path, forcing it into W1.",
-      "the decisive experiment for the contradiction to its left, and cheap. If it reproduces "
-      "+17.5 the mechanism is established; if not, masking works another way. <strong>Needs "
-      "approval — <code>_apply_freeze</code> is whole-matrix.</strong>")),
-    col(C("build", "Is the code still readable when the readout fails?", P(SK_PROBE, 1),
-      "Proposed: a trained/refit linear probe against argmax, both tasks, both scenarios. Probe "
-      "high and argmax low means recalibration; both low means the representation is gone. "
-      "<strong>The project cannot currently tell them apart.</strong>",
-      "three tools, three questions: argmax (what the network reports), a trained probe (is it "
-      "linearly decodable), masking (does removing competitors restore it)."),
-      C("busy", "What the current probe shows", pic("320_ncm_both_tasks.png"),
+      "⚠ <strong>it landed on the second of three pre-committed readings.</strong> Masking recovers "
+      "<strong>+46.11 ± 4.52</strong>; freezing exactly the weights it spares recovers "
+      "<strong>+1.87 ± 1.03</strong> — twenty-five times smaller. So masking does NOT work by "
+      "sparing those weights. And they do not act at the same time: freezing moves the CROSSING "
+      "(+1.16, 5.0 sem) and masking moves the ENDPOINT (+46). One mechanism at two strengths "
+      "would differ in size but agree in shape.")),
+    col(C("ok", "Is the code still readable when the readout fails?", pic("923_probe_vs_argmax_a.png"),
+      "Refit linear probe against argmax, task 1. Class-IL: probe <strong>82.6</strong> against argmax "
+      "<strong>21.1</strong>, a +61.4 gap. ⚠ But the probe reads <strong>80.2% on the UNTRAINED "
+      "network</strong>, so only ~2.4 points come from anything the trunk learned.",
+      "drawn without that floor line the figure says “the representation survives” when it mostly "
+      "shows the probe barely needed one. ⚠ The gap is large in BOTH scenarios (+61.4 / +34.0) "
+      "though suppression is impossible in one — 920 draws that as a measurement that does NOT "
+      "separate. Read with 922: two independent lines now argue against the readout account."),
+      C("ok", "What the current probe shows", pic("923_probe_vs_argmax_b.png"),
       "Task-1 argmax collapses while a prototype readout holds ~83%. The control that matters: "
       "<strong>on task 2 the probe is worse than argmax</strong> (70.8 vs 91.3), ruling out \"the "
       "probe is simply a better classifier\".",
       "unreadable, and the steps near 1700 are seeds leaving the mean. NCM is centroid-only with "
       "almost no dynamic range. Keep the task-2 reversal as a control; replace the probe.")),
-    col(C("build", "What do the weights themselves do, per layer?", P(SK_PATH, 1),
+    col(C("ok", "What do the weights themselves do, per layer?", pic("924_per_layer_weight_path.png"),
       "Proposed: per-layer weight step per alternation block, both scenarios, from R4's runs. If "
       "<strong>W1 converges while W2 keeps oscillating</strong> in Class-IL, that is the "
       "output-competition claim stated in weights rather than accuracy.",
@@ -597,7 +602,7 @@ T.append(dict(part="Results", n="R5", w=1000, figs=4,
       "not because it cannot be.",
       "the largest genuine gap, and it is cheap: instrumentation of runs that already exist.")),
     col(C("ok", "Does task structure predict what survives?",
-      pic("311_task_pair_similarity_combined.png"),
+      pic("925_task_structure.png"),
       "Domain-IL's leading data-side explanation <strong>does not replicate</strong>: r = +0.686 "
       "(p = 0.029) on seeds 0–9 became <strong>r = +0.183 (p = 0.61)</strong> on seeds 10–19. "
       "Class-IL's does: 8, 9 and 5 in task 1 raise retention, 6 lowers it, surviving Bonferroni at "

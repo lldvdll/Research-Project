@@ -57,6 +57,15 @@ BUDGET = 900                             # updates per task. Long enough that ta
                                          # task 2's rise completes; short enough to stay legible.
 LOG_EVERY = 5                            # this is one run, so it can afford a fine curve
 
+# Learning rate is overridden BELOW the protocol default (0.02) on purpose. At the shared rate
+# the whole transition happens in roughly a hundred updates, so the crossing, the forgetting
+# slope and the surviving task-1 accuracy all pile into one narrow band and the opening figure
+# cannot be read. A quarter of the rate stretches the same dynamics out far enough to annotate,
+# and it leaves task 1 measurably above zero at the end so there is a retention to point at.
+# NOTHING is measured from this run, so the rate does not have to match the calibrated series --
+# but the caption must say it is lower, or a reader will compare its numbers with R1's.
+LR = 0.005
+
 SMOKE = "--smoke" in sys.argv
 if SMOKE:
     BUDGET = 120
@@ -71,7 +80,7 @@ PROTO = replace(
     loss=CFG["output_layer"]["loss"], target=CFG["output_layer"]["target"],
     mask=CFG["output_layer"]["mask"], reduction=CFG["output_layer"]["reduction"],
     optimizer=CFG["training"]["optimizer"], batch=CFG["training"]["batch_size"],
-    lr=dict(CFG["training"]["learning_rate"]), seeds=1,
+    lr={"backprop": LR}, seeds=1,
     eval_per_class=CFG["evaluation"]["eval_per_class"], device=CFG["evaluation"]["device"],
 )
 

@@ -5,34 +5,67 @@
 % no figure yet; the 900 script named in the comment is the one that will fill it.
 % ======================================================================================
 
-\section{Setting up the measurement}
+\section{Methods}
 \label{sec:methods}
 
+\subsection{Incremental Learning}
+\label{sec:m0}
+
+% This will include a diagram figure showing the difference between Domain and Class IL. 
+% We will describe the two paradigms, how they differ, and why we are testing both.
+Are we saying incremental of continual learning?
+Be clear about the difference (if any) between the two.
+Cite literature: van de Ven 2021 looks good. We may also include work from the Vincenzo Lomonaco course material, or other relevant references
+Why do we care? What function does IL have? How does it relate to machine vs human learning?
+What are the two scenarios (domain vs class IL), referencing the diagram.
+
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{incremental_learning_diagram.png}
+  \end{panelbox}
+  \caption{\label{fig:il_diagram}Shows the difference between Domain IL and Class IL w.r.t. our setup.}
+\end{figure*}
+
 % --------------------------------------------------------------------- M1
-\subsection{What forgetting looks like, and what is measured}
+\subsection{Catastrophic Forgetting}
 \label{sec:m1}
 
-\wordcount{350}
-% Definitional only. Name the switch, the plateau and the crossover on Fig.~\ref{fig:901}, then
-% state the metric the whole report is read on. Do NOT compare anything here -- rule identity
-% is not introduced until R2.
-%
-% MUST SAY, or the report reads as self-contradictory twenty pages later: this figure runs to
-% saturation on a fixed budget and ends at 0.0%, where R1 reports 5.4% at matched competence.
-% Both are correct; the difference is the stopping rule, and R1 explains why the measured
-% results use the other one.
-%
-% MUST SAY: 0% is not chance. Chance on ten classes is 10%. Zero on every task-1 class means
-% argmax has been captured by the task-2 output units.
+% This section shows what forgetting looks like. For now, we use the figure we have. We may want to include a "what human forgetting looks like" figure later.
+What does catastrophic forgetting look like? Describe figure 901.
+Talk about the learning/forgetting tradeoff.
+How does this differ from learning/forgetting in humans? Include a figure or some citations.
 
-\begin{figure}[t]
-  \fig{901_what_forgetting_looks_like.png}
+% Single-column float: 901 is one small panel, built at column width, and sits beside
+% the text that reads it rather than spanning the page.
+\begin{figure}[t]\centering
+  \begin{panelbox}
+    \solo{901_what_forgetting_looks_like.png}
+  \end{panelbox}
   \caption{\label{fig:901}\wordcount{110}}
 \end{figure}
 
-% --------------------------------------------------------------------- M2
-\subsection{Network, data and the choices behind them}
+\subsection{The learning rules: Back propagation vs Prospective Configuration}
 \label{sec:m2}
+
+% This section explains the core investigative question: Do local learning rules mitigate CF
+Introduce core learning and "remembering" mechanisms in humans (memory, replay, meta-placticity, local learning)
+Cite studies showing that replay etc are well studied.
+Explain purpose of investigating local learning: Does it contribute to "remembering"?
+Introduce Backprop as learning from global error signal, with reference to diagram
+Introduce prospective configuration as learning from local error signals, with reference to diagram
+Maybe comment on what we might expect to find based on theory
+Maybe comment on what the literature says about the comparison, citing S&B results
+
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{learning_rules_diagram.png}
+  \end{panelbox}
+  \caption{\label{fig:rules_diagram}\wordcount{110}}
+\end{figure*}
+
+% --------------------------------------------------------------------- M2
+\subsection{Experiment setup and controls}
+\label{sec:m3}
 
 \wordcount{600}
 % The parameter table carries the values; the prose carries only the JUSTIFICATION, and only
@@ -52,6 +85,7 @@
   \caption{\label{tab:params}Every control parameter, and what fixed it.\wordcount{60}}
   % \footnotesize and the shortened third column keep this inside \columnwidth. It overflowed
   % by 24.6pt at \normalsize -- check the log after adding a row.
+
   \footnotesize
   \begin{ruledtabular}
   \begin{tabular}{lll}
@@ -72,19 +106,26 @@
   \end{ruledtabular}
 \end{table}
 
-\begin{figure}[t]
-  \fig{903_specification.png}
-  \caption{\label{fig:903}\gap{903 not written; needs 802, which is queued}\wordcount{110}}
-\end{figure}
 
-\begin{figure}[t]
-  \fig{904_settling_fixed_point.png}
+
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.98\panelspan}{903_specification_a.png}\par\vspace{6pt}
+    \panel{0.98\panelspan}{903_specification_b.png}
+  \end{panelbox}
+  \caption{\label{fig:903}\gap{903 not written; needs 802, which is queued}\wordcount{110}}
+\end{figure*}
+
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{904_settling_fixed_point.png}
+  \end{panelbox}
   \caption{\label{fig:904}\gap{904 not written; copies script 334}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
 % --------------------------------------------------------------------- M3
-\subsection{Why the comparison stops at matched competence}
-\label{sec:m3}
+\subsection{Measuring forgetting}
+\label{sec:m4}
 
 \wordcount{450}
 % This is a control presented as a result, because it licenses every comparison downstream and
@@ -104,7 +145,17 @@
 % And state that a censored crossover is the BEST outcome, not a missing one -- task 1 never
 % fell below task 2 -- so it is ranked, never dropped.
 
-\begin{figure}[t]
-  \fig{907_why_matched_competence.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.98\panelspan}{907_why_matched_competence_a.png}\par\vspace{6pt}
+    \panel{0.98\panelspan}{907_why_matched_competence_b.png}
+  \end{panelbox}
   \caption{\label{fig:907}\gap{907 not written; merges 111 and 343}\wordcount{110}}
-\end{figure}
+\end{figure*}
+
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{909_crossover_vs_retention.png}
+  \end{panelbox}
+  \caption{\label{fig:909}\wordcount{110}}
+\end{figure*}

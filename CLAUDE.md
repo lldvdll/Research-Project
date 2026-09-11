@@ -19,15 +19,26 @@ the wrong one. Flag it and ask.
 
 ## Documents
 
+**The project is in its final phase: revising the report's figures section by section, and
+writing the text around them. Read `claude_code_management/now.md` FIRST, every session — it
+carries the current state, the working loop, and the next actions, and it names the reading
+order for everything else.**
+
 | File | What it is | When to read it |
 |---|---|---|
-| `claude_code_management/now.md` | **The dashboard.** What is running, next three actions, checklist, recent decisions. Deliberately short — keep it that way. | **First, every session.** |
-| `claude_code_management/current_state.md` | **Where the project actually is.** Results, corrections, decisions, running order. | Second. It supersedes the plan where they disagree. |
+| `claude_code_management/now.md` | **The dashboard, and the entry point.** Where the project is, how the report loop works, how to build and push the report, next actions. | **First, every session.** |
+| `claude_code_management/report_progress.md` | **The operational file for the report pass.** The user's standing figure conventions, the per-section checklist built from their review comments, a Deferred log for out-of-sequence work, and Completed. | **Second, whenever the task touches the report.** |
+| `claude_code_management/script_plan_800_900.md` | The figure inventory — which script feeds which figure, and what has been built. | Before creating or repointing any figure. |
+| `claude_code_management/plot_walkthrough.md` | Every figure read in report order, as an argument rather than a picture. | When the question is what a figure *claims*. |
+| `claude_code_management/progress.md` | One line per experiment, every number re-derived from the saved arrays. | For any pre-800 number. |
 | `claude_code_management/knowledge_base.md` | Consolidated reference. Amendable. | Before any substantive claim. Start with §9.3. |
 | `claude_code_management/timeline.md` | Append-only log of chats. Entries are never edited. | When asked about history. |
-| `claude_code_management/presentation_plan.md` | The slide plan. Authoritative for what work happens next. | Start of any presentation or experiment work. |
+| `claude_code_management/handover.md` | The 2026-09-10 build-pass record. **History** — superseded by `report_progress.md` for anything current. | Only when tracing how something came to be. |
 | `claude_code_management/archive/` | Raw superseded chat logs. **Read-only, never edit.** | Only when adjudicating a contradiction. |
 | `ref/` | The source PDFs. **Read-only.** | When a claim needs a citation. |
+
+⚠ `current_state.md` is named in older notes but **does not exist**. `now.md` and `progress.md`
+cover what it was for. Do not go looking for it.
 
 ## Change control — the standing rule
 

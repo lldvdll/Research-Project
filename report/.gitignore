@@ -4,8 +4,10 @@
 # PRL
 mainNotes.bib
 
-# Do not commit the raw pdf
-main.pdf
+# main.pdf IS committed, deliberately, since 2026-09-11: the user reviews the built
+# report remotely on GitHub and comments by chat, so the PDF has to be in the repo and
+# has to be current. Rebuild before committing.
+# main.pdf
 
 # Add ignores for generated files
 
@@ -285,3 +287,6 @@ TSWLatexianTemp*
 
 # Makeindex log files
 *.lpz
+
+# local backup taken before the figure-grid rewrite
+main.tex.pregrid

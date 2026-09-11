@@ -57,8 +57,11 @@ REPEATS = 5                 # passes of (task 1, task 2) -> 10 blocks
 TRACE_EVERY = 10            # weight snapshots. 68's note: memory, not time -- W1 at 196x32 is
                             # 25 kB per snapshot, so every 10th update over ~7000 updates is
                             # ~18 MB per layer per traced seed.
-TRACE_SEEDS = 3             # seeds whose full weight trajectory is kept, for 918's PCA. The
-                            # statistics come from every seed; the trajectory is an illustration.
+TRACE_SEEDS = 10            # seeds whose full weight trajectory is kept, for 918's PCA. All 10,
+                            # by explicit request, to check the trajectory shape across every
+                            # seed rather than 3 of them. ~18 MB/layer/seed (see TRACE_EVERY
+                            # note) -> ~360 MB total across both layers, all 10 seeds, both
+                            # scenarios -- memory, not time, per 68's original note.
 
 for a in sys.argv:
     if a.startswith("--add-repeats="):

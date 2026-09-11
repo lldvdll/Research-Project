@@ -32,6 +32,11 @@ more, so mean step size correlates with retention at r = +0.93 -- which reads as
 preserve task 1" and is an artefact of run length. The TOTAL path summed over task 2 has no such
 problem and gives the interpretable sign. Every weight claim here is on totals.
 
+THIRD SUBPLOT ADDED TO (a), AFTER 808: does the D -> retention link strengthen under sigmoid,
+where PC actually has something to explain in Domain-IL (+0.74 crossover, d=1.25)? If the
+mechanism is real, sigmoid/Domain-IL should look more like tanh/Class-IL (partial r ~+0.85) than
+tanh/Domain-IL (partial r ~+0.12).
+
 WHAT (b) ADDS, AND WHY IT REFUTED ITS OWN PREDICTION. 344 predicted PC's damping would show in W1,
 whose error signal comes through settling, and not in W2, which uses the same direct target error
 for both rules. The opposite happened. Log-log slope of realised ||dW|| against nominal lr:
@@ -70,9 +75,9 @@ COLORS = {"class_il": "tab:purple", "domain_il": "tab:green"}
 METHOD_COLOR = {"backprop": "0.35", "pc": "tab:orange"}     # as 344/340 use
 
 
-def pc_runs(scenario):
+def pc_runs(scenario, path=None):
     """Per PC seed: (mean displacement over task 2, total ||dW2|| over task 2, retention)."""
-    d = np.load(EXP / f"803_mechanism_logged_{scenario}.npz", allow_pickle=True)
+    d = np.load(path or EXP / f"803_mechanism_logged_{scenario}.npz", allow_pickle=True)
     out = []
     for i, m in enumerate(d["methods"]):
         if m != "pc":
@@ -90,7 +95,7 @@ def partial(x, y, z):
 
 
 def panel_a():
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10.4, 4.2))
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15.0, 4.2))
     for s in SCENARIOS:
         D, W2, R = pc_runs(s).T
         r1, r2 = np.corrcoef(D, W2)[0, 1], np.corrcoef(D, R)[0, 1]
@@ -109,7 +114,25 @@ def panel_a():
     ax2.set_ylabel("final task-1 accuracy (%)", fontsize=9)
     ax2.set_title("link 2: and more retention — but only in Class-IL\n"
                   "(partial r | task-2 length: +0.85 vs +0.12)", fontsize=9)
-    for ax in (ax1, ax2):
+
+    # Third subplot: sigmoid, Domain-IL (808) -- does the link strengthen where PC actually wins?
+    D8, W28, R8 = pc_runs("domain_il", path=EXP / "808_sigmoid_domain_mechanism_domain_il.npz").T
+    r8 = np.corrcoef(D8, R8)[0, 1]
+    ax3.scatter(D8, R8, s=34, color="tab:green", marker="^", alpha=0.85,
+                label=f"Domain-IL · sigmoid  (r = {r8:+.2f})")
+    b8 = np.polyfit(D8, R8, 1)
+    xs8 = np.linspace(D8.min(), D8.max(), 20)
+    ax3.plot(xs8, np.polyval(b8, xs8), lw=1.3, color="tab:green", alpha=0.6)
+    d8 = np.load(EXP / "808_sigmoid_domain_mechanism_domain_il.npz", allow_pickle=True)
+    L8 = np.array([len(d8[f"disp_{i}"]) - int(d8[f"switch0_{i}"])
+                   for i, m in enumerate(d8["methods"]) if m == "pc"], dtype=float)
+    p8 = partial(D8, R8, L8)
+    ax3.set_xlabel("mean settling displacement $D$ over task 2", fontsize=9)
+    ax3.set_ylabel("final task-1 accuracy (%)", fontsize=9)
+    ax3.set_title(f"sigmoid: does D predict retention where PC\nactually wins? "
+                  f"(partial r | task-2 len: {p8:+.2f})", fontsize=9)
+
+    for ax in (ax1, ax2, ax3):
         ax.grid(alpha=0.25)
         ax.legend(fontsize=8, loc="best")
     fig.suptitle("PC only — backprop's displacement is identically zero by construction",
@@ -128,6 +151,7 @@ def panel_a():
         print(f"  {NICE[s]:10s} r(D,W2) {np.corrcoef(D, W2)[0, 1]:+.2f}   "
               f"r(D,ret) {np.corrcoef(D, R)[0, 1]:+.2f}   "
               f"partial r(D,ret | task-2 len) {partial(D, R, L):+.2f}")
+    print(f"  domain_il·sigmoid (808)  r(D,ret) {r8:+.2f}   partial r(D,ret | task-2 len) {p8:+.2f}")
 
 
 def panel_b():

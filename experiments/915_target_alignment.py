@@ -39,6 +39,15 @@ both scenarios (+0.0245 ± 0.0046 Class-IL, 5.4 sem). Retention ranks the same w
 predicts retention across seeds within a scenario, and does not explain the between-rule
 difference in the scenario where that difference is negative.
 
+THIRD PANEL, ADDED AFTER 808: under sigmoid, Domain-IL is the one place PC's crossover advantage
+is real AND large (+0.74 +/- 0.19, Cohen's d = 1.25) -- the single best chance for the credited
+mechanism to show up. It does not: interference-alignment (task-1 reference batch, POST-SWITCH
+ONLY, matching this figure's own convention -- a rougher whole-run average gives ~0.015/0.014,
+still the same conclusion) is +0.0050 (backprop) vs +0.0032 (pc), both small and barely distinct.
+So target alignment fails to explain PC's advantage even in the one condition engineered to give
+it the best possible shot -- a stronger negative than the tanh result alone, which had no
+advantage to explain in the first place.
+
 Styling follows the 300-series scripts: tab: colours, dpi 120, bbox_inches="tight", 9pt labels.
 No shared style module.
 
@@ -86,8 +95,24 @@ def mean_post(scenario, rule, which):
     return np.array([r[which][r[which][:, IDX] > r[2], VAL].mean() for r in runs(scenario, rule)])
 
 
+def runs_808(rule):
+    """808's sigmoid + Domain-IL run -- same save schema as 803, different file."""
+    d = np.load(EXP / "808_sigmoid_domain_mechanism_domain_il.npz", allow_pickle=True)
+    out = []
+    for i, m in enumerate(d["methods"]):
+        if m != rule:
+            continue
+        out.append((np.asarray(d[f"align_{i}"], float), np.asarray(d[f"align_ref_{i}"], float),
+                    int(d[f"switch0_{i}"]), float(d[f"final_t1_{i}"])))
+    return out
+
+
+def mean_post_808(rule, which):
+    return np.array([r[which][r[which][:, IDX] > r[2], VAL].mean() for r in runs_808(rule)])
+
+
 if __name__ == "__main__":
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(11.4, 4.2))
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(16.5, 4.2))
 
     # ---- panel 1: alignment through training, over the window every seed reached
     for scenario in SCENARIOS:
@@ -131,6 +156,27 @@ if __name__ == "__main__":
                   "legacy result (flat) does not replicate", fontsize=9)
     ax2.grid(alpha=0.25)
     ax2.legend(fontsize=7.5, loc="upper left")
+
+    # ---- panel 3: the direct test -- sigmoid, Domain-IL, where the advantage is real and large
+    bp_ref = mean_post_808("backprop", 1)
+    pc_ref = mean_post_808("pc", 1)
+    bp_ret = np.array([x[3] for x in runs_808("backprop")])
+    pc_ret = np.array([x[3] for x in runs_808("pc")])
+    xpos = {"backprop": 0, "pc": 1}
+    for rule, vals in (("backprop", bp_ref), ("pc", pc_ref)):
+        ax3.scatter(np.full(vals.shape, xpos[rule]), vals, s=30, marker=MARKER[rule],
+                    color="tab:green", alpha=0.7)
+        ax3.scatter([xpos[rule]], [vals.mean()], s=120, marker="_", color="k", lw=2.5, zorder=5)
+    ax3.axhline(0, color="k", lw=1.0)
+    ax3.set_xticks([0, 1])
+    ax3.set_xticklabels(["backprop", "pc"])
+    ax3.set_xlim(-0.5, 1.5)
+    ax3.set_ylabel("interference-alignment (task-1 ref, during task 2)", fontsize=9)
+    ax3.set_title("Sigmoid, Domain-IL: crossover advantage is real (d=1.25)\n"
+                  "but alignment barely differs -- not the mechanism, even here", fontsize=9)
+    ax3.grid(alpha=0.25, axis="y")
+    print(f"\n  sigmoid/domain_il (808): interference-alignment  bp {bp_ref.mean():+.4f}  "
+          f"pc {pc_ref.mean():+.4f}   retention bp {bp_ret.mean():.1f}  pc {pc_ret.mean():.1f}")
 
     fig.tight_layout()
     out = figure_path(__file__)

@@ -66,6 +66,91 @@
 \newcommand{\gap}[1]{\textit{\textcolor{orange}{[gap: #1]}}}
 
 
+% =========================================================================
+% FIGURE GRIDS  (first-draft layout, 2026-09-11)
+%
+% House style: two-column body, with each TOPIC's figures collected into one
+% grid spanning the full page width, ruled off in a box, panels lettered
+% A, B, C by the subcaption package rather than by hand.
+%
+%   \begin{figure*}[t]\centering
+%     \begin{panelbox}
+%       \panel{0.49\panelspan}{a.png}\hfill
+%       \panel{0.49\panelspan}{b.png}   % A and B side by side
+%       \par\vspace{6pt}                % next row
+%       \solo{single.png}                 % unlettered, one-panel grid
+%     \end{panelbox}
+%     \caption{...}                       % sits below the rule
+%   \end{figure*}
+%
+% WARNING -- \gridfig SCALES, which contradicts the "no scale factor" note
+% further up this preamble. That note assumed the 900 scripts save at final
+% physical size; measured on 2026-09-11 they do not. Natural widths run from
+% 6.9 in to 21.2 in against a 7.1 in page, which is exactly why figures ran
+% off the page. Scaling to the panel width is a DRAFT compromise that makes
+% the layout readable now. The real fix is to set figsize in the over-wide
+% scripts and re-run them, after which the width option can come back out.
+% Anything worse than about 2x over-wide still has axis labels too small to
+% read comfortably; those are listed in claude_code_management/.
+% =========================================================================
+
+% Panel letters: bold "A", no parentheses, above-left of the panel.
+\DeclareCaptionLabelFormat{panelletter}{\textbf{#2}}
+\captionsetup[subfigure]{labelformat=panelletter, labelsep=none,
+                         justification=raggedright, singlelinecheck=false,
+                         skip=1pt, position=top}
+\renewcommand{\thesubfigure}{\Alph{subfigure}}
+
+% Width available inside the box, once \fboxsep and the rule are taken off.
+\newlength{\panelspan}
+\setlength{\panelspan}{\textwidth}
+
+% One figure scaled to the width of its panel, with the same not-generated
+% fallback \fig uses.
+\newcommand{\gridfig}[1]{%
+  \IfFileExists{../experiments/#1}%
+    {\includegraphics[width=\linewidth]{#1}}%
+    {\fbox{\parbox[c][0.13\textheight][c]{0.94\linewidth}{\centering
+       \textcolor{orange}{\texttt{\detokenize{#1}} --- not generated yet}}}}%
+}
+
+% A lettered panel: #1 = width, #2 = file.
+\newcommand{\panel}[2]{%
+  \begin{subfigure}[t]{#1}\subcaption{}\gridfig{#2}\end{subfigure}%
+}
+
+% An unlettered panel, for a grid holding only one figure.
+\newcommand{\solo}[1]{\gridfig{#1}}
+
+
+
+\newsavebox{\gridbox}
+
+% Rules a box around a group of panels. Used inside figure*, with \caption
+% placed after it so the caption sits below the rule rather than inside it.
+\newenvironment{panelbox}%
+  {\setlength{\fboxsep}{5pt}%
+   \setlength{\panelspan}{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}%
+   \begin{lrbox}{\gridbox}%
+   \begin{minipage}{\panelspan}\centering}%
+  {\end{minipage}\end{lrbox}%
+   \fbox{\usebox{\gridbox}}}
+
+% Float packing. This draft is figure-dominant -- 21 full-width floats against
+% a few pages of body text -- so LaTeX's defaults defer nearly every figure and
+% emit half-empty float pages. These loosen the limits so a page may be almost
+% all figure, and require a float page to be 80% full before it is allowed.
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.95}
+\renewcommand{\textfraction}{0.05}
+\renewcommand{\floatpagefraction}{0.80}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.80}
+\setcounter{topnumber}{3}
+\setcounter{dbltopnumber}{3}
+\setcounter{totalnumber}{5}
+
+
 \begin{document}
 
 % TITLE

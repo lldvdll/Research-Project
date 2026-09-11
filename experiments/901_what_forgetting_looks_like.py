@@ -59,54 +59,65 @@ if __name__ == "__main__":
     i2 = [classes.index(c) for c in list(d["task2"])]
     t1, t2 = acc[:, i1].mean(axis=1), acc[:, i2].mean(axis=1)
 
-    fig, ax = plt.subplots(figsize=(7.0, 4.4))
+    # Sized for ONE COLUMN -- this figure now sits inline beside the text that describes it,
+    # so it is built at \columnwidth and nothing in it may rely on a full-page span.
+    fig, ax = plt.subplots(figsize=(3.4, 2.7))
 
+    # Phase shading replaces the switch rule. The band a curve is being TRAINED in carries that
+    # curve's own colour, so which task is live is readable without a line or a label, and the
+    # switch is the edge between the two blocks rather than an annotation competing with the data.
+    ax.axvspan(steps[0], switch, color=TASK1_COLOR, alpha=0.09, lw=0, zorder=0)
+    ax.axvspan(switch, steps[-1], color=TASK2_COLOR, alpha=0.09, lw=0, zorder=0)
+
+    # Per-class lines over a tinted background need more contrast than they did over white:
+    # darker, slightly thicker, and drawn above the shading.
     for col in i1:
-        ax.plot(steps, acc[:, col], color=TASK1_COLOR, lw=0.7, alpha=0.35)
+        ax.plot(steps, acc[:, col], color=TASK1_COLOR, lw=0.6, alpha=0.55, zorder=2)
     for col in i2:
-        ax.plot(steps, acc[:, col], color=TASK2_COLOR, lw=0.7, alpha=0.35)
-    ax.plot(steps, t1, color=TASK1_COLOR, lw=2.2, label="task 1 (mean of its 5 classes)")
-    ax.plot(steps, t2, color=TASK2_COLOR, lw=2.2, label="task 2 (mean of its 5 classes)")
-
-    ax.axvline(switch, color="0.25", lw=1.2)
-    ax.annotate("switch", (switch, 101), xytext=(-4, 0), textcoords="offset points",
-                fontsize=8, ha="right", va="bottom", color="0.25")
-    ax.axhline(CHANCE, color="0.6", lw=0.8, ls="--")
-    ax.annotate("chance (10 classes)", (steps[len(steps) // 6], CHANCE), xytext=(0, 3),
-                textcoords="offset points", fontsize=7, color="0.45")
+        ax.plot(steps, acc[:, col], color=TASK2_COLOR, lw=0.6, alpha=0.55, zorder=2)
+    ax.plot(steps, t1, color=TASK1_COLOR, lw=2.0, zorder=4, label="task 1")
+    ax.plot(steps, t2, color=TASK2_COLOR, lw=2.0, zorder=4, label="task 2")
 
     cx_step, cx_height = crossover(steps, t1, t2, after=switch)
-    ax.plot([cx_step], [cx_height], marker="o", ms=7, mfc="none",
-            mec=CROSSOVER_COLOR, mew=1.8, zorder=5)
-    ax.annotate(f"crossover  {cx_height:.0f}%", (cx_step, cx_height), xytext=(52, -6),
-                textcoords="offset points", fontsize=8, color=CROSSOVER_COLOR,
-                va="center", arrowprops=dict(arrowstyle="-", lw=0.8, color=CROSSOVER_COLOR))
+    ax.plot([cx_step], [cx_height], marker="o", ms=5, mfc="none",
+            mec=CROSSOVER_COLOR, mew=1.5, zorder=6)
+    # Crossover label sits LEFT of the switch, in the task-1 block, where the curves have
+    # already separated and there is empty space.
+    ax.annotate(f"crossover {cx_height:.0f}%", (cx_step, cx_height), xytext=(-96, -2),
+                textcoords="offset points", fontsize=7, color=CROSSOVER_COLOR,
+                va="center", ha="left",
+                arrowprops=dict(arrowstyle="-", lw=0.7, color=CROSSOVER_COLOR))
 
-    # The two names SK_DEF asks the figure to plant. Both labels sit in the empty band between
-    # the collapsed task-1 curve and the risen task-2 curve, with a short arrow to the curve each
-    # one describes -- drawn across the data they read as extra series.
-    ax.annotate("forgetting", xy=(switch + 350, 3), xytext=(switch + 500, 30),
-                fontsize=9, color=TASK1_COLOR,
-                arrowprops=dict(arrowstyle="->", lw=1.3, color=TASK1_COLOR))
-    ax.annotate("learning", xy=(switch + 350, 91), xytext=(switch + 500, 62),
-                fontsize=9, color=TASK2_COLOR,
-                arrowprops=dict(arrowstyle="->", lw=1.3, color=TASK2_COLOR))
+    # Retention is the other metric this figure defines: what task 1 still scores at the end.
+    # It is annotated where it lives -- bottom right, just above the collapsed task-1 curve.
+    # Anchored a little inside the right edge: at the very last step the label runs past the
+    # axes and the leading character is clipped.
+    ax.annotate(f"retention {t1[-1]:.0f}%", (steps[-1], t1[-1]), xytext=(-6, 18),
+                textcoords="offset points", fontsize=7, color=CROSSOVER_COLOR,
+                ha="right", va="bottom", annotation_clip=False,
+                arrowprops=dict(arrowstyle="-", lw=0.7, color=CROSSOVER_COLOR))
+
+    # The two named processes. Positions follow the slower curve the reduced learning rate
+    # produces: the fall and the rise now take roughly a third of the second block.
+    ax.annotate("forgetting", xy=(switch + 260, 26), xytext=(switch + 210, 52),
+                fontsize=8, color=TASK1_COLOR, ha="left",
+                arrowprops=dict(arrowstyle="->", lw=1.1, color=TASK1_COLOR))
+    ax.annotate("learning", xy=(switch + 300, 74), xytext=(switch + 120, 88),
+                fontsize=8, color=TASK2_COLOR, ha="left",
+                arrowprops=dict(arrowstyle="->", lw=1.1, color=TASK2_COLOR))
 
     ax.set_xlim(steps[0], steps[-1])
     ax.set_ylim(-2, 104)
-    ax.set_xlabel("training updates")
-    ax.set_ylabel("test accuracy (%)")
-    ax.set_title("Class-IL, backprop, one seed, fixed budget -- all ten classes drawn separately",
-                 fontsize=9)
-    ax.grid(alpha=0.2)
-    ax.legend(fontsize=8, loc="center left")
+    ax.set_xlabel("training updates", fontsize=8)
+    ax.set_ylabel("test accuracy (%)", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.grid(alpha=0.15)
+    ax.legend(fontsize=7, loc="center left", framealpha=0.85)
 
     fig.tight_layout()
     out = figure_path(__file__)
-    fig.savefig(out, dpi=130, bbox_inches="tight")
+    fig.savefig(out, dpi=200, bbox_inches="tight")
     print(f"saved {out}")
     print(f"  switch {switch}   crossover {cx_height:.1f}% at step {cx_step:.0f} "
           f"({cx_step - switch:.0f} into task 2)")
-    print(f"  end of task 1: t1 {t1[len(t1) // 2]:.1f}   end of run: t1 {t1[-1]:.1f}  "
-          f"t2 {t2[-1]:.1f}")
-    print(f"  per-class task-1 at end: {dict(zip(list(d['task1']), acc[-1, i1].round(1)))}")
+    print(f"  retention (final task 1) {t1[-1]:.1f}%   final task 2 {t2[-1]:.1f}%")

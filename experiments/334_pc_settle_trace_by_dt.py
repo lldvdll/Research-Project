@@ -77,7 +77,13 @@ else:
     # 330's 7 core values (0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1.0) plus three added to resolve the
     # stable/unstable transition: 0.7, 0.85 (the scenario-dependent boundary point -- converges
     # under domain-il, not class-il), 1.5 (clearly diverged reference).
-    DT_GRID = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 0.7, 0.85, 1.0, 1.5]
+    # Trimmed 2026-09-11 for the report figure, and 0.4 ADDED -- 0.4 is the value the whole
+    # series actually runs at and the old grid jumped 0.2 -> 0.5 straight past it, so the
+    # figure asserted a chosen dt it had never measured. Seven values is enough to show the
+    # shared fixed point at low dt, the boundary, and divergence twice over; the discarded
+    # values (0.01, 0.05, 0.7, 1.0) only thickened the plot. The 10-value arrays are kept
+    # beside the new ones as *.npz.bak10dt.
+    DT_GRID = [0.02, 0.1, 0.2, 0.4, 0.5, 0.85, 1.5]
     STEP_CAP = 500
 
 SCENARIOS = CFG["data"]["scenarios"]

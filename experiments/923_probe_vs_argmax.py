@@ -66,7 +66,13 @@ SCENARIOS = ["class_il", "domain_il"]
 NICE = {"class_il": "Class-IL", "domain_il": "Domain-IL"}
 COLORS = {"class_il": "tab:purple", "domain_il": "tab:green"}
 STEP, P1, P2, A1, A2 = 0, 1, 2, 3, 4
-RULE = "backprop"          # 912 establishes the rules barely differ; one is drawn for legibility
+RULE = "backprop"          # verified directly, not just assumed from 912 (see docstring):
+                           # PC's probe reading is 81.9/80.6 (Class-IL/Domain-IL task 1) against
+                           # backprop's 82.6/81.8 -- nearly identical. The GAP differs more
+                           # (Domain-IL: 34.0 bp vs 41.4 pc) but that traces to the already-
+                           # documented argmax difference (912), not to the probe reading
+                           # differently by rule. One rule for legibility is fine HERE; it would
+                           # not have been for 918, where the two rules genuinely diverged.
 
 
 def runs(scenario):

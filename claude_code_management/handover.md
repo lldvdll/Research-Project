@@ -1,4 +1,5 @@
-# Handover — 2026-09-06
+# Handover — 2026-09-10 (supersedes the 2026-09-06 version wholesale — do not append to this
+# file at the next consolidation, replace it, matching the 300-series log's own convention)
 
 Everything needed to pick this up cold. Read `now.md` first (one screen), then this.
 
@@ -6,203 +7,192 @@ Everything needed to pick this up cold. Read `now.md` first (one screen), then t
 
 ## 1. Where the project is
 
-The report structure is **settled** and the figure list is **frozen**. Implementation has started.
+**All 800-series training has run.** All 900-series figures that were listed as "not written" in
+`report/sections/results.tex`/`methods.tex` now exist as real PNGs — checked directly against the
+figure list in `script_plan_800_900.md`, not assumed. What's happening now is a **refinement pass**:
+folding two new findings (the sigmoid activation flip, 802/808; task-1 overtraining, 807) into
+figures that were built before those findings existed, fixing one real bug found along the way,
+and extending a handful of cells that never converged within budget.
 
-- **The track**: `report_track.md` — the **question** order, as eleven cumulative tiers. It was
-  never rewritten into section order, and an earlier version of this handover wrongly said it
-  had been. It now opens with a tier → section mapping table instead; the **section** order
-  (M1–M3 / R1–R5 / D1, 18 main-text figures, costed against 8,000 words) is authoritative in
-  `script_plan_800_900.md` and in `report/sections/*.tex`.
-- **The audit page**: <https://claude.ai/code/artifact/10978e55-0449-4f55-beb7-b6464030ac07>
-  (versioned in `drafts/`, currently 007). Shows every figure slot, its status, and an honest
-  verdict per section.
-- **The script plan**: `script_plan_800_900.md` — the 800/900 split, the many-to-many mapping,
-  and the thirteen 800 slots deliberately left unwritten.
-- **The verified experiment index**: `progress.md` — every experiment 01–347, re-derived from
-  saved arrays. **This is ground truth for any number.** Where a note and an array disagreed,
-  the array won.
+**`report/sections/*.tex` still has stale captions.** Most of results.tex's `\gap{...not written}`
+placeholders are now wrong — the figure exists, the caption just hasn't been written. This is
+listed here as a known gap, not fixed — it's the user's own report-writing pass
+("piecing together"), not a plotting task.
 
-## 2. The 800/900 architecture
+## 2. What changed this session, in the order it happened
 
-**800 trains and saves arrays. It never draws. 900 loads and draws. It never trains.**
+1. **802's activation sweep was found to have actually finished** (handover previously said
+   "queued") — full 10-seed run already on disk. Result: PC−backprop crossover under sigmoid
+   flips **positive** in Domain-IL (+0.74 ± 0.19, Cohen's d = 1.25 — the largest standardized
+   effect anywhere in the project), where tanh and relu both give a real negative. Class-IL
+   stays positive under all three activations (activation-insensitive there).
+2. **808** (new): 803's full mechanism toolkit (target alignment, displacement) re-run on the
+   ONE condition where the sigmoid effect lives — sigmoid + Domain-IL, both rules, 10 seeds.
+   Target alignment does **not** explain the advantage even there (interference-alignment
+   +0.0050 bp vs +0.0032 pc, post-switch only — effectively identical) — a stronger negative
+   than the tanh result, which had no advantage to explain in the first place.
+3. **`cohens_d_paired`** added to `src/metrics.py` — standardized effect size, since S&B report
+   neither a p-value nor an effect size for their own continual-learning result (graphical 68%
+   CI bands only), so this project's numbers need their own standardized reading.
+4. **`classify_forgetting`** added to `src/metrics.py` — shape classifier for post-switch task-1
+   traces (collapse / delayed / partial / rising / noisy), mirroring `classify_settle`'s design.
+   Found and fixed a real ordering bug before trusting it (noise must be checked before the
+   rising-trend check, or a noisy tail's slope looks like a spurious rise by chance). Applied to
+   803's full 2×2 (`928`): **Class-IL splits into collapse/delayed/partial for both rules, and
+   9/10 seeds get the identical shape under both rules** — a data property, not a rule property.
+   **Domain-IL is uniformly "partial", all 10 seeds, both rules, no exceptions.**
+5. **807** (new): does retention improve if task 1 keeps training past the matched-competence
+   threshold? Train to threshold once (N steps), branch four independent task-2 phases from
+   snapshots at 1×/1.5×/2×/4×N. Finding: backprop benefits in BOTH scenarios (Domain-IL most:
+   d=1.43), PC benefits in Class-IL (d=0.65) but **gets nothing from it in Domain-IL** (d=0.03,
+   essentially zero) — needed `src/runner.py`'s `tail_iters` to accept a per-task list (small,
+   approved, verified bit-identical for the scalar path every existing caller still uses).
+6. **User feedback, applied**: 918 needed both rules (was backprop-only on an assumption that
+   turned out not to hold up); 912 needed activation as a fourth axis; 915/916 needed the sigmoid
+   condition folded in; 923's backprop-only choice needed checking, not assuming (checked: holds
+   up there, unlike 918); a crossover-vs-retention diagnostic was wanted (built as `909`, new);
+   927 needed jittered per-seed lines instead of bare error bars, plus a 3.0× point.
+7. **Bug found while fixing 912 (real, cost real time): `_vals` in 341/342 doesn't sort by
+   seed before pairing.** Every other code path (full run, `--add-seeds`, `--add-width`)
+   preserves seed-order alignment by construction; a new `--extend-cap` feature (added this
+   session to fix non-converged cap-hit cells) reassembles rows in a way that breaks that
+   alignment, silently pairing the wrong seeds against each other in the PRINTED stats only
+   (the saved arrays and the 912/927-style figures, which sort by seed correctly, were never
+   wrong). **This produced one incorrect report to the user mid-session** (H=4 Class-IL falsely
+   reported as no longer significant) — caught, corrected, `_vals` fixed in both files to sort by
+   seed. **If you see a width/depth paired number from before this fix that doesn't match a
+   `--replot` rerun, trust the replot.**
+8. **`--extend-cap=X` added to 341/342** — re-runs only the (method, width/depth, seed) cells
+   that never reached threshold within budget, at a raised cap, replacing just those rows.
+   341 extended to 20000 (from 5000): 0 (class-il) / 1 (domain-il) cells still capped after.
+   **342's extension was still running when this handover was written — check its output before
+   trusting any depth-sweep number.**
+9. **A recurring pattern found via the cap-hit scan: seed 13 (almost always PC, almost always
+   Class-IL) is anomalously slow across AT LEAST SEVEN independent scripts** — 802, 803, 804,
+   805 (both its scratch AND joint arms), 806, 808, and 340's own lr sweep. This is no longer
+   "a cell that happened to be slow" — it is a robust, cross-cutting, independently-replicated
+   pattern, very likely the same phenomenon as the old "seed 9" outlier (302), a genuinely hard
+   digit split rather than noise. **804 and 805's seed-13 cells are NOT YET extended** (only
+   802/803/806/808 were, via the patch job; 341/342 via `--extend-cap`) — deliberately not
+   launched this session to avoid a third/fourth concurrent heavy job on top of the two already
+   running. Worth its own small write-up regardless of whether every last cell gets extended:
+   the CONSISTENCY across seven independently-written scripts is itself the finding.
+10. **806 (masking) has a real complication, not just slow convergence**: several backprop
+    seeds' task-2 accuracy under masking sits far below 90% (22–58%) rather than just missing
+    threshold narrowly. Masking may genuinely impair/slow task-2 acquisition, not just protect
+    task-1 for free — complicates the "masking recovers 45 points, clean win" framing. Being
+    extended for honest numbers (patch job below), but **this is a finding to decide what to do
+    with, not a bug to silently patch over.**
+11. **340's own cap-hit cells were deliberately left untouched** — its docstring treats hitting
+    the cap at low lr as intentional signal ("how far did it get before running out of budget"
+    IS part of what that sweep measures), so extending it would change what's being measured,
+    not just clean up noise.
+12. **Floor-normalized probe reading** (new analysis, no new training): of the TRUE available
+    headroom (joint ceiling at H=32 minus the untrained probe floor), training captures only
+    **~18–30%** of it — Class-IL bp 25.3%/pc 17.9%, Domain-IL bp 30.0%/pc 20.6%. Backprop
+    captures more of the available headroom than PC in both scenarios. Concrete number for "how
+    much information is preserved", replacing a purely qualitative read.
 
-- A 900 declares its source paths as constants at the top, each with a comment naming the
-  protocol that produced it. Repointing a legacy array to a fresh 800 array is a one-line edit.
-- **One result, one plot, one file** by default; the report composes with LaTeX `subfigure`.
-  Exception: panels that must SHARE AN AXIS for the comparison to read (911, 912, 917, 921, 923)
-  stay in one file, take one caption, and are lettered by `style.panel_label`.
-- **No shared harness.** `CLAUDE.md` records one was deliberately deleted.
-- All styling is in `src/style.py`. Nothing else sets a font, colour or figure size.
+## 3. Both jobs from §3 (old) finished — final confirmed numbers
 
-## 3. Status of every run
-
-| | State | Notes |
-|---|---|---|
-| `config_800.yaml` | **done** | backprop lr 0.01→0.02 (314 licenses it); both settle controls recorded |
-| **801** definitional | **done**, 5 s | task 1 → 0.0% on all five classes |
-| **802** activation sweep | smoke-tested, **queued** | run it when the chain clears |
-| **803** mechanism-logged | **done**, 451 s | feeds 915, 916, 923, 924 |
-| **804** repeated alternation | **running** | see §5 — result contradicts the plan |
-| **805** joint→sequential | queued in chain | |
-| **806** partial-column freeze | queued in chain | smoke landed on branch 2 — see §5 |
-| **900 series** | **901, 911, 912, 913 done** | commit `0784c49`. Next: 917 (needs 804), 922 (needs 806) |
-| **LaTeX skeleton** | **done** | commit `731f90e`. Builds clean, 8 pages, live figures already in |
-
-Background job `bdd3yf7y1` runs `804 && 805 && 806`. Output:
-`…/tasks/bdd3yf7y1.output`. **Check it before doing anything else.**
-
-## 4. `src/` changes made this session (all committed)
-
-| commit | change |
-|---|---|
-| `0436120` | **`src/style.py`** — new. rcParams, colour groupings, panel sizes. Draws nothing. |
-| `05abca1` | **column-wise freezing** across `model.py` / `methods.py` / `predictive_coding.py` |
-| `daf9033` | **`linear_probe_fn`** in `probes.py` |
-
-Verified: with no column entries, 15 steps of backprop and PC are **bit-identical** to the
-pre-change code (via `git stash`, abs-sum of every tensor to 12 s.f.).
-
-**`src/probes.py` already had far more than expected** — `alignment_probe` (S&B Fig 3b, with a
-`ref=` mode measuring alignment on task-1 data *during* task 2), `weight_trace_probe` with
-`keys=("W1","W2")`, `weight_path_probe`, `code_snapshot`/`code_drift`, `output_unit_stats`.
-Two `src/` changes originally planned were unnecessary. **Read `probes.py` before writing
-anything new.**
-
-## 5. Results found this session that change plans
-
-### 804 contradicts R4's central prediction
-The plan predicted Class-IL traces a **closed loop** under repeated alternation while Domain-IL
-**spirals in**. On block lengths and end-of-run accuracy, Class-IL is *also* converging:
+**342's `--extend-cap=20000` completed, then re-run with `--replot`** (the extend job's own
+process started before the `_vals` fix landed, so its OWN printed output was wrong — same bug,
+same fix, confirmed the fix matters here too: several cells' SEM dropped noticeably, e.g.
+Class-IL D3 crossover SEM 2.0→0.7). **Final, correct 342 numbers:**
 
 ```
-backprop seed 18  blocks [530, 120, 70, 60, 50, 60, 50, 40, 70, 40]  end t1 46.3
-pc       seed 10  blocks [390, 850, 200, 110, 90, 80, 60, 70, 60, 60] end t1 49.3
+Class-IL crossover (pc-bp): D1 +1.4±0.4 (p=0.021)  D2 +2.9±0.8 (p=0.021)
+                            D3 +3.3±0.7 (p=0.002)  D4 +3.7±0.9 (p=0.021)
+Domain-IL crossover (pc-bp): D1 -0.7±0.2 (p=0.002)  D2 -0.3±0.3 (n.s.)
+                             D3 -0.9±0.6 (n.s.)     D4 -3.0±0.7 (p=0.021)
 ```
+PC wins significantly at EVERY depth in Class-IL now, and the earlier "grows then plateaus"
+read should probably be revised to "keeps growing" — D4 (+3.7) is now slightly above D3 (+3.3),
+though within each other's error bars, not a clean plateau. Domain-IL's D4 result is now much
+more trustworthy: cap-hit dropped from 80% (the old n=5 pass) to 10%, so the earlier concern that
+D4's Domain-IL loss might be an artefact of undertrained seeds is largely resolved — it's real.
+Residual cap-hit remains at the extremes even at 20000 (Class-IL D3 10%/D4 30% for pc,
+Domain-IL D3/D4 10% for pc) — some depth-4 PC seeds may simply need a still-larger budget; this
+is now a small residual, not the dominant effect it was.
 
-Against ~5% after a single switch. **But it is not uniform** — pc seed 13 hit the 5000 cap
-twice (`[400, 5000, 250, 5000, …]`, reached 8/10) and ended at t1 0.2. Hold judgement until 917
-draws the actual trajectory: block length and end-of-block accuracy are not trajectory
-contraction. If it holds, the honest claim is that the scenarios differ in **how fast** they
-find a joint solution, not whether they can — which is more interesting than the prediction.
+**The capped-row patch (802/803/806/808) completed — and 806 turned up something significant,
+not just slow convergence.** Even at 20000 steps (4x the original budget), MASKING substantially
+impairs task-2 acquisition for a majority of seeds, not just a few borderline ones:
 
-### 806 landed on its second pre-committed branch — CONFIRMED AT TEN SEEDS
-Final task-1 accuracy, Class-IL, 10 seeds (all cells but `mask`/pc complete):
+```
+              backprop            pc
+control      t1=4.8  t2=91.5    t1=6.0  t2=91.4     (0% cap-hit, both)
+freeze_w2    t1=3.2  t2=91.7    t1=4.3  t2=91.5     (0% cap-hit, both)
+freeze_w2_t1 t1=6.7  t2=91.5    t1=6.3  t2=91.3     (0% cap-hit, both)
+mask         t1=46.8 t2=46.5    t1=27.6 t2=60.4     (bp 9/10 cap-hit, pc 5/10 cap-hit)
+```
+Task-2 accuracy under masking craters to a MEAN of 46.5% (backprop) / 60.4% (pc), against ~91%
+everywhere else — this is not "slightly slower", several seeds never get near 90% even at 4x
+budget (backprop seed 11: 23.3%; pc seed 12: 5.4%). **This is a real cost, not a footnote.**
+Masking's task-1 recovery (46.8/27.6) has to be read against this: it is not a free lunch, and
+backprop recovers MORE task-1 retention under masking than PC does (46.8 vs 27.6) while ALSO
+losing more task-2 capability (46.5 vs 60.4) — so even the RULE COMPARISON under masking flips
+depending which side you look at. **R5's masking story needs to account for this before going
+in the report** — "masking recovers 45 points, clean win" is no longer an accurate summary.
+`931` has been re-run with this corrected data; its `mask` bars still read near-zero because
+931 plots CROSSOVER, which is mostly censored under masking (task-1 rarely falls below task-2)
+— a reader would NOT see this new finding from 931 alone, it needs its own callout in prose.
 
-| condition | backprop | pc |
-|---|---|---|
-| control | 4.8 | 6.0 |
-| freeze all of W2 | 3.2 | 4.3 |
-| **freeze task-1 columns of W2 + b2** | **6.7** | **6.3** |
-| **mask** | **50.9** | *running* |
+**807 is re-running now** (3.0x multiplier added, launched once the above two jobs cleared).
 
-Masking recovers **+46 points**. Freezing exactly the weights masking spares recovers **+1.9**.
-So **masking does not work by sparing the task-1 output weights** — the pre-committed second
-branch, now on the full seed block rather than smoke. The remaining candidate is that masking
-changes what **W1** learns, the trunk reshaped to serve the suppression objective, which is not
-a readout account at all. **R5 must be rewritten**; `report/sections/results.tex` already carries
-that instruction in its R5 comment block.
+## 4. Queued, blocked on the above finishing (to avoid 3-way CPU contention)
 
-Note `mask`'s crossover is censored on 3/10 seeds — with masking, task 1 never falls below
-task 2 there, which is the *best* outcome and must be ranked, not dropped.
+1. Re-verify 342's numbers with `--replot` once its extension completes (see §3).
+2. Re-run `807_overtrain_task1.py` in full with `MULTIPLIERS` now including 3.0 (already edited
+   into the script) — queued so it doesn't contend with the two jobs above.
+3. Run the trained probe (`linear_probe_fn`) against 806's masked/frozen conditions specifically
+   — needs 806's patched (converged) data first. This is the concrete way the probe and
+   freeze/mask toolkits interact: does masking raise the probe's ceiling (real representational
+   change) or leave it flat (unlocks existing information without changing it)?
+4. ~~Rebuild the intervention-ranking figure(s)~~ — **done**. `931` regrouped: two vertical
+   panels (Class-IL/Domain-IL), each intervention now measured against ITS OWN rule's control
+   for both backprop and pc (the original version wrongly listed "predictive coding" as one row
+   among the interventions — a category error, since PC is a base rule, not something applied on
+   top of one). Surfaced something new: **k-WTA is far more harmful for PC than backprop**
+   (Class-IL −32.4 pc vs −9.8 bp; Domain-IL −30.2 pc vs −2.6 bp) — bigger than the original
+   figure's own "PC worse under k-WTA" note suggested, because the old figure never plotted PC's
+   OWN k-WTA-vs-PC-control delta, only PC-vs-backprop-bare as one of many rows. **Re-run once
+   806's patch lands** — current numbers use 806's pre-patch data for the `mask` row, everything
+   else (130, 200, 210, 220) is unaffected by the pending jobs. `921` checked and left alone —
+   its backprop-only design is a genuine data-availability constraint (the 50-seed block only
+   exists for backprop), not an unchecked assumption like 918's was.
+5. Update results.tex's stale `\gap{}` captions — NOT this session's job, flagged for the user.
 
-**923 points the same way independently.** The linear probe reads 82.6% on task-1 classes where
-argmax reads 21.1 — but it reads **80.2% on the untrained network**, so only ~2.4 points are
-attributable to what the trunk learned. Two independent lines now argue against "forgetting is a
-readout failure over an intact representation".
+## 5. Traps found this session — check these before writing new code
 
-### 803 has a checkpoint-spacing defect — cheap to fix, worth fixing
-Its interval is `(2 * max_iters_per_task) // CHECKPOINTS` = `10000 // 20` = 500 updates, which
-divides the **budget**, not the run. Matched competence finishes runs in 700–2500 updates, so
-each gets **2–5 checkpoints instead of ~20**, and the last sits a median ~175 updates before the
-end. argmax on task 1 reads 21.1 at that last checkpoint against a true final of 4.8, so 923
-**understates** the end-of-training gap. Re-running 803 with the interval derived from run length
-costs ~8 min and also sharpens 915, 916 and 924. Not done — it is a `src/`-adjacent change to a
-committed 800 script and needs approval.
+- **`_vals`-style pairing helpers must sort by seed explicitly.** Never rely on row insertion
+  order for a paired comparison, even if the current code path happens to preserve it — the next
+  merge/patch feature added later probably won't. (§2.7 above.)
+  ~~Insertion order happens to align two methods' arrays~~ — true only by accident of how rows
+  were originally generated; broke the moment a partial-patch code path was added.
+- **`run_classil`'s `curves` reports EVERY task in the `tasks` list at every logged step, even
+  ones with `max_iters_per_task=0` for that phase.** This is what makes 807's branching design
+  work (pass `max_iters_per_task=[0, K]` to train only task 2 while still logging task 1's
+  concurrent accuracy) — no custom evaluation loop needed. Same trick works in reverse.
+- **A capped run's variance is deflated, not just its mean potentially biased.** A truncated
+  budget pins similar seeds near the same ceiling, which can make a real effect look MORE
+  significant than a properly-converged version of the same cell — the opposite of the usual
+  "underpowered small sample" intuition. Always re-check paired significance after extending
+  capped cells, don't assume the direction of the correction.
+- Everything in the 2026-09-06 handover's §6 (label-space traps, `make_pc`'s raw path, mutating
+  `handle["freeze"]`, column-freeze index hashability, `savefig.bbox`, `mpl.colormaps`, `_acc`
+  returning fractions, don't pipe long runs through `tail`, 801 running to saturation on
+  purpose, matched-competence confounding per-update quantities, 805's unequal task-1 phase
+  lengths) — all still true, not re-litigated here.
 
-### The linear probe has a high floor
-At H=32, Class-IL, task-1 classes: probe reads **81.8% untrained**, 86.2% after task 1, against
-argmax 12.2 → 91.8. NCM reads 69.0 → 80.4. So the probe beats NCM by 12.8 points at init — the
-case for replacing it — but only ~4 points of its range are attributable to training the trunk.
-**923 must draw the random-init floor** or it over-claims exactly as NCM did. 803 records it.
+## 6. Next actions, in order
 
-### 805: joint pre-training protects partially
-Smoke: Class-IL joint-start retains 6.9 / 25.6 / 12.5 / 20.3 against scratch 1.5 / 6.2 / 3.1 /
-9.1 — consistently better, still collapsing from ~77%. Forgetting is not simply a failure to
-*find* a joint solution.
-
-## 6. Traps found — check these before writing code
-
-1. **Label space.** `run_joint`, `alignment_probe(ref=)` and `linear_probe_fn` all index output
-   **units**; the data carries raw class labels 0–9. Class-IL hides it (`lmap` is None, class ==
-   unit); **Domain-IL raises**. Smoke every new script on Domain-IL first. `803` and `805` each
-   carry a `_to_units` helper.
-2. **`make_pc` uses the RAW path.** `opt=None` whenever `optimizer="sgd"`, which is every run
-   here. Anything touching PC's weight update must handle that path, not just the torch one.
-3. **`handle["freeze"]` must be MUTATED, not reassigned** — `handle["freeze"].add(...)`. The
-   closure holds the original set object; `handle["freeze"] = {...}` silently does nothing.
-4. **Column freeze indices must be hashable** — `("W2", (0,1,2,3,4))`, not a list. `freeze` is a
-   set.
-5. **`savefig.bbox="tight"` breaks fixed sizing.** A 3.44 in request saves as 3.11 in and the
-   crop varies with content. `style.py` uses constrained layout and `bbox="standard"`.
-6. **`mpl.cm.get_cmap` was removed in matplotlib 3.9**; this repo runs 3.11. Use
-   `mpl.colormaps[...]`.
-7. **`_acc` returns fractions, not percent.** Everything 803 saves is already ×100.
-8. **Don't pipe a long background run through `tail`** — it buffers until exit and you lose all
-   progress visibility.
-9. **801 runs to saturation on purpose** (task 1 → 0.0%) where R1 reports 5.4% at matched
-   competence. The caption must say so or the report looks self-contradictory.
-10. **Matched competence makes task-2 length a DEPENDENT VARIABLE, and it confounds any
-    per-update quantity.** Task-2 length runs 119 → 4999 updates in 803. Long runs have a small
-    *mean* per-update ‖ΔW‖ **and** forget more, so mean step size correlates with retention at
-    **r = +0.93** — which reads as "bigger updates preserve task 1" and is an artefact. The
-    **total path** summed over task 2 has no such problem and gives r = −0.56, the interpretable
-    sign. 916 claims only on totals. Check this before correlating anything per-update.
-11. **805's two arms do not train task 1 for the same number of updates.** The joint-initialised
-    arm already knows task 1, so it clears the threshold far sooner — 240 vs 30 steps on
-    Class-IL seed 10. Any "joint pre-training protects" claim in 919 must be read against that,
-    or it is partly "the joint arm trained task 1 less and so had less to lose". The per-arm
-    task-1 phase lengths are printed by 805 and are in its array.
-
-## 7. Next actions, in order
-
-Steps 1–3 below are **done** (commits `0784c49`, `731f90e`) and are kept so the order is legible.
-
-1. ~~Write 911, 912, 913~~ — done. Legacy arrays only; every number re-derived matches
-   `progress.md` (PC−BP +1.42 ± 0.39 Class-IL, −0.72 ± 0.19 Domain-IL; replay +9.84, +3.43).
-2. ~~Write 901~~ — done, from `801_definitional_run.npz`.
-3. ~~LaTeX skeleton~~ — done. `\graphicspath` points at `../experiments/` rather than copying
-   PNGs into `report/figures/`, so a 900 re-run updates the report with no sync step. `\fig{}`
-   draws a labelled placeholder for a figure that does not exist yet, so it builds now.
-4. **Check `bdd3yf7y1`.** When it clears, run `802_activation_sweep.py` (~1 h). Do **not** run it
-   alongside the chain — CPU contention would roughly double both.
-5. **Write 917** from 804 and settle the spiral-versus-loop question (§5).
-6. **Write 922** from 806 and settle the masking question (§5).
-7. **Write 915, 916, 923, 924** — all four read `803`, which has already run.
-
-### Figure conventions now fixed by the four that exist
-
-- A Mode B script sizes itself from `style.WIDTH["page"]` divided by the number of columns, not
-  from `half_page`. Verified saved sizes: 911 is 7.060 × 6.353 in, 912 is 7.058 × 4.048 in,
-  913a is 3.180 × 1.970 in.
-- `aspect="equal"` breaks the usual `figsize = w × ratio` arithmetic, because constrained layout
-  shrinks the axes to whatever square fits and pads the rest. 911 needed 0.90, found by measuring.
-- A figure saved at 7.06 in **cannot** go in a `figure` — it needs `figure*`. 913 is a `figure*`
-  for exactly this reason.
-- **Palette collision, not yet fixed:** `style.TASK[0]` and `style.RULE["pc"]` are the same hex
-  (`#d1682a`). In 911 orange means *task 1*; in 913 orange means *PC*. Both are correct per
-  `style.py`, but across the report it is ambiguous. Fixing it is a one-line `src/` change and
-  needs approval — it was not made silently.
-
-## 8. Open questions for the user
-
-- **Do captions count against the 8,000 words?** If not, several appendix demotions in
-  `report_track.md` become unnecessary. This changes the figure count.
-- **802 is the only genuinely new scientific question** in the 800 list; everything else
-  instruments or re-runs. If time is short it is the first cut, and tanh becomes a declared
-  limitation.
-
-## 9. Uncommitted work not from this session
-
-`src/metrics.py` (`paired_wilcoxon`, `classify_settle`) and the whole **340-series** (314,
-340–347) are uncommitted, from a parallel session. `progress.md`, `300_series_log.md` and
-`narrative_plan.md` also have uncommitted edits. **Not mine to commit** — left alone deliberately.
+1. Check both background jobs (§3). Re-verify 342 with `--replot`.
+2. Run the four queued items in §4, in order.
+3. Confirm seed 13's slowness resolves cleanly post-extension across all five affected scripts,
+   or flag it as something more than a slow seed if it doesn't.
+4. Decide what to do about 806's masking-impairs-task-2 finding — does R5's write-up need to
+   change, or is this an appendix caveat?
+5. Full walkthrough of every figure against the report's story (the user's explicit next ask) —
+   hold until 1–4 land so the walkthrough isn't immediately stale.
+6. Then: results.tex's caption pass (user's own task, not this session's).

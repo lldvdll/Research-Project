@@ -32,8 +32,13 @@
 % Be honest about the half that does not split: the argmax-minus-probe gap is large in BOTH
 % (+81.6 and +29.5), even though suppression is impossible in one. R5 returns to this.
 
-\begin{figure*}[t]
-  \fig{911_two_forgetting_phenotypes.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.49\panelspan}{911_two_forgetting_phenotypes_a.png}\hfill
+    \panel{0.49\panelspan}{911_two_forgetting_phenotypes_b.png}\par\vspace{6pt}
+    \panel{0.49\panelspan}{911_two_forgetting_phenotypes_c.png}\hfill
+    \panel{0.49\panelspan}{911_two_forgetting_phenotypes_d.png}
+  \end{panelbox}
   \caption{\label{fig:911}\wordcount{130}}
 \end{figure*}
 
@@ -67,26 +72,20 @@
 % data, the exact resource a continual-learning rule is meant not to need. The comparison is
 % of effect size under a fixed protocol, not of cost.
 
-\begin{figure*}[t]
-  \fig{912_pc_minus_backprop_sweeps.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{912_pc_minus_backprop_sweeps.png}
+  \end{panelbox}
   \caption{\label{fig:912}\wordcount{150}}
 \end{figure*}
 
 % figure*, not figure: panel (b) is saved at 7.06in (full \textwidth) because it carries three
 % sweeps side by side, and it cannot be included in a 3.40in column without scaling -- which
 % would shrink its 8pt labels. Panel (a) is column-width and is centred on its own row.
-\begin{figure*}[t]
-  \begin{subfigure}{\textwidth}
-    \centering
-    \fig{913_replay_sets_the_scale_a.png}
-    \subcaption{\label{fig:913a}\wordcount{45}}
-  \end{subfigure}
-
-  \begin{subfigure}{\textwidth}
-    \centering
-    \fig{913_replay_sets_the_scale_b.png}
-    \subcaption{\label{fig:913b}\wordcount{55}}
-  \end{subfigure}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{913_replay_sets_the_scale.png}
+  \end{panelbox}
   \caption{\label{fig:913}\wordcount{50}}
 \end{figure*}
 
@@ -108,19 +107,28 @@
 %                      CONSTRUCTION. Say so, or a non-zero D reads as evidence when it is a
 %                      definition. The measurement is whether D predicts ||dW|| and retention.
 
-\begin{figure}[t]
-  \fig{915_target_alignment.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{915_target_alignment.png}
+  \end{panelbox}
   \caption{\label{fig:915}\gap{915 not written; 803 has run}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[t]
-  \fig{916_displacement_to_retention.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.98\panelspan}{916_displacement_to_retention_a.png}\par\vspace{6pt}
+    \panel{0.98\panelspan}{916_displacement_to_retention_b.png}
+  \end{panelbox}
   \caption{\label{fig:916}\gap{916 not written; 803 has run}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
 % --------------------------------------------------------------------- R4
-\subsection{What repeated alternation reveals about the trajectory}
+\subsection{Why these are two investigations, not one}
 \label{sec:r4}
+% ⚠ HEADING CORRECTED. An earlier version titled this "What repeated alternation reveals about
+% the trajectory", which mistook the evidence for the question. R4's job is to JUSTIFY THE
+% SCENARIO SPLIT; repeated alternation, joint pre-training and the tie-out are the evidence that
+% does it. Write the section as an argument for the split, not as a tour of three experiments.
 
 \wordcount{700}
 % ⚠ THE PRE-REGISTERED PREDICTION LOOKS WRONG AND THE SECTION MUST SAY SO. The plan predicted
@@ -139,30 +147,56 @@
 % the honest claim is that the scenarios differ in HOW FAST they find a joint solution, not in
 % whether they can -- which is a more interesting result than the prediction was.
 %
+% The scenario-separation numbers this section exists to deliver: PC - backprop is -0.72 +- 0.19
+% after ONE switch and -16.71 +- 2.45 (6.8 sem) after FIVE task-2 blocks, in Domain-IL; Class-IL
+% is -1.78 +- 3.09, i.e. nothing. A two-task protocol understates the scenario difference by more
+% than twenty times, which is an argument about the benchmark as well as the rule.
+%
 % Then 919: joint pre-training protects only PARTIALLY (Class-IL joint-start retains
 % 6.9/25.6/12.5/20.3 against scratch 1.5/6.2/3.1/9.1, still collapsing from ~77%). So
 % forgetting is not simply a failure to FIND a joint solution -- the solution can be handed to
 % the network and it still leaves.
+% ⚠ 919 has a confound and Fig.~\ref{fig:919} draws it: both arms stop task 1 at the same
+% competence, but the joint arm starts above threshold so its task-1 phase is far shorter
+% (402 -> 182 updates). Correlation between phase-length difference and retention difference is
+% -0.64 in Class-IL (confound present) and -0.09 for Domain-IL backprop (clean). LEAN ON THE
+% DOMAIN-IL BACKPROP ARM. The two cannot be separated within this design.
 
-\begin{figure*}[t]
-  \fig{917_alternation_geometry.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{917_alternation_geometry.png}
+  \end{panelbox}
   \caption{\label{fig:917}\gap{917 not written; 804 Class-IL done, Domain-IL running}\wordcount{150}}
 \end{figure*}
 
-\begin{figure}[t]
-  \fig{918_weight_space_pca.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{918_weight_space_pca.png}
+  \end{panelbox}
   \caption{\label{fig:918}\gap{918 not written; needs 804}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[t]
-  \fig{919_joint_then_sequential.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{919_joint_then_sequential.png}
+  \end{panelbox}
   \caption{\label{fig:919}\gap{919 not written; 805 queued}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[t]
-  \fig{920_what_separates_by_scenario.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{920_what_separates_by_scenario.png}
+  \end{panelbox}
   \caption{\label{fig:920}\gap{920 not written; re-analysis only}\wordcount{110}}
-\end{figure}
+\end{figure*}
+
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.98\panelspan}{927_overtrain_metric_grid.png}\par\vspace{6pt}
+    \panel{0.98\panelspan}{928_forgetting_shape.png}
+  \end{panelbox}
+  \caption{\label{fig:927}\wordcount{130}}
+\end{figure*}
 
 % --------------------------------------------------------------------- R5
 \subsection{Evidence for an output-competition component}
@@ -190,27 +224,40 @@
 % 12.2 -> 91.8. Only ~4 points of the probe's range are attributable to training the trunk.
 % NCM is excluded and the reason is stated: it has almost no dynamic range here.
 
-\begin{figure}[t]
-  \fig{921_retention_distribution.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.98\panelspan}{921_retention_distribution_a.png}\par\vspace{6pt}
+    \panel{0.98\panelspan}{921_retention_distribution_b.png}
+  \end{panelbox}
   \caption{\label{fig:921}\gap{921 not written}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[t]
-  \fig{922_partial_column_freeze.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{922_partial_column_freeze.png}
+  \end{panelbox}
   \caption{\label{fig:922}\gap{922 not written; 806 queued}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
-\begin{figure*}[t]
-  \fig{923_probe_vs_argmax.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.98\panelspan}{923_probe_vs_argmax_a.png}\par\vspace{6pt}
+    \panel{0.98\panelspan}{923_probe_vs_argmax_b.png}
+  \end{panelbox}
   \caption{\label{fig:923}\gap{923 not written; 803 has run}\wordcount{150}}
 \end{figure*}
 
-\begin{figure}[t]
-  \fig{924_weight_path_and_code_drift.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \panel{0.98\panelspan}{924_per_layer_weight_path.png}\par\vspace{6pt}
+    \panel{0.98\panelspan}{924b_hidden_code_drift.png}
+  \end{panelbox}
   \caption{\label{fig:924}\gap{924 not written; needs 803 and 804}\wordcount{110}}
-\end{figure}
+\end{figure*}
 
-\begin{figure}[t]
-  \fig{925_task_structure.png}
+\begin{figure*}[t]\centering
+  \begin{panelbox}
+    \solo{925_task_structure.png}
+  \end{panelbox}
   \caption{\label{fig:925}\gap{925 not written}\wordcount{110}}
-\end{figure}
+\end{figure*}

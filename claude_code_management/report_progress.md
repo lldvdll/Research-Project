@@ -216,6 +216,10 @@ listed with the point at which it should be picked up.
 ## Completed
 
 **2026-09-11**
+- [x] **Remote review set up and pushed.** `report/main.pdf` un-ignored and committed; 74
+      commits pushed to `origin/main` (the repo had never been pushed from this machine).
+      240 figures and the built PDF are now on GitHub. `now.md` and `CLAUDE.md` rewritten to
+      give a fresh context the right reading order; this file is the second read.
 - [x] **901** rebuilt: switch line removed, task-phase background shading, per-class lines
       darkened so they read over the shading, crossover annotation moved left of the switch,
       green retention annotation bottom-right, title removed, bracketed legend text removed,

@@ -127,6 +127,8 @@ def run_classil(train_step, predict, tasks, train_data, class_idx,
         else [max_iters_per_task] * n_t
     thr_per = list(stop_threshold) if isinstance(stop_threshold, (list, tuple)) \
         else [stop_threshold] * n_t
+    tail_per = list(tail_iters) if isinstance(tail_iters, (list, tuple)) \
+        else [tail_iters] * n_t
 
     report_x, report_y = report_eval
     stop_x, stop_y = stop_eval if stop_eval is not None else report_eval
@@ -169,7 +171,7 @@ def run_classil(train_step, predict, tasks, train_data, class_idx,
                     cur = float(np.mean([a_stop[pos[c]] for c in task]))
                     hits = hits + 1 if cur >= thr else 0
                     if hits >= stop_patience:
-                        countdown, hit_criterion = tail_iters, True
+                        countdown, hit_criterion = tail_per[ti], True
             if countdown is not None and countdown <= 0:
                 break
         switches.append(step)

@@ -64,10 +64,21 @@ normally. Full note in `report_progress.md`.
 
 ## NEXT ACTIONS
 
-1. **`810_capacity_vs_width.py` and `811_trunk_power.py` were running** when this was written
-   (new 800-series runs, both rules). Check them, then rebuild **902** from their arrays —
-   902a wants random-trunk vs trained-trunk-with-probe vs joint as a distribution, 902b wants
-   the capacity sweep with a PC arm.
+1. **`810_capacity_vs_width.py` and `811_trunk_power.py` were left running** (new 800-series
+   runs, both rules). **A new session cannot see their job output — check for the arrays on
+   disk instead:**
+
+   ```
+   ls experiments/810_capacity_vs_width.npz experiments/811_trunk_power.npz
+   ```
+
+   - **Both present** → build **902** from them. 902a wants random-trunk vs
+     trained-trunk-with-probe vs joint, as a distribution over seeds; 902b wants the capacity
+     sweep with a PC arm. Then rebuild the report and **push**.
+   - **Missing** → the run did not finish. Just re-run the script; both are idempotent and
+     write only their own array. 810 is the long one (~2-4 h, 24 cells, prints per cell);
+     811 is ~1-2 h. Run them with `run_in_background` and do other work meanwhile.
+   - Partial results are not saved — each script writes once, at the end.
 2. Then the **M2 setup-and-controls text**, ordered to match the parameter table. The content
    the user asked for, and the answers already found for its open questions, are both in
    `report_progress.md`.

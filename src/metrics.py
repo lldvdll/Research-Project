@@ -247,6 +247,91 @@ def paired_diff(treatment, control):
     return m, s, (abs(m) / s if s > 0 else float("inf"))
 
 
+def classify_forgetting(t1, peak=None, early_frac=0.2, tail_frac=0.3,
+                         collapse_rel=0.15, early_hold_rel=0.7, rise_rel=0.2, noise_rel=0.15):
+    """Classify one seed's post-switch task-1 trace into a forgetting SHAPE.
+
+    t1          task-1 accuracy at every logged step FROM THE SWITCH onward (not before it).
+    peak        task-1's own pre-switch accuracy. Defaults to t1[0] (the first post-switch
+                point, which `run_classil` logs close enough to the switch for this). Every
+                threshold below is relative to this, so the same numbers apply whether the
+                scenario collapses to single digits (Class-IL) or the high thirties (Domain-IL)
+                -- the same trap `paired_diff` and `crossover` were built to avoid.
+
+    Five labels, checked in this order (later checks only run if earlier ones don't fire).
+    NOISE IS CHECKED BEFORE RISING, DELIBERATELY: a noisy tail's slope can look like a rise by
+    pure chance, so a trend-based label is only trusted once the trace has been confirmed calm
+    enough for a trend to mean something.
+
+        "collapse"   late window < collapse_rel * peak, AND early window already < 0.5 * peak --
+                     falls fast and stays down. The textbook picture. Level-based, not slope-based,
+                     so it is the one label that stays reliable even on a noisy trace.
+        "delayed"    ("holds then destroyed") late window < collapse_rel * peak, but the early
+                     window held above early_hold_rel * peak first -- a grace period, then a
+                     crash. Distinguishes "damaged immediately" from "damaged eventually".
+        "noisy"      late-window std is large relative to the trace's OWN SCALE (noise_rel * peak,
+                     not relative to the observed change, which is itself noise-prone and would
+                     make a flat noisy trace look artificially calm) -- no confident label.
+        "rising"     ("learns a bit more each iteration") the LATE window's own linear trend,
+                     projected across its own width, predicts a rise >= rise_rel * peak -- task 1
+                     is recovering or improving while task 2 trains, not just failing to fall.
+                     Only reached once the noise check has passed.
+        "partial"    none of the above: settles somewhere between collapse and peak, comparatively
+                     flat. The residual/default case, not a positive detection of anything.
+
+    This is a heuristic reading of shape, in the same spirit as `classify_settle` -- look at the
+    trace itself before relying on the label for anything that matters.
+
+    Returns the label (str) only; there is no single "recovery step" analogous to
+    classify_settle's convergence_step, because these shapes do not converge to a point.
+    """
+    v = np.asarray(t1, dtype=float)
+    v = v[np.isfinite(v)]
+    if v.size < 4:
+        return "too_short"
+    p = float(v[0]) if peak is None else float(peak)
+    if p <= 0:
+        return "too_short"
+
+    n_early = max(1, int(round(early_frac * v.size)))
+    n_late = max(2, int(round(tail_frac * v.size)))
+    early, late = v[:n_early], v[-n_late:]
+    early_mean, late_mean, late_std = early.mean(), late.mean(), late.std(ddof=1) if late.size > 1 else 0.0
+
+    if late_mean < collapse_rel * p:
+        return "collapse" if early_mean < 0.5 * p else "delayed"
+
+    if late_std > noise_rel * p:
+        return "noisy"
+
+    slope = np.polyfit(np.arange(late.size), late, 1)[0]
+    projected_rise = slope * late.size
+    if projected_rise > rise_rel * p:
+        return "rising"
+
+    return "partial"
+
+
+def cohens_d_paired(treatment, control):
+    """Standardized effect size for a paired comparison: mean(diff) / std(diff).
+
+    paired_diff's n_sem answers "is this significant" (grows with sample size); this answers
+    "how big is it" on a scale that doesn't (conventional benchmarks: 0.2 small, 0.5 medium,
+    0.8 large). S&B report neither a p-value nor an effect size for their Fig. 4d/e continual-
+    learning result -- graphical 68% CI bands only -- so this has nothing in their paper to sit
+    next to; it exists to give OUR magnitude a standardized reading on its own terms.
+    """
+    a = np.asarray(treatment, dtype=float)
+    b = np.asarray(control, dtype=float)
+    if a.shape != b.shape:
+        raise ValueError(f"cohens_d_paired needs matched runs, got {a.shape} and {b.shape}")
+    d = a - b
+    d = d[np.isfinite(d)]
+    if d.size < 2 or d.std(ddof=1) == 0:
+        return float("nan")
+    return float(d.mean() / d.std(ddof=1))
+
+
 def mean_test_error(steps, curve, after=None, before=None):
     """Mean test ERROR across the whole run -- Song & Bogacz's headline metric [R1].
 
@@ -416,6 +501,88 @@ def paired_sign(treatment, control, higher_is_better=True, censored_is_best=Fals
         else:
             ties += 1                          # not a censored metric: no ordering available
     return wins, losses, ties, _binom_two_sided(wins, losses)
+
+
+def classify_settle(disp, tol=1e-4, patience=3, tail_frac=0.3):
+    """Classify a settle trace as converged / slow / oscillating / diverging.
+
+    disp        the mean-abs-displacement trace from pc_settle(trace=True) -- one value per
+                settle step actually taken, over the FULL step cap (not cut short at the first
+                sign of trouble -- distinguishing these needs to see what happens after).
+    tol/patience the same criterion pc_settle's own stop_delta/stop_patience use: converged
+                fires when |disp[t]-disp[t-1]| stays below tol for `patience` consecutive steps.
+                Applied here post-hoc to a full trace, not live during settling.
+
+    A trace that never fires that criterion within its step budget can still be doing three very
+    different things, and they call for different fixes -- a bigger cap only helps the first:
+
+        "converged"    the criterion fired -- settling reached its own stopping point.
+        "slow"         did not fire, but the tail is still trending down -- more steps would
+                       likely finish the job. Response: raise the cap.
+        "oscillating"  did not fire, tail is flat on average but keeps alternating step to step
+                       (sign of disp[t]-disp[t-1] flips on most steps, amplitude not shrinking) --
+                       relaxing around a fixed point, not toward one. Response: raising the cap
+                       will not help; try a smaller dt.
+        "diverging"    did not fire, and the tail is trending UP -- displacement growing, not
+                       shrinking. Response: the relaxation itself is unstable at this dt; a bigger
+                       cap makes it worse, not better.
+
+    The tail-trend/oscillation thresholds below are a heuristic reading of the shape, not a
+    precise statistical test -- look at the trace itself (the figure this feeds), not just the
+    label, before relying on a classification.
+
+    Returns (label, convergence_step_or_None). convergence_step (matching pc_settle's own
+    settle_steps count) is only set for "converged".
+    """
+    d = np.asarray(disp, dtype=float)
+    if d.size < patience + 2:
+        return "too_short", None
+    diffs = np.diff(d)
+    below = np.abs(diffs) < tol
+    run = 0
+    for i, b in enumerate(below):
+        run = run + 1 if b else 0
+        if run >= patience:
+            return "converged", i - patience + 2
+    tail_n = max(patience + 2, int(d.size * tail_frac))
+    tail = d[-tail_n:]
+    tail_diffs = np.diff(tail)
+    slope = np.polyfit(np.arange(tail.size), tail, 1)[0]
+    # Normalise against the tail's own level -- "diverging" means growing by a meaningful
+    # FRACTION of itself over the window, not an absolute threshold that means different things
+    # at different displacement scales.
+    rel_slope = slope * tail.size / (np.mean(tail) + 1e-12)
+    if rel_slope > 0.15:
+        return "diverging", None
+    if tail_diffs.size > 1:
+        sign_flips = float(np.mean(np.sign(tail_diffs[:-1]) != np.sign(tail_diffs[1:])))
+        if sign_flips > 0.6:
+            return "oscillating", None
+    return "slow", None
+
+
+def paired_wilcoxon(treatment, control):
+    """Wilcoxon signed-rank test on paired per-seed differences.
+
+    Companion to paired_sign: uses the MAGNITUDE of each paired difference, not just its sign,
+    so it has more power once a sweep gives more paired points than a single headline comparison
+    needs. Needs both sides finite on a seed (like paired_diff) -- unlike paired_sign it cannot
+    use a censored run, since a rank test needs an actual number to rank.
+
+    Returns (statistic, p, n_pairs). p is nan if fewer than 4 non-tied pairs remain -- scipy's
+    own floor for the test to be meaningful.
+    """
+    from scipy.stats import wilcoxon
+    a, b = np.asarray(treatment, dtype=float), np.asarray(control, dtype=float)
+    if a.shape != b.shape:
+        raise ValueError(f"paired_wilcoxon needs matched runs, got {a.shape} and {b.shape}")
+    ok = np.isfinite(a) & np.isfinite(b)
+    d = (a - b)[ok]
+    d = d[d != 0]
+    if d.size < 4:
+        return float("nan"), float("nan"), int(ok.sum())
+    stat, p = wilcoxon(d)
+    return float(stat), float(p), int(ok.sum())
 
 
 def report_grid(grid_by_method, methods, control="backprop", primary="crossover"):

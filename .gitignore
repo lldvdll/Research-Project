@@ -6,3 +6,10 @@ desktop.ini
 .claude/settings.local.json
 CLAUDE.local.md
 *_SMOKE*
+
+# Backups taken before a script re-ran with different parameters. Kept on disk so a result can
+# be compared against the array it replaced; not repo content.
+*.bak10dt
+
+# Run logs from backgrounded training jobs.
+*_run.log

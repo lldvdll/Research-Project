@@ -70,6 +70,26 @@ careless `git add -A` breaks the push. Raise it; do not do it unasked.
 
 ---
 
+## Environment traps on this machine — these all cost real time
+
+- **The shell here collapses `\` to `\` inside heredocs.** A `sed` written with
+  `s/.../\par\vspace{6pt}/` reached sed as `\parspace{...}`, which sed read as escape
+  codes: it turned `\p` into `p`, `` into a vertical tab and `` into a carriage return,
+  silently corrupting 53 places across three `.tex` files and splitting one line in half.
+  **Do not put backslashes in a heredoc-delivered `sed` or Python string.** Build them with
+  `chr(92)`, or use the Write/Edit tools, which are unaffected.
+- **`/tmp` is not visible to the Windows Python binary.** Git Bash resolves it; `python.exe`
+  does not, so a file written by a shell heredoc into `/tmp` cannot be opened by Python and the
+  failure looks like a missing file. Use the session scratchpad directory instead.
+- **`grep` patterns containing backslashes behave unpredictably here** for the same reason.
+  When checking for LaTeX commands, scan with Python rather than trusting a `grep -c`.
+- **A `git status` count is not a safety check.** 31 of the entries are `.npz`, two of which
+  are over GitHub's limit. There is now a **pre-commit hook** (`.git/hooks/pre-commit`) that
+  refuses any staged file over 90 MB — tested against the 212 MB array, and it holds. Hooks
+  are not versioned, so this protects *this* clone only.
+
+---
+
 ## Active
 
 **Methods — review 1, received 2026-09-11.** Order of work as instructed: scripts first and

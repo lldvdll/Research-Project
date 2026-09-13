@@ -265,6 +265,22 @@ listed with the point at which it should be picked up.
 
 ## Completed
 
+**2026-09-13**
+- [x] **810 and 811 finished; 902 rebuilt from them** and added to `methods.tex` along with
+      910 and 906. Report now builds at 20 pages, 35 figures, 0 errors.
+      - **811 (trunk power)** — the trunk is worth **+13.0 / +16.4** points to backprop
+        (Class-IL / Domain-IL) and **+7.0 / +9.0** to PC. `trained_probe` lands within 1.4
+        points of `joint` in all four cells, so the probe is not the weak link and the control
+        is sound. **PC's trunk gain is about half backprop's in both scenarios** — a Methods
+        control that turned up something the Results will have to own.
+      - **810 (capacity)** — H=32 is clear of the bottleneck for both rules: headroom to H=128
+        is +0.8 / +0.9 for backprop and +1.3 / +1.5 for PC. ⚠ **PC's joint ceiling sits 6-8
+        points below backprop's at every width** (86.7 vs 92.8 Class-IL, 85.9 vs 93.9
+        Domain-IL at H=32). Real and consistent; decide whether it is a finding or a tuning
+        artefact before the text leans on it.
+      - 810 was re-run after being caught using dt=0.4 while sweeping width; it now pins
+        dt=0.2, matching 341/342.
+
 **2026-09-11**
 - [x] **Remote review set up and pushed.** `report/main.pdf` un-ignored and committed; 74
       commits pushed to `origin/main` (the repo had never been pushed from this machine).

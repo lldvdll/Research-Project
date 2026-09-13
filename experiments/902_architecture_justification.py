@@ -1,29 +1,43 @@
-"""Is the trunk doing enough work, and is the width sufficient, to ask mechanistic questions?
+"""Is the trunk doing real work, and does H=32 sit clear of a capacity limit for BOTH rules?
 
-900-series PLOT SCRIPT. Loads saved arrays, trains nothing. Methods M2, appendix evidence.
+900-series PLOT SCRIPT. Loads saved arrays, trains nothing. Methods M2.
 
-TWO PLOTS, ONE PER GRID CELL, as script_plan_800_900.md specifies for 902 ("copy 101 + 100"):
-    902_architecture_justification_a.png   trunk power   -- form copied from 101
-    902_architecture_justification_b.png   width sweep   -- form copied from 100
+TWO PANELS, both answering setup questions rather than making a claim about forgetting:
+    (a)  trunk power   -- 811: random trunk + probe, trained trunk + SAME probe, and the
+         jointly-trained network read through its own head.
+    (b)  capacity      -- 810: joint accuracy against hidden width, both rules.
 
-Form and styling follow the 300-series/legacy scripts they regenerate: tab: colours keyed by
-scenario, dpi 120, bbox_inches="tight", labels at 9pt and legends at 8pt. No shared style module.
+WHY THESE REPLACE THE LEGACY ARRAYS. 101 and 100 were BACKPROP ONLY, and the report uses one
+architecture decision for both rules. A backprop-only capacity curve cannot license H=32 for
+PC, and 101's random arm was read through a trained head while its reference was a separately
+trained network, so the readout differed between the two things being compared. 811 fits the
+same ridge probe on both sets of features, which leaves the features as the only difference.
 
-WHAT EACH ONE IS FOR, as a table row rather than a result:
-    (a)  a frozen random projection with a trained head against the fully-trained network. If the
-         gap were near zero the hidden layer would be doing no work and "where does forgetting
-         live" would be a question about a dead layer.
-    (b)  joint accuracy against hidden width. H = 32 has to sit OFF the bottleneck, or a capacity
-         limit would be indistinguishable from a forgetting effect.
+WHAT (a) SHOWS, and it is not only the control it was written to be. The trunk is worth
++13.0 / +16.4 points to backprop (Class-IL / Domain-IL) and +7.0 / +9.0 to PC -- real in every
+cell, so the hidden layer is not a dead layer and "where does forgetting live" is a fair
+question. But PC's trunk gain is roughly HALF backprop's in both scenarios, and PC's joint
+ceiling sits 6-8 points lower throughout (b). That is a Methods control turning up something
+the Results have to own rather than inherit quietly.
 
-⚠ A capacity sweep run at too short a budget produces a flat region that is indistinguishable from
-a capacity ceiling. 100 measured convergence first; this only redraws it.
+⚠ trained_probe lands within ~1.4 points of joint in all four cells, which is the check that
+the probe is not the weak link: a linear readout refitted on the trained features recovers what
+the network's own linear head gets. If those two had diverged, (a) would be measuring the probe.
 
-PROVENANCE -- both are PRE-800 arrays, regenerated here rather than re-run:
-    101_problem_complexity.npz   frozen-vs-trained, 5 init seeds x 5 data seeds, H = 32
-    100_capacity_vs_width.npz    widths 2..128, 10 seeds, both scenarios
-The 800-series slots that would replace them (810, 811) are deliberately unwritten -- the legacy
-protocol matches the current one for these two measurements.
+⚠ A capacity sweep run at too short a budget produces a flat region indistinguishable from a
+ceiling. Both runs use a flat 25k-iteration budget with NO early stopping and average the last
+few evaluations, for exactly that reason.
+
+COLOURS follow the project standard given 2026-09-11: backprop BLACK, pc RED; Domain-IL solid,
+Class-IL dashed. ⚠ This disagrees with src/style.py, which sets backprop grey, pc orange and
+Domain-IL teal (it spends green on replay). That conflict is logged in report_progress.md and
+has not been resolved -- these two panels follow the standard as given.
+
+PROVENANCE
+    811_trunk_power.npz        H=32, 10 seeds, both rules, both scenarios, ridge probe 1e-3.
+    810_capacity_vs_width.npz  widths 4-128, 5 seeds, both rules, both scenarios. PC runs at
+                               dt = 0.2, not the 0.4 default: this sweeps WIDTH, and 346 found
+                               Class-IL H=4 oscillates at 0.4.
 """
 import sys
 from pathlib import Path
@@ -37,85 +51,77 @@ import matplotlib.pyplot as plt
 from src.protocol import figure_path
 
 EXP = ROOT / "experiments"
-SCENARIOS = ["class_il", "domain_il"]
-COLORS = {"class_il": "tab:purple", "domain_il": "tab:green"}   # as 100/101 already use
+SCENARIOS = ["domain_il", "class_il"]          # solid first, per the standard
 NICE = {"class_il": "Class-IL", "domain_il": "Domain-IL"}
+METHODS = ["backprop", "pc"]
+
+RULE_COLOR = {"backprop": "black", "pc": "tab:red"}
+SCEN_STYLE = {"domain_il": "-", "class_il": "--"}
+
+ARMS = ["random_probe", "trained_probe", "joint"]
+ARM_LABEL = ["random trunk\n+ probe", "trained trunk\n+ probe", "jointly\ntrained"]
+CHOSEN_H = 32
 
 
-def panel_a():
-    """Trunk power: frozen random projection vs fully trained. Form copied from 101."""
-    z = np.load(EXP / "101_problem_complexity.npz", allow_pickle=True)
-    z100 = np.load(EXP / "100_capacity_vs_width.npz", allow_pickle=True)
-    widths = z100["widths"].tolist()
-    wi = widths.index(int(z["H"]))
-    frozen = {s: z[f"final_{s}"].ravel() for s in SCENARIOS}
-    trained = {s: float(z100[f"acc_{s}"][wi].mean()) for s in SCENARIOS}
-
-    allv = np.concatenate([frozen[s] for s in SCENARIOS] + [np.array(list(trained.values()))])
-    lo = float(np.floor(np.nanmin(allv) / 2) * 2 - 2)
-    hi = float(np.ceil(np.nanmax(allv) / 2) * 2 + 2)
-    bins = np.arange(lo, hi + 2, 2)
-
-    fig, axes = plt.subplots(len(SCENARIOS), 1, figsize=(7.2, 4.2), sharex=True)
-    for ax, s in zip(axes, SCENARIOS):
-        ax.hist(frozen[s], bins=bins, color=COLORS[s], alpha=0.85,
-                label=f"{NICE[s]}, frozen random trunk")
-        ax.axvline(trained[s], color="k", ls="--", lw=1.8)
-        ax.annotate(f"trained {trained[s]:.1f}%", (trained[s], ax.get_ylim()[1] * 0.82),
-                    xytext=(6, 0), textcoords="offset points", fontsize=8)
-        ax.set_ylabel("count", fontsize=9)
-        ax.legend(fontsize=8, loc="upper left")
-        ax.grid(alpha=0.25, axis="y")
-    axes[0].set_xlim(lo, hi)
-    axes[-1].set_xlabel("joint accuracy (%)")
-    axes[0].set_title(f"Training the hidden layer is worth "
-                      f"{trained['class_il'] - frozen['class_il'].mean():.1f} points (Class-IL), "
-                      f"{trained['domain_il'] - frozen['domain_il'].mean():.1f} (Domain-IL)",
-                      fontsize=9)
-    fig.tight_layout()
-    out = figure_path(__file__, "a")
-    fig.savefig(out, dpi=120, bbox_inches="tight")
-    print(f"saved {out}")
+def panel_a(ax):
+    d = np.load(EXP / "811_trunk_power.npz", allow_pickle=True)
+    x = np.arange(len(ARMS))
     for s in SCENARIOS:
-        print(f"  {NICE[s]:10s} frozen {frozen[s].mean():5.1f}  trained {trained[s]:5.1f}  "
-              f"gap {trained[s] - frozen[s].mean():+5.1f}")
+        for m in METHODS:
+            vals = np.stack([d[f"{s}_{m}_{a}"] for a in ARMS])      # (arms, seeds)
+            # every seed drawn faintly, so the spread is visible rather than asserted
+            for k in range(vals.shape[1]):
+                ax.plot(x, vals[:, k], color=RULE_COLOR[m], ls=SCEN_STYLE[s],
+                        lw=0.5, alpha=0.22, zorder=2)
+            ax.plot(x, vals.mean(axis=1), color=RULE_COLOR[m], ls=SCEN_STYLE[s],
+                    lw=1.8, marker="o", ms=4, zorder=4,
+                    label=f"{m} · {NICE[s]}")
+            gain = vals[1] - vals[0]
+            print(f"  (a) {NICE[s]:10s} {m:9s} random {vals[0].mean():5.1f}  "
+                  f"trained {vals[1].mean():5.1f}  joint {vals[2].mean():5.1f}  "
+                  f"trunk gain {gain.mean():+5.1f} +- {gain.std(ddof=1)/np.sqrt(len(gain)):.1f}")
+    ax.set_xticks(x)
+    ax.set_xticklabels(ARM_LABEL, fontsize=7.5)
+    ax.set_ylabel("joint accuracy (%)", fontsize=9)
+    ax.tick_params(axis="y", labelsize=8)
+    ax.grid(alpha=0.2, axis="y")
+    ax.legend(fontsize=7, loc="lower right", framealpha=0.9)
 
 
-def panel_b():
-    """Width sweep. Form copied from 100."""
-    z = np.load(EXP / "100_capacity_vs_width.npz", allow_pickle=True)
-    widths = z["widths"].tolist()
-    chosen = int(z["chosen"])
-
-    fig, ax = plt.subplots(figsize=(7.2, 4.6))
+def panel_b(ax):
+    d = np.load(EXP / "810_capacity_vs_width.npz", allow_pickle=True)
+    widths = d["widths"]
     for s in SCENARIOS:
-        a = z[f"acc_{s}"]
-        mean = a.mean(axis=1)
-        sem = a.std(axis=1, ddof=1) / np.sqrt(a.shape[1])
-        ax.errorbar(widths, mean, yerr=sem, marker="o", capsize=3, lw=2,
-                    color=COLORS[s], label=NICE[s])
-    ax.axvline(chosen, color="k", ls="--", lw=1.4)
-    ax.annotate(f"H = {chosen}, the working point", (chosen, 20), xytext=(8, 0),
-                textcoords="offset points", fontsize=8)
+        for m in METHODS:
+            a = d[f"acc_{s}_{m}"]                                    # (widths, seeds)
+            mean = a.mean(axis=1)
+            sem = a.std(axis=1, ddof=1) / np.sqrt(a.shape[1])
+            ax.errorbar(widths, mean, yerr=sem, color=RULE_COLOR[m], ls=SCEN_STYLE[s],
+                        lw=1.5, marker="o", ms=4, capsize=2, zorder=3,
+                        label=f"{m} · {NICE[s]}")
+            at32 = mean[list(widths).index(CHOSEN_H)]
+            print(f"  (b) {NICE[s]:10s} {m:9s} H=32 {at32:5.1f}  "
+                  f"H=128 {mean[-1]:5.1f}  headroom above H=32 {mean[-1]-at32:+4.1f}")
+    ax.axvline(CHOSEN_H, color="0.4", lw=1.0, ls=":", zorder=1)
+    ax.annotate(f"H = {CHOSEN_H}", (CHOSEN_H, 0.03), xycoords=("data", "axes fraction"),
+                xytext=(4, 0), textcoords="offset points", fontsize=7.5, color="0.4",
+                ha="left", va="bottom")
     ax.set_xscale("log", base=2)
     ax.set_xticks(widths)
-    ax.set_xticklabels(widths)
-    ax.set_xlabel("hidden units")
-    ax.set_ylabel("joint accuracy (%)")
-    ax.set_ylim(0, 100)
-    ax.grid(alpha=0.25)
-    ax.legend(fontsize=8, loc="lower right")
-    ax.set_title("H = 32 sits off the bottleneck; H = 4 and H = 8 are capacity-limited",
-                 fontsize=9)
-    fig.tight_layout()
-    out = figure_path(__file__, "b")
-    fig.savefig(out, dpi=120, bbox_inches="tight")
-    print(f"saved {out}")
-    for s in SCENARIOS:
-        a = z[f"acc_{s}"].mean(axis=1)
-        print(f"  {NICE[s]:10s} " + "  ".join(f"H={w}: {v:.1f}" for w, v in zip(widths, a)))
+    ax.set_xticklabels([str(int(w)) for w in widths], fontsize=8)
+    ax.set_xticks([], minor=True)
+    ax.set_xlabel("hidden width  H", fontsize=9)
+    ax.set_ylabel("joint accuracy (%)", fontsize=9)
+    ax.tick_params(axis="y", labelsize=8)
+    ax.grid(alpha=0.2)
+    ax.legend(fontsize=7, loc="lower right", framealpha=0.9)
 
 
 if __name__ == "__main__":
-    panel_a()
-    panel_b()
+    for name, fn, size in [("a", panel_a, (3.9, 3.0)), ("b", panel_b, (3.9, 3.0))]:
+        fig, ax = plt.subplots(figsize=size)
+        fn(ax)
+        fig.tight_layout()
+        out = figure_path(__file__, suffix=name)
+        fig.savefig(out, dpi=200, bbox_inches="tight")
+        print(f"saved {out}")

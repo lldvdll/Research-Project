@@ -28,10 +28,9 @@ the network's own linear head gets. If those two had diverged, (a) would be meas
 ceiling. Both runs use a flat 25k-iteration budget with NO early stopping and average the last
 few evaluations, for exactly that reason.
 
-COLOURS follow the project standard given 2026-09-11: backprop BLACK, pc RED; Domain-IL solid,
-Class-IL dashed. ⚠ This disagrees with src/style.py, which sets backprop grey, pc orange and
-Domain-IL teal (it spends green on replay). That conflict is logged in report_progress.md and
-has not been resolved -- these two panels follow the standard as given.
+COLOURS follow the project standard: backprop BLACK, pc RED; Domain-IL solid, Class-IL dashed.
+src/style.py is deliberately NOT used -- it sets backprop grey, pc orange and Domain-IL teal, and
+was retired as the source of truth on 2026-09-13. Do not import its RULE/SCENARIO dicts here.
 
 PROVENANCE
     811_trunk_power.npz        H=32, 10 seeds, both rules, both scenarios, ridge probe 1e-3.

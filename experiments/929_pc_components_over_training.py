@@ -30,8 +30,8 @@ not an impression.
 BACKGROUND SHADING marks which task is training, alternating block by block, taken from 804's
 saved switch points. Neutral greys on purpose -- the rule colours are spent on the data.
 
-COLOURS follow the project standard given 2026-09-11: backprop BLACK, pc RED. (⚠ still
-disagrees with src/style.py; logged in report_progress.md, unresolved.)
+COLOURS follow the project standard: backprop BLACK, pc RED. src/style.py is deliberately NOT
+used -- retired as the source of truth on 2026-09-13.
 
 PROVENANCE
     804_repeated_alternation_{scenario}.npz   weight traces for all 10 seeds of each rule

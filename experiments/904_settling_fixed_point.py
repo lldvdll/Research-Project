@@ -26,7 +26,9 @@ at depth >= 2 and at Class-IL H = 4, where the tail sits 3-7x above the true fix
 draws that, and the width/depth sweeps use dt = 0.2 because of it. Re-verify whenever the
 configuration moves.
 
-COLOURS follow the project standard: scenario-only figure, so Class-IL purple, Domain-IL green.
+COLOURS follow the project standard: this is a scenario-only figure with no rule split, so
+Class-IL purple and Domain-IL green. src/style.py is deliberately NOT used (retired as the
+source of truth on 2026-09-13); it would have made Domain-IL teal.
 
 PROVENANCE
     334_pc_settle_trace_by_dt_{scenario}.npz   PRE-800, regenerated 2026-09-11 on a trimmed

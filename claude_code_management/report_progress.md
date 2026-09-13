@@ -181,61 +181,26 @@ _awaiting review_
 
 ---
 
-## ⚠ DECISION NEEDED BEFORE THE NEXT FIGURE EDIT — the colour standard collides with the code
+## Colour standard — settled 2026-09-13
 
-The standard given on 2026-09-11 (backprop **black**, PC **red**; scenario-only figures
-Class-IL **purple**, Domain-IL **green**) does not match `src/style.py`, which every 900 script
-is supposed to draw from:
+**`src/style.py` is ignored.** The standard the user gave on 2026-09-11 is authoritative and
+figures are written against it directly, not against the module:
 
-| | standard asks for | `src/style.py` sets | line |
-|---|---|---|---|
-| backprop | black | `#5c5c5c` grey | 48 |
-| pc | red | `#d1682a` orange | 48 |
-| Class-IL | purple | `#6a4c93` purple — **agrees** | 61 |
-| Domain-IL | green | `#1b7f79` **teal** | 61 |
-| replay | — | `#3f7d3a` green | 48 |
+- backprop **black**, PC **red**
+- rule *and* scenario in one figure: Domain-IL **solid**, Class-IL **dashed**
+- scenario only, no rule split: Class-IL **purple**, Domain-IL **green**
 
-**Domain-IL green is the real problem**: `style.py` deliberately spends green on **replay** and
-gives Domain-IL teal to avoid the clash, with that reasoning written into the file. Making
-Domain-IL green puts it in direct collision with replay, which appears in 913 and in the
-intervention figures.
+`style.py` sets backprop grey, PC orange and Domain-IL teal, and reserves green for replay. None
+of that applies any more. Do not import its `RULE` / `SCENARIO` dicts into a revised figure, and
+do not "reconcile" the two — the module simply is not the source of truth.
 
-Three ways out, none taken yet — **ask before choosing**:
-1. Change `style.py` to the new standard and move replay to a fourth colour. Consistent
-   everywhere, but re-renders every figure in the report.
-2. Apply the standard only to figures being revised, and accept that older figures disagree
-   until their section comes up. Cheap now, inconsistent in the middle.
-3. Keep Domain-IL teal and take the rest of the standard. Closest to intent, no replay clash.
+The green/replay clash I raised turns out to be mostly moot: green is only used in figures with
+**no rule split**, and replay is a rule, so the two do not appear as competing series. A figure
+that does carry replay distinguishes rules by colour and scenarios by linestyle. ⚠ The standard
+assigns no colour to **replay** or **EqProp**; pick one when a figure needs it and ask, rather
+than inventing a convention silently.
 
-Figures already drawn under the new standard: **904** (Class-IL purple, Domain-IL green — no
-replay arm in it, so nothing actually collides yet).
-
-## ⚠ FINDING that changes R4's text — 929, added 2026-09-13
-
-`929_pc_components_over_training` plots PC1-PC5 against training updates instead of PC1 against
-PC2, and it **overturns how 918 has been read**.
-
-918's phase plane can only show the first two components. In Domain-IL/pc/W2 those two are
-smooth — PC1 (89% of variance) rises monotonically, PC2 (8%) rises then falls — which is why
-918 renders that cell as a single sweep while every other cell bounces. But **PC3, at ~1% of
-the variance, oscillates cleanly through all five task switches.**
-
-So the oscillation was never absent. It was **demoted into a low-variance component**, where the
-phase plane could not see it. Backprop keeps its ringing in PC1/PC2, which is why 918 draws it
-as a loop.
-
-Last-cycle over first-cycle peak-to-peak, Domain-IL/pc/W2: PC1 **x0.14**, PC2 x0.44,
-**PC3 x0.54**, PC4 x1.08, PC5 x0.06. PC1 damps hard; PC3 does not.
-
-**What this means for the write-up:** the R4 claim should become "PC's oscillation is pushed
-into a low-variance direction while a large monotone drift dominates PC1", not "PC does not
-oscillate in Domain-IL's readout". That is consistent with the earlier cosine test (PC's
-block-to-block updates do not reverse at the switch, cos ~0 to +0.24, where backprop reverses
-at -0.84 to -0.96) and it is a sharper claim than the one currently written.
-
-⚠ `plot_walkthrough.md`'s R4 entry for 918 still carries the old reading and needs revising.
-929 is a DIAGNOSTIC and is not in the report — the figure budget is already 21 against a frozen
-18. Decide whether it earns a slot or whether its finding just rewrites 918's paragraph.
+Already drawn against the standard: **904**, **902**, **929**.
 
 ## Deferred / out-of-sequence
 

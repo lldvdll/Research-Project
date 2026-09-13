@@ -202,6 +202,46 @@ than inventing a convention silently.
 
 Already drawn against the standard: **904**, **902**, **929**.
 
+## PROPOSED — two figure grids that carry the mechanism story, and a Discussion section
+
+Written 2026-09-13 after the mechanism was tested properly and did not survive. Both grids are
+designed to need almost no prose: the reading is the layout.
+
+**Grid A — "the credited mechanism does not carry the effect" (R3).** Three columns, one per
+condition: Class-IL, Domain-IL/tanh, Domain-IL/sigmoid. Two rows:
+- row 1, **the benefit**: paired PC − backprop crossover per seed, with the pooled estimate.
+  Reads +1.42 / −0.72 / +0.74 (d=1.25) left to right.
+- row 2, **the claimed mechanism**: target alignment pc − backprop, same three columns, same
+  paired form. Reads +0.0236 (4.6 sem) / +0.0029 (n.s.) / and the sigmoid column showing PC
+  *less* aligned where its advantage is largest.
+The argument is the mismatch between the rows, and it needs one sentence, not a paragraph.
+
+**Grid B — "what actually determines retention" (R3 close, or Discussion).** Three panels:
+- **(a)** backprop retention vs PC retention, one point per seed, three conditions overlaid, with
+  the identity line. Everything sits on the diagonal: **r = +0.97 / +0.97 / +0.99**.
+- **(b)** settling displacement vs PC retention, raw beside partialled-for-split-difficulty.
+  +0.80 collapsing to +0.30 in Class-IL, +0.46 reversing to −0.25 under sigmoid.
+- **(c)** the scale comparison: the seed-to-seed retention spread (Domain-IL backprop 23.0–71.0)
+  drawn on the same axis as the paired rule effect (−0.72 to +1.42). ~30x.
+Panel (c) alone makes the thesis' central point visually, and it is currently made only in prose.
+
+**Discussion section — seed pairing and the outliers.** The user proposed it; the numbers now
+argue it is not optional. Material already in hand:
+- r(bp ret, pc ret) = +0.97-0.99 — the split sets the outcome, the rule adjusts it.
+- Pairing cuts SEM 4.5x (906): PC−bp +1.65 reads as nothing unpaired, 6.6 sem paired, same runs.
+- Domain-IL: pair similarity at the shared output unit, r = +0.787 (60) — **but +0.183, p=0.61
+  on the independent block 10-19 (311)**, pooled +0.509. Report the non-replication.
+- Class-IL has no shared unit, so no pairing effect (69, null for both non-buffer rules); its
+  variance is per-digit instead (313: 8, 9, 5 raise retention, 6 lowers it; only 6, 8, 9 survive
+  Bonferroni).
+- Seed 13 is anomalously slow across at least seven independently written scripts.
+- Seed 9 of the old block: 2830-4700 steps across five fresh initialisations — the digits, not
+  the init (302).
+This section is where the odd points in the Results scatters get explained instead of ignored.
+
+⚠ **None of these are built.** Grid A and B are new 900-series scripts; say the word and the
+numbers are all already on disk.
+
 ## Deferred / out-of-sequence
 
 Carried in from the build pass on 2026-09-11. None of these are started; each is

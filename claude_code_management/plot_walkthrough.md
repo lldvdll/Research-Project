@@ -120,10 +120,108 @@ it. That tension is R2's honest headline, and R3 exists because of it.
   (hidden), the opposite of the pre-registered prediction; PC's output update uses the SETTLED
   hidden activity, not feedforward. **Final.**
 
-**R3's argument**: tested the paper's own mechanism directly, twice (once where the effect is
-absent, once where it's real and large), and both times it fails to explain PC's behavior. What
-DOES correlate (displacement→ΔW2) is a mechanism this project found, not the one credited in the
-literature — R3 should say that plainly rather than softening it.
+**R3's argument — REWRITTEN 2026-09-13, and the honest version is weaker than what was here.**
+
+Three things have to be said in order, and only the first two are established.
+
+**(i) Target alignment does not carry PC's advantage.** Fresh at ten seeds (915, from 803):
+
+| | backprop | pc | pc − bp |
+|---|---|---|---|
+| Class-IL, trained batch | +0.2711 | +0.2947 | **+0.0236 ± 0.0051 (4.6 sem)** |
+| Domain-IL, trained batch | +0.2634 | +0.2663 | +0.0029 ± 0.0022 (1.3 sem) |
+| Class-IL, task-1 batch | −0.0233 | −0.0404 | **−0.0170 ± 0.0054 (3.1 sem)** |
+| Domain-IL, task-1 batch | −0.0157 | −0.0189 | −0.0032 ± 0.0031 (1.0 sem) |
+
+⚠ **Do not write this as "no difference" — that was the old, too-strong claim.** PC *is* more
+target-aligned than backprop, significantly, in **Class-IL**. The case against S&B's mechanism is
+sharper than a null and should be made in three moves:
+1. The effect appears in **Class-IL, which is not their scenario**. In Domain-IL — the one they
+   claim it for — it is 1.3 sem, nothing.
+2. It is ~**9% relative** (+0.0236 on a base of 0.27), offered to explain a +1.43 point crossover.
+3. **The interference variant inverts.** In Class-IL PC's updates move task-1 outputs *further*
+   from their targets (−0.0404 vs −0.0233, 3.1 sem) while PC forgets *less*. More directional
+   harm, better retention — the same inversion legacy 64 found with EqProp, now at ten seeds.
+
+And the decisive one: under **sigmoid/Domain-IL** (808), where PC's advantage is the largest
+standardised effect in the project (d = 1.25), interference-alignment is bp +0.0050 vs
+pc +0.0032 — PC *less* aligned — with retention 40.1 vs 40.8. Where the advantage is biggest and
+most real, the credited mechanism is flat or backwards. **That is R3's result and it is solid.**
+
+**(ii) There is a real, replicated rule difference, and it is at the output layer.** PC's W2
+update multiplies the error against the **settled** hidden activity rather than the feedforward
+one, and the consequence is measurable: log-log slope of realised step against learning rate is
+W1 bp 0.93 / pc 0.90 (identical) but **W2 bp 0.99 / pc 0.78** (916b, regenerating 344). It shows
+up independently as cos(ΔW) diverging toward the output (54/55: W1 0.985, W2 0.814), as PC
+concentrating 87–89% of its W2 trajectory variance on PC1 against backprop's 62–68% (929), and
+as PC's block-to-block updates not reversing at the switch (cos ≈ 0 to +0.24) where backprop's
+reverse hard (−0.84 to −0.96). **This much is established.**
+
+**(iii) ⚠ WHAT IS NOT ESTABLISHED — the bridge from (ii) to the retention benefit.**
+
+The chain this section has been asserting is *settling displaces more → the output weights move
+less → task 1 survives*. **Tested directly on 2026-09-13, the middle link fails.**
+
+| | r(D, totW1) | r(D, totW2) | r(D, ret) | partial r(D,ret \| totW2) |
+|---|---|---|---|---|
+| Class-IL | −0.80 | −0.80 | +0.80 | **+0.87** |
+| Domain-IL | −0.68 | −0.62 | +0.29 | +0.13 |
+| Domain-IL sigmoid | +0.09 | +0.02 | +0.46 | **+0.52** |
+
+Three problems, any one of which is enough to stop the causal claim:
+- **Controlling for output-weight movement does not weaken D→retention; it slightly strengthens
+  it** (+0.80 → +0.87). A mediator that is removed without cost is not the route.
+- **Settling reduces movement in BOTH layers equally** (−0.80 / −0.80 in Class-IL), so nothing
+  here is specific to the readout.
+- **Under sigmoid, settling barely relates to weight movement at all** (+0.02) yet still predicts
+  retention (+0.50). The link that is supposed to carry the effect is absent exactly where the
+  effect is largest.
+- And independently, **130 finds freezing W2 outright recovers nothing** on crossover in either
+  scenario (+0.36 / +0.43 Class-IL, +0.15 / −0.32 Domain-IL). If stopping W2 entirely buys zero,
+  damping it cannot buy +1.43.
+
+**So the current state is: a robust correlation with no demonstrated mechanism.** D→retention
+survives controlling for task-2 length in Class-IL (+0.89) and under sigmoid (+0.50), and is
+absent in tanh/Domain-IL (+0.12) — which does track where PC helps, across all three conditions.
+That correspondence is worth reporting. But *why* is open, and the obvious candidate is ruled out.
+
+**THE TEST WAS RUN, 2026-09-13, AND THE CORRELATION DOES NOT SURVIVE IT.**
+
+Backprop and PC see the *same* split at a given seed, so backprop's retention on that seed is a
+clean measure of how hard the split is, with no settling in it at all. Partial out that measure:
+
+| | r(bp ret, pc ret) | r(D, bp ret) | r(D, pc ret) | **partial r(D, pc ret \| bp ret)** |
+|---|---|---|---|---|
+| Class-IL | **+0.97** | +0.78 | +0.80 | **+0.30** |
+| Domain-IL | **+0.97** | +0.21 | +0.29 | +0.39 |
+| Domain-IL sigmoid | **+0.99** | +0.48 | +0.46 | **−0.25** |
+
+Two readings, both important:
+
+1. **Settling displacement is largely a proxy for split difficulty.** In Class-IL, D correlates
+   with *backprop's* retention at +0.78 — and backprop has no settling whatsoever. Controlling
+   for split difficulty drops D→retention from +0.80 to **+0.30**; under sigmoid it **reverses**
+   to −0.25. The one number R3 was leaning on is mostly seed variance.
+2. **Retention is set by the seed, not the rule.** r(backprop retention, PC retention) is
+   **+0.97 / +0.97 / +0.99**. The split decides almost the whole outcome; the rule moves it by a
+   point or two on top of that.
+
+**CONCLUSION: THERE IS NO DEMONSTRATED MECHANISM, and R3 must not claim one.** What survives is:
+- **(i)** the credited mechanism (target alignment) fails — solid, and the strongest thing here;
+- **(ii)** a real structural rule difference at the output layer (settled vs feedforward
+  activity; W2 lr-slope 0.78 vs 0.99; no update reversal at the switch) — solid as a
+  *description of the rule*, with no demonstrated link to retention;
+- **(iii)** everything that previously bridged (i) and (ii) to the benefit is either mediated by
+  nothing (the totW2 partials), contradicted (130's freeze-W2 null), or confounded by split
+  difficulty (the table above).
+
+This is a **negative result, and it is a publishable one**: the mechanism credited in the
+literature does not reproduce, and the mechanism this project proposed instead does not survive
+its own control. Write it that way rather than hedging toward a story the data does not carry.
+
+⚠ **916's figure and docstring still assert the causal chain** ("more displacement, less total
+output-weight movement, more retention"). Link 1 is real; the retention half needs re-stating or
+the figure needs a panel showing the partial. Flagged, not yet changed.
 
 ### R4 — Why these are two investigations, not one
 

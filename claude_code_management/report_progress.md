@@ -210,6 +210,33 @@ Three ways out, none taken yet — **ask before choosing**:
 Figures already drawn under the new standard: **904** (Class-IL purple, Domain-IL green — no
 replay arm in it, so nothing actually collides yet).
 
+## ⚠ FINDING that changes R4's text — 929, added 2026-09-13
+
+`929_pc_components_over_training` plots PC1-PC5 against training updates instead of PC1 against
+PC2, and it **overturns how 918 has been read**.
+
+918's phase plane can only show the first two components. In Domain-IL/pc/W2 those two are
+smooth — PC1 (89% of variance) rises monotonically, PC2 (8%) rises then falls — which is why
+918 renders that cell as a single sweep while every other cell bounces. But **PC3, at ~1% of
+the variance, oscillates cleanly through all five task switches.**
+
+So the oscillation was never absent. It was **demoted into a low-variance component**, where the
+phase plane could not see it. Backprop keeps its ringing in PC1/PC2, which is why 918 draws it
+as a loop.
+
+Last-cycle over first-cycle peak-to-peak, Domain-IL/pc/W2: PC1 **x0.14**, PC2 x0.44,
+**PC3 x0.54**, PC4 x1.08, PC5 x0.06. PC1 damps hard; PC3 does not.
+
+**What this means for the write-up:** the R4 claim should become "PC's oscillation is pushed
+into a low-variance direction while a large monotone drift dominates PC1", not "PC does not
+oscillate in Domain-IL's readout". That is consistent with the earlier cosine test (PC's
+block-to-block updates do not reverse at the switch, cos ~0 to +0.24, where backprop reverses
+at -0.84 to -0.96) and it is a sharper claim than the one currently written.
+
+⚠ `plot_walkthrough.md`'s R4 entry for 918 still carries the old reading and needs revising.
+929 is a DIAGNOSTIC and is not in the report — the figure budget is already 21 against a frozen
+18. Decide whether it earns a slot or whether its finding just rewrites 918's paragraph.
+
 ## Deferred / out-of-sequence
 
 Carried in from the build pass on 2026-09-11. None of these are started; each is

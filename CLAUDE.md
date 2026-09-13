@@ -37,8 +37,9 @@ order for everything else.**
 | `claude_code_management/archive/` | Raw superseded chat logs. **Read-only, never edit.** | Only when adjudicating a contradiction. |
 | `ref/` | The source PDFs. **Read-only.** | When a claim needs a citation. |
 
-⚠ `current_state.md` is named in older notes but **does not exist**. `now.md` and `progress.md`
-cover what it was for. Do not go looking for it.
+⚠ `current_state.md` DOES exist, but it is dated 2026-08-11 and predates the whole
+800/900 series. Treat it as history: `now.md` and `progress.md` supersede it for anything
+current. Do not act on it without checking the date of what it claims.
 
 ## Change control — the standing rule
 

@@ -6,10 +6,14 @@ draft — a narrative check. Status tags: **final** (numbers locked — as of 20
 figure is final, since nothing is still running), **decision needed** (a real interpretive call
 not yet made, and the only kind of open item left in this file).
 
-Started 2026-09-10 with two jobs still running; **completed 2026-09-11, with every run and every
-plot in `script_plan_800_900.md` now produced.** Nothing below is waiting on compute. The status
-tags that remain are **decision needed** ones — interpretive calls for the writing pass, not
-missing numbers.
+Started 2026-09-10 with two jobs still running; **completed 2026-09-11 for the 800/900 BUILD
+pass — every plot in `script_plan_800_900.md` was produced.** The status tags that remain here
+are **decision needed** ones — interpretive calls for the writing pass, not missing numbers.
+
+⚠ **"Nothing is waiting on compute" describes the build pass, not today.** The report-revision
+pass that followed has added new runs (810, 811) and new figures (910), and has re-run others.
+For what is actually outstanding, read `now.md` and `report_progress.md`; this file is the
+argument each figure makes, not a status board.
 
 ---
 

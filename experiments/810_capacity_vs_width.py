@@ -60,7 +60,14 @@ if SMOKE:
     WIDTHS, SEEDS, MAX_ITERS, EVAL_EVERY = [4, 32], 2, 400, 100
     print("--smoke: tiny budget, results are NOT meaningful\n")
 
-PC_KW = dict(dt=CFG["predictive_coding"]["dt"],
+# dt = 0.2, NOT the config default of 0.4. config_800.yaml's own comment reads "H=32, depth=1
+# -- everywhere except a width/depth sweep", and this IS a width sweep: 346 found Class-IL
+# H = 4 oscillates at dt = 0.4, sitting 3-7x above the true fixed point, so the PC arm at the
+# narrow end would be measured under a settle that never converged. The project has already
+# paid for this twice in re-run sweeps; 341/342 use 0.2 for the same reason.
+SWEEP_DT = 0.2
+
+PC_KW = dict(dt=SWEEP_DT,
              steps=CFG["predictive_coding"]["settle_step_cap"],
              stop_delta=CFG["predictive_coding"]["stop_delta"],
              stop_patience=CFG["predictive_coding"]["stop_patience"])

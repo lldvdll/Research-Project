@@ -12,8 +12,10 @@ has not run yet.
 
 ## STATUS — 2026-09-11: every run and every plot in this list has been produced
 
-All 800-series training has run and all 900-series figures exist as PNGs on disk, checked
-directly against this list rather than assumed. What remains is **writing**, not computing:
+All 800-series training in THIS LIST has run and all 900-series figures in it exist as PNGs on
+disk, checked directly rather than assumed. ⚠ The report-revision pass has since added runs and
+figures beyond this list — 810, 811 and 910 at least. `now.md` and `report_progress.md` are
+authoritative for what is outstanding; this file is the inventory, not the status. What remains is **writing**, not computing:
 `report/sections/*.tex` still carries stale `\gap{...not written}` captions for figures that now
 exist, and that is the user's own pass. `plot_walkthrough.md` reads the whole set in report order
 and is the place to start.

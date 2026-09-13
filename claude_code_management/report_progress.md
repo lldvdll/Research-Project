@@ -74,7 +74,8 @@ careless `git add -A` breaks the push. Raise it; do not do it unasked.
 
 - **The shell here collapses `\` to `\` inside heredocs.** A `sed` written with
   `s/.../\par\vspace{6pt}/` reached sed as `\parspace{...}`, which sed read as escape
-  codes: it turned `\p` into `p`, `` into a vertical tab and `` into a carriage return,
+  codes: it turned `\p` into `p`, `` into a vertical tab and `
+` into a carriage return,
   silently corrupting 53 places across three `.tex` files and splitting one line in half.
   **Do not put backslashes in a heredoc-delivered `sed` or Python string.** Build them with
   `chr(92)`, or use the Write/Edit tools, which are unaffected.
@@ -179,6 +180,35 @@ _awaiting review_
 _awaiting review_
 
 ---
+
+## ⚠ DECISION NEEDED BEFORE THE NEXT FIGURE EDIT — the colour standard collides with the code
+
+The standard given on 2026-09-11 (backprop **black**, PC **red**; scenario-only figures
+Class-IL **purple**, Domain-IL **green**) does not match `src/style.py`, which every 900 script
+is supposed to draw from:
+
+| | standard asks for | `src/style.py` sets | line |
+|---|---|---|---|
+| backprop | black | `#5c5c5c` grey | 48 |
+| pc | red | `#d1682a` orange | 48 |
+| Class-IL | purple | `#6a4c93` purple — **agrees** | 61 |
+| Domain-IL | green | `#1b7f79` **teal** | 61 |
+| replay | — | `#3f7d3a` green | 48 |
+
+**Domain-IL green is the real problem**: `style.py` deliberately spends green on **replay** and
+gives Domain-IL teal to avoid the clash, with that reasoning written into the file. Making
+Domain-IL green puts it in direct collision with replay, which appears in 913 and in the
+intervention figures.
+
+Three ways out, none taken yet — **ask before choosing**:
+1. Change `style.py` to the new standard and move replay to a fourth colour. Consistent
+   everywhere, but re-renders every figure in the report.
+2. Apply the standard only to figures being revised, and accept that older figures disagree
+   until their section comes up. Cheap now, inconsistent in the middle.
+3. Keep Domain-IL teal and take the rest of the standard. Closest to intent, no replay clash.
+
+Figures already drawn under the new standard: **904** (Class-IL purple, Domain-IL green — no
+replay arm in it, so nothing actually collides yet).
 
 ## Deferred / out-of-sequence
 

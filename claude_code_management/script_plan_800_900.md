@@ -182,16 +182,25 @@ placeholders, not files.
 | 926 | R5·A | Class-IL digit table | 819 | ✘ **not built** — the one gap, appendix only | P3 |
 | 927 | R4 | Retention/crossover vs. task-1 overtraining, both scenarios × both rules | 807-overtrain | ✔ done, added 2026-09 | P2 |
 | 928 | R4 | Forgetting-shape classification (collapse / delayed / partial / rising / noisy) across the 2×2 | 803 | ✔ done, added 2026-09 | P2 |
+| 929 | R4 | First five PCs over training updates, task-shaded — does the oscillation damp or migrate? | 804 | ✔ done, added 2026-09-13 | P2 |
+| **930** | R3 | **Benefit against the mechanism S&B credit** — paired Δcrossover over paired Δalignment, three conditions | 802, 803, 808 | ✔ done, added 2026-09-13 | P1 |
 | **931** | D1 | Intervention ranking, both scenarios | 822 + others | ✔ done — regrouped 2026-09-10 | P2 |
 | 932 | D1·A | SI and k-WTA sweeps | 822 | ✔ done (copy 210 + 220) | P3 |
+| **933** | R3 / D | **What determines retention if not the rule** — (a) bp vs pc retention per seed on the identity line, (b) D→retention raw vs split-difficulty removed, (c) seed effect against rule effect in one unit | 803, 808 | ✔ done, added 2026-09-14 | P1 |
 
 **Bold = main text.** Count: 901, 904, 907, 911, 912, 913, 915, 916, 917, 918, 919, 920, 921, 922,
 923, 924, 925, 931 = **18 main-text figures**, of which 3 are Methods and 1 Discussion, leaving
 **14 in Results**. At ~3,000 Results words that is ~215 words each — workable, and one figure
 above the earlier estimate because R5 kept the task-structure figure rather than demoting it.
 
-**⚠ The budget is now over-subscribed, and that is a decision, not an oversight.** Three figures
-arrived after the count above was struck — **909**, **927**, **928** — and all three are built.
+**⚠ The budget is now over-subscribed, and that is a decision, not an oversight.** Five figures
+arrived after the count above was struck — **909**, **927**, **928**, **930**, **933** — and all
+five are built. 930 and 933 are the two mechanism figures the user asked for on 2026-09-13 after
+saying the mechanism story was not yet coherent; between them they replace prose that R3 could
+not otherwise carry, so they arrive with a claim on R3's existing slots (915, 916) rather than as
+additions to them. **The user's ruling on 2026-09-14: figures are chosen AFTER the section's
+bullet points exist, because figures support claims and not the other way round. Do not settle
+the budget before the text does.**
 927 and 928 are real R4 evidence (consolidation-time sensitivity; forgetting-shape
 classification) and have a good claim on main-text slots; 909 justifies dual-metric reporting and
 reads as a Methods figure that could merge into 907/908 rather than stand alone. Taking 927 and

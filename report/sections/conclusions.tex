@@ -1,48 +1,16 @@
 % ======================================================================================
-% DISCUSSION -- D1.  Budget ~1400 words.
+% CONCLUSIONS.  Budget ~350 words.
+%
+% Split out from the old conclusions.tex on 2026-09-14, which was actually the Discussion.
+% This file is new and deliberately empty of claims -- it is written LAST, after the
+% Discussion, so that it summarises what the report actually ended up establishing rather
+% than what it set out to.
+%
+% Nothing new belongs here: no number that has not already appeared with a figure behind it,
+% and no claim stronger than the one Discussion defends.
 % ======================================================================================
 
-\section{Discussion}
-\label{sec:d1}
+\section{Conclusions}
+\label{sec:conclusions}
 
-\wordcount{900}
-% Fig.~\ref{fig:931} puts every intervention this project ran on one axis, so the learning-rule
-% result is read against the alternatives rather than on its own:
-%   replay +9.84 / +3.43   masking +7.6 to +17.5 (spec-dependent, Class-IL only)
-%   SI +3.15   EWC +1.80   PC +1.42 / -0.72   freezing nothing   k-WTA -9.8 bp, -32.4 pc
-% ⚠ EWC's lambda grid never bracketed its optimum. Its number is a lower bound, and the figure
-% and text must both say so rather than ranking it as if it were tuned.
-%
-% The claim the report can actually defend, stated no more strongly than this:
-%   - Prospective configuration produces a small, real, scenario-dependent difference in
-%     retention. In Class-IL it helps; in Domain-IL it does not.
-%   - The difference is roughly a seventh of what replay buys, and replay is flat across every
-%     hyperparameter swept, so the gap is not a tuning artefact.
-%   - Therefore the credit-assignment rule is not the lever. This does not refute Song &
-%     Bogacz -- it locates their effect at a size, under a protocol that reports its censoring
-%     and pairs its seeds.
-
-\subsection{What this work does not establish}
-\label{sec:limits}
-
-\wordcount{500}
-% State these as limits, not as apologies, and do not fill any of them by analogy:
-%
-%   1. DOMAIN-IL HAS NO POSITIVE LOCALISATION. Suppression is structurally unavailable there,
-%      so the explanation must be representation drift -- and freezing says only where it is
-%      NOT. This is the largest genuine gap in the project. Report it as one.
-%   2. One dataset, one split size, one depth at the working point. Depth was swept, and it
-%      widens the scenario split in both directions, so the working point is not a plateau.
-%   3. EqProp was dropped. Say when and why.
-%   4. tanh -- justified by 802 only if 802 runs; otherwise a declared limitation.
-%   5. The class-pair similarity correlation did NOT replicate across seed blocks
-%      (r = +0.686, p = 0.029 on seeds 0-9; r = +0.183, p = 0.61 on seeds 10-19). The
-%      non-replication is reported as the result, not averaged into a pooled r.
-%   6. Two tasks, not many. Repeated alternation (R4) probes this and does not remove it.
-
-\begin{figure*}[t]\centering
-  \begin{panelbox}
-    \solo{931_intervention_ranking.png}
-  \end{panelbox}
-  \caption{\label{fig:931}\gap{931 not written}\wordcount{110}}
-\end{figure*}
+\wordcount{350}

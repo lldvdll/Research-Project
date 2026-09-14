@@ -238,6 +238,30 @@ retention) is +0.97/+0.97/+0.99. That is a defensible and interesting section. I
 output-weight movement, more retention"). Link 1 is real; the retention half needs re-stating or
 the figure needs a panel showing the partial. Flagged, not yet changed.
 
+**The two figures that now carry this section, both built 2026-09-13/14 so R3 can argue in
+pictures rather than in prose.**
+
+- **930 — benefit against credited mechanism.** Three columns ordered by what PC does (Class-IL
+  helps, Domain-IL/tanh hurts, Domain-IL/sigmoid helps most), three rows: paired Δcrossover,
+  paired Δtarget alignment, paired Δinterference alignment. The reading is whether row 2 tracks
+  row 1, and it does on sign, 3/3, with the null landing on the negative column. The figure is
+  the reason this section is **not** written as a refutation. **Final.**
+- **933 — what determines retention, if not the rule.** The prior question 930 cannot ask.
+  Three panels, and every number re-derived from 803/808 when the script was written:
+  (a) backprop retention against PC retention per seed, identity line drawn — **+0.974 / +0.974
+  / +0.994**, the points sit on the diagonal; (b) D→PC-retention raw beside the same correlation
+  with backprop's retention partialled out — **+0.80→+0.30**, **+0.29→+0.39**, **+0.46→−0.25**,
+  so the one correlation this project leaned on is largely split difficulty; (c) the seed effect
+  and the rule effect in the same unit, points of task-1 accuracy — sd of backprop retention
+  across seeds against the mean paired PC−backprop difference, **7× / 19× / 17×**. **Final.**
+  ⚠ **The ~30× in the earlier proposal for this panel was wrong.** It compared a retention
+  *range* against a *crossover* effect — two metrics. Measured honestly, within retention, the
+  ratio is 7–19× depending on condition. Cite 7–19×, never 30×.
+
+**Together 930 and 933 are R3's argument**: the mechanism the literature credits moves the right
+way but does not scale; the mechanism this project proposed is removed by its own controls; and
+both are small next to the seed. That is three claims, and the two figures separate them.
+
 ### R4 — Why these are two investigations, not one
 
 This section's job (corrected once already, per its own heading note) is to justify the scenario

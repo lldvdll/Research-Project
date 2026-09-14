@@ -93,8 +93,35 @@ careless `git add -A` breaks the push. Raise it; do not do it unasked.
 
 ## Active
 
-**Methods — review 1, received 2026-09-11.** Order of work as instructed: scripts first and
-running, then the report figure layout, then the text with cross-references.
+**⇢ THE PROJECT MOVED INTO THE WRITING PHASE ON 2026-09-14.** The figure-revision loop below
+still stands, but it is no longer what drives the order of work. The user has ~30 hours of
+working time across ~10 days and is writing the report section by section.
+
+**The writing loop, given 2026-09-14:**
+> brief discussion of the important points → the user writes bullets into the `.tex` →
+> we refine them together into formal prose, with citations.
+
+**Order: Methods → Results → Discussion → Conclusions → Introduction → Abstract.**
+
+**Rulings given 2026-09-14, and they override earlier planning:**
+- **Captions count against the 8,000 words.** There may be too much material; simplifying a
+  detailed mechanism section is an accepted outcome. Do not treat 8,000 + captions as the budget.
+- **"Phenotypes" is banned.** Say what is actually there. The R1 heading was changed for this.
+  Applies generally — no obfuscated language anywhere in the report.
+- **The R1–R5 plan is left as it currently sits** and refined later, not re-planned now.
+- **Re-runs are allowed when a result is wrong.** 30 hours is working time inside 10 days, so
+  there is room. A plot may also be regenerated or newly designed **if it genuinely cannot
+  demonstrate the point the text needs** — but that is the bar, not a preference.
+- **Every plot needs work and none are final.** Placement and the figure grids are explicitly
+  "not good". The user will give detailed layout instructions per section **once the core text
+  is in place** — so do not polish layout ahead of the text.
+- **Figures are chosen after the bullets exist.** Figures support claims, not the other way
+  round. Expect to write more than fits and cut later, once priorities are visible. The
+  over-subscribed figure budget is therefore NOT to be settled early.
+- **Diagrams are discussed when they arise**, not researched in advance.
+
+**Superseded:** *Methods — review 1, received 2026-09-11.* Its checklist below is complete
+except for the M2 setup-and-controls text, which is now part of the M2 writing block.
 
 ---
 
@@ -239,8 +266,23 @@ argue it is not optional. Material already in hand:
   the init (302).
 This section is where the odd points in the Results scatters get explained instead of ignored.
 
-⚠ **None of these are built.** Grid A and B are new 900-series scripts; say the word and the
-numbers are all already on disk.
+✔ **BOTH ARE NOW BUILT.** Grid A is **`930_alignment_vs_benefit.py`** (2026-09-13) and Grid B is
+**`933_what_determines_retention.py`** (2026-09-14). Every number in each was re-derived from the
+saved arrays by the script itself, not carried across from this proposal — and one of them was
+wrong here:
+
+⚠ **The "~30×" in Grid B (c) above was a metric mismatch** — a retention *range* (23.0–71.0) set
+against a *crossover* effect (−0.72 to +1.42). 933 measures both sides in retention points from
+the same runs and the ratio is **7× (Class-IL) / 19× (Domain-IL) / 17× (Domain-IL sigmoid)**,
+comparing the sd of backprop retention across seeds with the mean paired PC−backprop difference.
+Cite 7–19×. The point stands and is arguably cleaner; the number does not.
+
+⚠ **Grid B (c)'s retention range also differs from this proposal**: 803 gives Domain-IL backprop
+18.2–55.5, not 23.0–71.0. The script reads its own source and prints what it finds.
+
+⚠ **The colour standard does not cover ACTIVATION**, and 933 needs three conditions where two are
+Domain-IL. It draws Domain-IL/sigmoid in the same green with an **open** marker. Flagged for the
+user to accept or replace — it is a convention invented under pressure, not one they gave.
 
 ## Deferred / out-of-sequence
 

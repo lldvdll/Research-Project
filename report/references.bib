@@ -1,14 +1,532 @@
 @PREAMBLE{
- "\providecommand{\noopsort}[1]{}" 
- # "\providecommand{\singleletter}[1]{#1}%" 
+ "\providecommand{\noopsort}[1]{}"
+ # "\providecommand{\singleletter}[1]{#1}%"
 }
 
-% Export references in the BibTeX format online:
-@MISC{ARXIVEXAMPLE,
-      title={Example of an arXiv reference}, 
-      author={First Author and Second Author and Third Author},
-      year={2022},
-      eprint={2008.00000},
-      archivePrefix={arXiv},
-      primaryClass={cs.NE}
+% =====================================================================================
+% BIBLIOGRAPHY -- built 2026-09-14 for the writing pass.
+%
+% TWO BLOCKS, AND THE DIFFERENCE BETWEEN THEM MATTERS.
+%
+%   BLOCK A -- VERIFIED. Every field was read off the PDF in ref/ on 2026-09-14. Cite these
+%              without further checking.
+%
+%   BLOCK B -- NOT VERIFIED AGAINST A SOURCE. Standard continual-learning, predictive-coding
+%              and bio-plausible-learning literature that this report is likely to cite but
+%              which is NOT in ref/. Authors, titles, venues and years are high-confidence;
+%              VOLUME AND PAGE NUMBERS ARE THE RISKY FIELDS and have not been checked against
+%              the publisher. Spot-check any entry before it goes into the final submission,
+%              or pull the real BibTeX from the publisher / Google Scholar.
+%
+% ⚠ ref/bogacz_2017_core_pcn.pdf is NOT a separate Bogacz 2017 paper -- it is the MIT Press
+%   published version of Whittington & Bogacz 2017, the same paper as ref/Whittington &
+%   Bogacz 2017.pdf. There is one entry for it, not two. Bogacz's actual 2017 tutorial is a
+%   different paper and sits in Block B, unverified.
+% =====================================================================================
+
+
+% =====================================================================================
+% BLOCK A -- VERIFIED against the PDFs in ref/
+% =====================================================================================
+
+% The paper under test. Prospective configuration.
+@article{song2024inferring,
+  title   = {Inferring neural activity before plasticity as a foundation for learning beyond backpropagation},
+  author  = {Song, Yuhang and Millidge, Beren and Salvatori, Tommaso and Lukasiewicz, Thomas and Xu, Zhenghua and Bogacz, Rafal},
+  journal = {Nature Neuroscience},
+  volume  = {27},
+  pages   = {348--358},
+  year    = {2024},
+  doi     = {10.1038/s41593-023-01514-1}
+}
+
+% A commentary on the above -- useful for the trade-offs and the energy-based-model context.
+@article{dong2025commentary,
+  title   = {A Commentary on ``Inferring Neural Activity before Plasticity as a Foundation for Learning beyond Backpropagation''},
+  author  = {Dong, Xingsi and Peng, Xiangyuan and Wu, Si},
+  journal = {Intelligent Computing},
+  volume  = {4},
+  pages   = {0244},
+  year    = {2025},
+  doi     = {10.34133/icomputing.0244}
+}
+
+% The scenario taxonomy this report's Domain-IL / Class-IL split comes from.
+@article{vandeven2022three,
+  title   = {Three types of incremental learning},
+  author  = {van de Ven, Gido M. and Tuytelaars, Tinne and Tolias, Andreas S.},
+  journal = {Nature Machine Intelligence},
+  volume  = {4},
+  pages   = {1185--1197},
+  year    = {2022},
+  doi     = {10.1038/s42256-022-00568-3}
+}
+
+% EWC. Also the source of the synaptic-consolidation framing in M2.
+@article{kirkpatrick2017overcoming,
+  title   = {Overcoming catastrophic forgetting in neural networks},
+  author  = {Kirkpatrick, James and Pascanu, Razvan and Rabinowitz, Neil and Veness, Joel and Desjardins, Guillaume and Rusu, Andrei A. and Milan, Kieran and Quan, John and Ramalho, Tiago and Grabska-Barwinska, Agnieszka and Hassabis, Demis and Clopath, Claudia and Kumaran, Dharshan and Hadsell, Raia},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {114},
+  number  = {13},
+  pages   = {3521--3526},
+  year    = {2017},
+  doi     = {10.1073/pnas.1611835114}
+}
+
+% Complementary learning systems -- the biological argument for replay, and the original
+% statement of why interleaved training avoids catastrophic interference.
+@article{mcclelland1995why,
+  title   = {Why there are complementary learning systems in the hippocampus and neocortex: insights from the successes and failures of connectionist models of learning and memory},
+  author  = {McClelland, James L. and McNaughton, Bruce L. and O'Reilly, Randall C.},
+  journal = {Psychological Review},
+  volume  = {102},
+  number  = {3},
+  pages   = {419--457},
+  year    = {1995}
+}
+
+% Predictive coding's origin in visual neuroscience.
+@article{rao1999predictive,
+  title   = {Predictive coding in the visual cortex: a functional interpretation of some extra-classical receptive-field effects},
+  author  = {Rao, Rajesh P. N. and Ballard, Dana H.},
+  journal = {Nature Neuroscience},
+  volume  = {2},
+  number  = {1},
+  pages   = {79--87},
+  year    = {1999}
+}
+
+% The cortical-microcircuit account of predictive coding.
+@article{bastos2012canonical,
+  title   = {Canonical microcircuits for predictive coding},
+  author  = {Bastos, Andre M. and Usrey, W. Martin and Adams, Rick A. and Mangun, George R. and Fries, Pascal and Friston, Karl J.},
+  journal = {Neuron},
+  volume  = {76},
+  number  = {4},
+  pages   = {695--711},
+  year    = {2012},
+  doi     = {10.1016/j.neuron.2012.10.038}
+}
+
+% The PC-approximates-backprop result. This is the paper both ref/ PDFs contain.
+@article{whittington2017approximation,
+  title   = {An approximation of the error backpropagation algorithm in a predictive coding network with local {H}ebbian synaptic plasticity},
+  author  = {Whittington, James C. R. and Bogacz, Rafal},
+  journal = {Neural Computation},
+  volume  = {29},
+  number  = {5},
+  pages   = {1229--1262},
+  year    = {2017},
+  doi     = {10.1162/NECO_a_00949}
+}
+
+% Survey: predictive coding as a general-purpose training algorithm.
+@article{millidge2022predictive,
+  title   = {Predictive coding: towards a future of deep learning beyond backpropagation?},
+  author  = {Millidge, Beren and Salvatori, Tommaso and Song, Yuhang and Bogacz, Rafal and Lukasiewicz, Thomas},
+  journal = {arXiv preprint arXiv:2202.09467},
+  year    = {2022},
+  eprint  = {2202.09467},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.NE}
+}
+
+% Equilibrium propagation -- the fourth rule, shelved; cited in the appendix.
+@article{scellier2017equilibrium,
+  title   = {Equilibrium propagation: bridging the gap between energy-based models and backpropagation},
+  author  = {Scellier, Benjamin and Bengio, Yoshua},
+  journal = {Frontiers in Computational Neuroscience},
+  volume  = {11},
+  pages   = {24},
+  year    = {2017},
+  doi     = {10.3389/fncom.2017.00024}
+}
+
+% Metabolic cost of plasticity, and synaptic caching -- the stability/plasticity trade-off
+% argued from energy rather than from interference.
+@article{li2020energy,
+  title   = {Energy efficient synaptic plasticity},
+  author  = {Li, Ho Ling and van Rossum, Mark C. W.},
+  journal = {eLife},
+  volume  = {9},
+  pages   = {e50804},
+  year    = {2020},
+  doi     = {10.7554/eLife.50804}
+}
+
+
+% =====================================================================================
+% BLOCK B -- NOT VERIFIED. Check volume/pages before submission.
+% =====================================================================================
+
+% ---------- Catastrophic forgetting: the original statements ----------
+
+@incollection{mccloskey1989catastrophic,
+  title     = {Catastrophic interference in connectionist networks: the sequential learning problem},
+  author    = {McCloskey, Michael and Cohen, Neal J.},
+  booktitle = {Psychology of Learning and Motivation},
+  volume    = {24},
+  pages     = {109--165},
+  year      = {1989},
+  publisher = {Academic Press}
+}
+
+@article{ratcliff1990connectionist,
+  title   = {Connectionist models of recognition memory: constraints imposed by learning and forgetting functions},
+  author  = {Ratcliff, Roger},
+  journal = {Psychological Review},
+  volume  = {97},
+  number  = {2},
+  pages   = {285--308},
+  year    = {1990}
+}
+
+@article{french1999catastrophic,
+  title   = {Catastrophic forgetting in connectionist networks},
+  author  = {French, Robert M.},
+  journal = {Trends in Cognitive Sciences},
+  volume  = {3},
+  number  = {4},
+  pages   = {128--135},
+  year    = {1999}
+}
+
+@article{goodfellow2013empirical,
+  title   = {An empirical investigation of catastrophic forgetting in gradient-based neural networks},
+  author  = {Goodfellow, Ian J. and Mirza, Mehdi and Xiao, Da and Courville, Aaron and Bengio, Yoshua},
+  journal = {arXiv preprint arXiv:1312.6211},
+  year    = {2013},
+  eprint  = {1312.6211},
+  archivePrefix = {arXiv}
+}
+
+% ---------- Continual learning: surveys and evaluation ----------
+
+@article{parisi2019continual,
+  title   = {Continual lifelong learning with neural networks: a review},
+  author  = {Parisi, German I. and Kemker, Ronald and Part, Jose L. and Kanan, Christopher and Wermter, Stefan},
+  journal = {Neural Networks},
+  volume  = {113},
+  pages   = {54--71},
+  year    = {2019}
+}
+
+@article{delange2021continual,
+  title   = {A continual learning survey: defying forgetting in classification tasks},
+  author  = {De Lange, Matthias and Aljundi, Rahaf and Masana, Marc and Parisot, Sarah and Jia, Xu and Leonardis, Ale{\v{s}} and Slabaugh, Gregory and Tuytelaars, Tinne},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  volume  = {44},
+  number  = {7},
+  pages   = {3366--3385},
+  year    = {2021}
+}
+
+@article{hadsell2020embracing,
+  title   = {Embracing change: continual learning in deep neural networks},
+  author  = {Hadsell, Raia and Rao, Dushyant and Rusu, Andrei A. and Pascanu, Razvan},
+  journal = {Trends in Cognitive Sciences},
+  volume  = {24},
+  number  = {12},
+  pages   = {1028--1040},
+  year    = {2020}
+}
+
+@article{kudithipudi2022biological,
+  title   = {Biological underpinnings for lifelong learning machines},
+  author  = {Kudithipudi, Dhireesha and Aguilar-Simon, Mario and Babb, Jonathan and Bazhenov, Maxim and Blackiston, Douglas and Bongard, Josh and Brna, Andrew P. and others},
+  journal = {Nature Machine Intelligence},
+  volume  = {4},
+  pages   = {196--210},
+  year    = {2022}
+}
+
+@article{vandeven2019three,
+  title   = {Three scenarios for continual learning},
+  author  = {van de Ven, Gido M. and Tolias, Andreas S.},
+  journal = {arXiv preprint arXiv:1904.07734},
+  year    = {2019},
+  eprint  = {1904.07734},
+  archivePrefix = {arXiv}
+}
+
+@article{hsu2018reevaluating,
+  title   = {Re-evaluating continual learning scenarios: a categorization and case for strong baselines},
+  author  = {Hsu, Yen-Chang and Liu, Yen-Cheng and Ramasamy, Anita and Kira, Zsolt},
+  journal = {arXiv preprint arXiv:1810.12488},
+  year    = {2018},
+  eprint  = {1810.12488},
+  archivePrefix = {arXiv}
+}
+
+@article{farquhar2018towards,
+  title   = {Towards robust evaluations of continual learning},
+  author  = {Farquhar, Sebastian and Gal, Yarin},
+  journal = {arXiv preprint arXiv:1805.09733},
+  year    = {2018},
+  eprint  = {1805.09733},
+  archivePrefix = {arXiv}
+}
+
+% ---------- Continual learning: the interventions this report measures against ----------
+
+@inproceedings{zenke2017continual,
+  title     = {Continual learning through synaptic intelligence},
+  author    = {Zenke, Friedemann and Poole, Ben and Ganguli, Surya},
+  booktitle = {Proceedings of the 34th International Conference on Machine Learning},
+  series    = {PMLR},
+  volume    = {70},
+  pages     = {3987--3995},
+  year      = {2017}
+}
+
+@article{li2017learning,
+  title   = {Learning without forgetting},
+  author  = {Li, Zhizhong and Hoiem, Derek},
+  journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  volume  = {40},
+  number  = {12},
+  pages   = {2935--2947},
+  year    = {2017}
+}
+
+@inproceedings{aljundi2018memory,
+  title     = {Memory aware synapses: learning what (not) to forget},
+  author    = {Aljundi, Rahaf and Babiloni, Francesca and Elhoseiny, Mohamed and Rohrbach, Marcus and Tuytelaars, Tinne},
+  booktitle = {Proceedings of the European Conference on Computer Vision (ECCV)},
+  pages     = {139--154},
+  year      = {2018}
+}
+
+@inproceedings{serra2018overcoming,
+  title     = {Overcoming catastrophic forgetting with hard attention to the task},
+  author    = {Serr{\`a}, Joan and Sur{\'i}s, D{\'i}dac and Miron, Marius and Karatzoglou, Alexandros},
+  booktitle = {Proceedings of the 35th International Conference on Machine Learning},
+  series    = {PMLR},
+  volume    = {80},
+  pages     = {4548--4557},
+  year      = {2018}
+}
+
+@article{masse2018alleviating,
+  title   = {Alleviating catastrophic forgetting using context-dependent gating and synaptic stabilization},
+  author  = {Masse, Nicolas Y. and Grant, Gregory D. and Freedman, David J.},
+  journal = {Proceedings of the National Academy of Sciences},
+  volume  = {115},
+  number  = {44},
+  pages   = {E10467--E10475},
+  year    = {2018}
+}
+
+% ---------- Replay ----------
+
+@inproceedings{rebuffi2017icarl,
+  title     = {{iCaRL}: incremental classifier and representation learning},
+  author    = {Rebuffi, Sylvestre-Alvise and Kolesnikov, Alexander and Sperl, Georg and Lampert, Christoph H.},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {2001--2010},
+  year      = {2017}
+}
+
+@inproceedings{shin2017continual,
+  title     = {Continual learning with deep generative replay},
+  author    = {Shin, Hanul and Lee, Jung Kwon and Kim, Jaehong and Kim, Jiwon},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {30},
+  year      = {2017}
+}
+
+@inproceedings{lopezpaz2017gradient,
+  title     = {Gradient episodic memory for continual learning},
+  author    = {Lopez-Paz, David and Ranzato, Marc'Aurelio},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {30},
+  year      = {2017}
+}
+
+@inproceedings{chaudhry2019efficient,
+  title     = {Efficient lifelong learning with {A-GEM}},
+  author    = {Chaudhry, Arslan and Ranzato, Marc'Aurelio and Rohrbach, Marcus and Elhoseiny, Mohamed},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019}
+}
+
+@article{vandeven2020brain,
+  title   = {Brain-inspired replay for continual learning with artificial neural networks},
+  author  = {van de Ven, Gido M. and Siegelmann, Hava T. and Tolias, Andreas S.},
+  journal = {Nature Communications},
+  volume  = {11},
+  pages   = {4069},
+  year    = {2020}
+}
+
+% ---------- Biological memory: replay, consolidation, metaplasticity ----------
+
+@article{wilson1994reactivation,
+  title   = {Reactivation of hippocampal ensemble memories during sleep},
+  author  = {Wilson, Matthew A. and McNaughton, Bruce L.},
+  journal = {Science},
+  volume  = {265},
+  number  = {5172},
+  pages   = {676--679},
+  year    = {1994}
+}
+
+@article{olafsdottir2018role,
+  title   = {The role of hippocampal replay in memory and planning},
+  author  = {{\'O}lafsd{\'o}ttir, H. Freyja and Bush, Daniel and Barry, Caswell},
+  journal = {Current Biology},
+  volume  = {28},
+  number  = {1},
+  pages   = {R37--R50},
+  year    = {2018}
+}
+
+@article{fusi2005cascade,
+  title   = {Cascade models of synaptically stored memories},
+  author  = {Fusi, Stefano and Drew, Patrick J. and Abbott, Larry F.},
+  journal = {Neuron},
+  volume  = {45},
+  number  = {4},
+  pages   = {599--611},
+  year    = {2005}
+}
+
+@article{benna2016computational,
+  title   = {Computational principles of synaptic memory consolidation},
+  author  = {Benna, Marcus K. and Fusi, Stefano},
+  journal = {Nature Neuroscience},
+  volume  = {19},
+  pages   = {1697--1706},
+  year    = {2016}
+}
+
+% ---------- Credit assignment in the brain ----------
+
+@article{rumelhart1986learning,
+  title   = {Learning representations by back-propagating errors},
+  author  = {Rumelhart, David E. and Hinton, Geoffrey E. and Williams, Ronald J.},
+  journal = {Nature},
+  volume  = {323},
+  pages   = {533--536},
+  year    = {1986}
+}
+
+@article{lillicrap2016random,
+  title   = {Random synaptic feedback weights support error backpropagation for deep learning},
+  author  = {Lillicrap, Timothy P. and Cownden, Daniel and Tweed, Douglas B. and Akerman, Colin J.},
+  journal = {Nature Communications},
+  volume  = {7},
+  pages   = {13276},
+  year    = {2016}
+}
+
+@article{lillicrap2020backpropagation,
+  title   = {Backpropagation and the brain},
+  author  = {Lillicrap, Timothy P. and Santoro, Adam and Marris, Luke and Akerman, Colin J. and Hinton, Geoffrey},
+  journal = {Nature Reviews Neuroscience},
+  volume  = {21},
+  number  = {6},
+  pages   = {335--346},
+  year    = {2020}
+}
+
+@article{whittington2019theories,
+  title   = {Theories of error back-propagation in the brain},
+  author  = {Whittington, James C. R. and Bogacz, Rafal},
+  journal = {Trends in Cognitive Sciences},
+  volume  = {23},
+  number  = {3},
+  pages   = {235--250},
+  year    = {2019}
+}
+
+@article{oreilly1996biologically,
+  title   = {Biologically plausible error-driven learning using local activation differences: the generalized recirculation algorithm},
+  author  = {O'Reilly, Randall C.},
+  journal = {Neural Computation},
+  volume  = {8},
+  number  = {5},
+  pages   = {895--938},
+  year    = {1996}
+}
+
+% ---------- Predictive coding: theory and extensions ----------
+
+@article{friston2005theory,
+  title   = {A theory of cortical responses},
+  author  = {Friston, Karl},
+  journal = {Philosophical Transactions of the Royal Society B},
+  volume  = {360},
+  number  = {1456},
+  pages   = {815--836},
+  year    = {2005}
+}
+
+@article{friston2010free,
+  title   = {The free-energy principle: a unified brain theory?},
+  author  = {Friston, Karl},
+  journal = {Nature Reviews Neuroscience},
+  volume  = {11},
+  number  = {2},
+  pages   = {127--138},
+  year    = {2010}
+}
+
+@article{bogacz2017tutorial,
+  title   = {A tutorial on the free-energy framework for modelling perception and learning},
+  author  = {Bogacz, Rafal},
+  journal = {Journal of Mathematical Psychology},
+  volume  = {76},
+  pages   = {198--211},
+  year    = {2017}
+}
+
+@article{millidge2020predictive,
+  title   = {Predictive coding approximates backprop along arbitrary computation graphs},
+  author  = {Millidge, Beren and Tschantz, Alexander and Buckley, Christopher L.},
+  journal = {arXiv preprint arXiv:2006.04182},
+  year    = {2020},
+  eprint  = {2006.04182},
+  archivePrefix = {arXiv}
+}
+
+@article{salvatori2023brain,
+  title   = {Brain-inspired computational intelligence via predictive coding},
+  author  = {Salvatori, Tommaso and Mali, Ankur and Buckley, Christopher L. and Lukasiewicz, Thomas and Rao, Rajesh P. N. and Friston, Karl and Ororbia, Alexander},
+  journal = {arXiv preprint arXiv:2308.07870},
+  year    = {2023},
+  eprint  = {2308.07870},
+  archivePrefix = {arXiv}
+}
+
+% ---------- Equilibrium propagation, beyond the shelved appendix ----------
+
+@inproceedings{ernoult2019updates,
+  title     = {Updates of equilibrium prop match gradients of backprop through time in an {RNN} with static input},
+  author    = {Ernoult, Maxence and Grollier, Julie and Querlioz, Damien and Bengio, Yoshua and Scellier, Benjamin},
+  booktitle = {Advances in Neural Information Processing Systems},
+  volume    = {32},
+  year      = {2019}
+}
+
+@article{laborieux2021scaling,
+  title   = {Scaling equilibrium propagation to deep {C}onv{N}ets by drastically reducing its gradient estimator bias},
+  author  = {Laborieux, Axel and Ernoult, Maxence and Scellier, Benjamin and Bengio, Yoshua and Grollier, Julie and Querlioz, Damien},
+  journal = {Frontiers in Neuroscience},
+  volume  = {15},
+  pages   = {633674},
+  year    = {2021}
+}
+
+% ---------- Data ----------
+
+@article{lecun1998gradient,
+  title   = {Gradient-based learning applied to document recognition},
+  author  = {LeCun, Yann and Bottou, L{\'e}on and Bengio, Yoshua and Haffner, Patrick},
+  journal = {Proceedings of the IEEE},
+  volume  = {86},
+  number  = {11},
+  pages   = {2278--2324},
+  year    = {1998}
 }
